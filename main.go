@@ -13,6 +13,7 @@ const (
 	DefaultHost = "localhost"
 	DefaultPort = "1445"
 	DefaultAddr = DefaultHost + ":" + DefaultPort
+	Version     = "0.0.1"
 )
 
 //
