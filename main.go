@@ -1,12 +1,13 @@
 package mist
 
 import (
+  "encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
-	"time"
+
+  "github.com/nanobox-core/utils"
 )
 
 const (
@@ -29,6 +30,12 @@ type (
 		port          string
 		Subscriptions map[string][]chan string // Subscriptions represent...
 	}
+
+  //
+  message struct {
+    Keys []string
+    Data string
+  }
 )
 
 // New creates a new Mist, setting options, and starting the Mist server
@@ -39,9 +46,9 @@ func New(opts map[string]string) (Mist, error) {
 
 	mist.Subscriptions = make(map[string][]chan string)
 
-	mist.host = setOption(opts["mist_host"], DefaultHost)
-	mist.port = setOption(opts["mist_port"], DefaultPort)
-	mist.Addr = setOption((opts["mist_host"] + ":" + opts["mist_port"]), DefaultAddr)
+	mist.host = utils.SetOption(opts["mist_host"], DefaultHost)
+	mist.port = utils.SetOption(opts["mist_port"], DefaultPort)
+	mist.Addr = utils.SetOption(opts["mist_addr"], DefaultAddr)
 
 	mist.Debugging = true
 
@@ -104,9 +111,6 @@ func (m *Mist) handler(rw http.ResponseWriter, req *http.Request) {
 		// create a subscription for each tag
 		sub := m.Subscribe([]string{t})
 
-		// figure something out here...
-		done := make(chan bool)
-
 		// create our 'publish handler'
 		go func() {
 			for {
@@ -121,15 +125,9 @@ func (m *Mist) handler(rw http.ResponseWriter, req *http.Request) {
 						fmt.Printf("Message received: %+v\n", msg)
 					}
 
-					if msg == "done" {
-						fmt.Printf("MESSAGE WAS DONE!! %+v\n", wg)
-						// done<- true
-						fmt.Println("**** DONE!!! ****")
-						defer wg.Done()
-
-						fmt.Println("Done!", sub, m.Subscriptions)
+					if msg == "\n\r" {
 						m.Unsubscribe(sub)
-						fmt.Println("After done!", sub, m.Subscriptions)
+            wg.Done()
 						return
 					}
 
@@ -138,22 +136,7 @@ func (m *Mist) handler(rw http.ResponseWriter, req *http.Request) {
 						rw.Write([]byte(msg))
 						rw.(http.Flusher).Flush()
 					}()
-
-					// once all updates have been published, decrement the wait group
-					// counter, and unsubscribe the channel
-				case <-done:
-					m.Unsubscribe(sub)
-					wg.Done()
-
-					// monitor the channel for activity
-				default:
-
-					//
-					if m.Debugging {
-						fmt.Printf("No activity on '%+v'\n", sub)
-					}
-					time.Sleep(1 * time.Second)
-				}
+        }
 			}
 		}()
 	}
@@ -169,11 +152,6 @@ func (m *Mist) handler(rw http.ResponseWriter, req *http.Request) {
 // list of recipients is a unique set, so as not to publish the same message more
 // than once over a channel
 func (m *Mist) Publish(tags []string, data string) {
-
-	//
-	if m.Debugging {
-		fmt.Printf("Publishing '%+v' to tags: %+v\n", data, tags)
-	}
 
 	// a complete list of recipients (may contain duplicate channels from multiple
 	// subscriptions)
@@ -209,9 +187,22 @@ func (m *Mist) Publish(tags []string, data string) {
 		}
 	}
 
-	// send data on each unique recipient's channel
+	// format the data and send it on each unique recipient's channel
+  msg := message{Keys: tags, Data: data}
+
+  //
+  if m.Debugging {
+    fmt.Printf("Publishing: %+v\n", msg)
+  }
+
+  b, err := json.Marshal(msg)
+  if err != nil {
+    panic(err)
+  }
+
+  //
 	for _, r := range recipients {
-		go func() { r <- data }()
+		go func() { r <- string(b) }()
 	}
 }
 
@@ -316,22 +307,4 @@ func (m *Mist) Unsubscribe(ch chan string) bool {
 	}
 
 	return true
-}
-
-// private
-
-// setOption takes 'option' (opt) and 'default' (def) values, and returns the
-// option to use (either the provided option, or the default)
-func setOption(opt, def string) string {
-
-	if opt == "" {
-		if def == "" {
-			fmt.Printf("WARNING: No option provided and missing default, unable to proceed aborting...")
-			os.Exit(1)
-		}
-
-		return def
-	}
-
-	return opt
 }
