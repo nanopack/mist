@@ -35,18 +35,23 @@ type (
 )
 
 //
-func New(port string, logger hatchet.Logger) (*Mist, error) {
+func New(port string, logger hatchet.Logger) *Mist {
 	fmt.Println("Initializing 'Mist'...")
 
-	mist := &Mist{}
-	mist.Subscriptions = make(map[string]map[chan Message]string)
+  //
+  if logger == nil {
+    logger = hatchet.DevNullLogger{}
+  }
+
+	mist := &Mist{
+    Subscriptions: make(map[string]map[chan Message]string),
+    log: logger,
+  }
 
 	server := &Server{}
 	server.start(port, mist)
 
-	mist.log = logger
-
-	return mist, nil
+	return mist
 }
 
 // Publish takes a list of tags and iterates through Mist's list of subscriptions,
