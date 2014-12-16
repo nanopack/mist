@@ -2,65 +2,46 @@ package mist
 
 import (
 	"bufio"
-	// "bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 )
 
-//
-type (
-
-	//
-	Server struct {
-		port string
-	}
-)
-
 // start
-func (s *Server) start(p string, m *Mist) error {
-	fmt.Printf("Starting Mist server...\n")
-
-	s.port = p
+func (m *Mist) start() {
+	m.log.Info("Starting Mist server...\n")
 
 	//
 	go func() {
 
 		//
-		l, err := net.Listen("tcp", ":"+s.port)
+		l, err := net.Listen("tcp", ":"+m.port)
 		if err != nil {
-			fmt.Printf("Failed to start Mist Server: %v\n", err)
-			os.Exit(1)
+			m.log.Error("%+v\n", err)
 		}
 
-		//
 		defer l.Close()
 
-		fmt.Printf("Mist listening at %v\n", s.port)
+		m.log.Info("Mist listening at %+v\n", m.port)
 
 		// Listen for an incoming connection.
 		for {
 			conn, err := l.Accept()
 			if err != nil {
-				fmt.Println("Error accepting: ", err.Error())
-				os.Exit(1)
+				m.log.Error("%+v\n", err)
 			}
 
 			// Handle connections in a new goroutine.
-			go handleRequest(conn, m)
+			go m.handleRequest(conn)
 		}
 	}()
-
-	return nil
 }
 
 // handleRequest
-func handleRequest(conn net.Conn, m *Mist) {
+func (m *Mist) handleRequest(conn net.Conn) {
 
-	fmt.Println("HANDLE REQUEST!")
+	m.log.Info("Handle request\n")
 
 	var cmd string
 	var tags string
@@ -84,11 +65,11 @@ func handleRequest(conn net.Conn, m *Mist) {
 			//
 			case msg := <-sub.Sub:
 
-				fmt.Printf("SUB: %+v\nMSG:%+v\n", sub.Sub, msg)
+				m.log.Info("SUB: %+v\nMSG:%+v\n", sub.Sub, msg)
 
 				b, err := json.Marshal(msg)
 				if err != nil {
-					fmt.Printf("Failed to marshal: %v\n", err)
+					m.log.Error("Failed to marshal: %v\n", err)
 				}
 
 				if _, err := conn.Write(b); err != nil {
@@ -108,14 +89,14 @@ func handleRequest(conn net.Conn, m *Mist) {
 		l, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				fmt.Println("EOF!")
+				m.log.Info("EOF!\n")
 				conn.Close()
 				m.Unsubscribe(sub)
 				done <- true
 				// close(sub.Sub)
 				break
 			} else {
-				fmt.Println("Error reading:", err.Error())
+				m.log.Error("Error reading: %+v\n", err.Error())
 			}
 		}
 
@@ -144,7 +125,7 @@ func handleRequest(conn net.Conn, m *Mist) {
 		case "subscriptions":
 			m.List()
 		default:
-			fmt.Printf("Unknown command: %+v\n", cmd)
+			m.log.Error("Unknown command: %+v\n", cmd)
 		}
 	}
 

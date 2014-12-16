@@ -17,8 +17,9 @@ type (
 	Mist struct {
 		sync.Mutex
 
-		log           hatchet.Logger
-		Subscriptions map[string]map[chan Message]string // Subscriptions represent...
+		log           hatchet.Logger //
+    port          string
+		Subscriptions map[string]map[chan Message]string //
 	}
 
 	//
@@ -36,7 +37,6 @@ type (
 
 //
 func New(port string, logger hatchet.Logger) *Mist {
-	fmt.Println("Initializing 'Mist'...")
 
   //
   if logger == nil {
@@ -44,12 +44,14 @@ func New(port string, logger hatchet.Logger) *Mist {
   }
 
 	mist := &Mist{
+    log:           logger,
+    port:          port,
     Subscriptions: make(map[string]map[chan Message]string),
-    log: logger,
   }
 
-	server := &Server{}
-	server.start(port, mist)
+  mist.log.Info("Initializing 'Mist'...")
+
+	mist.start()
 
 	return mist
 }
@@ -60,22 +62,22 @@ func New(port string, logger hatchet.Logger) *Mist {
 // than once over a channel
 func (m *Mist) Publish(tags []string, data string) {
 
+  // create a message
+  msg := Message{Tags: tags, Data: data}
+
 	// a unique list of recipients (may contain duplicate channels from multiple
 	// subscriptions)
 	recipients := make(map[chan Message]int)
 
-	// a *unique* list of recipients that will receive broadcasts
-	// var recipients []chan Message
-
 	// iterate through each provided tag looking for subscriptions to publish to
-	for _, t := range tags {
+	for _, tag := range tags {
 
 		// keep track of how many times a subscription is requested
 		used := 0
 
 		// iterate through any matching subscriptions and add all of that subscriptions
 		// channels to the list of recipients
-		if sub, ok := m.Subscriptions[t]; ok {
+		if sub, ok := m.Subscriptions[tag]; ok {
 			for ch, _ := range sub {
 
 				// ensure that we keep the list of recipients unique, by checking each
@@ -83,26 +85,15 @@ func (m *Mist) Publish(tags []string, data string) {
 				if _, ok := recipients[ch]; !ok {
 					used++
 
+          fmt.Printf("Publishing: %+v\n", msg)
+          go func() { ch <- msg }()
+
 					// update our list of found channels, with a value of how many times
 					// that channel has been subscribed to
 					recipients[ch] = used
-
-					// add the channel to our unique list of channels
-					// recipients = append(recipients, ch)
 				}
 			}
 		}
-	}
-
-	// format the data and send it on each unique recipient's channel
-	msg := Message{Tags: tags, Data: data}
-
-	//
-	fmt.Printf("Publishing: %+v\n", msg)
-
-	//
-	for ch, _ := range recipients {
-		go func() { ch <- msg }()
 	}
 }
 
@@ -116,19 +107,20 @@ func (m *Mist) Subscribe(sub Subscription) {
 	// iterate over each subscription, adding it to our list of subscriptions (if
 	// not already found), and then adding the channel into the subscription's list
 	// of subscribers.
-	for _, t := range sub.Tags {
+	for _, tag := range sub.Tags {
 
 		// if we don't find a subscription, make one (type []chan Message), and add
 		// it to our list of subscriptions
-		if _, ok := m.Subscriptions[t]; !ok {
-			m.Subscriptions[t] = make(map[chan Message]string)
-			fmt.Printf("Created new subscription '%+v'\n", t)
+		if _, ok := m.Subscriptions[tag]; !ok {
+			m.Subscriptions[tag] = make(map[chan Message]string)
+			fmt.Printf("Created new subscription '%+v'\n", tag)
 		}
 
 		// add the channel to each subscription...
-		m.Subscriptions[t][sub.Sub] = ""
-		fmt.Printf("Subscribed '%+v' to '%+v'\n", sub.Sub, t)
+		m.Subscriptions[tag][sub.Sub] = ""
+		fmt.Printf("Subscribed '%+v' to '%+v'\n", sub.Sub, tag)
 	}
+
 	m.Unlock()
 }
 
@@ -140,25 +132,25 @@ func (m *Mist) Unsubscribe(sub Subscription) {
 	fmt.Printf("Unsubscribing '%+v' from '%+v'\n", sub.Sub, sub.Tags)
 
 	//
-	for _, t := range sub.Tags {
+	for _, tag := range sub.Tags {
 
 		//
-		if s, ok := m.Subscriptions[t]; ok {
+		if s, ok := m.Subscriptions[tag]; ok {
 			delete(s, sub.Sub)
 			fmt.Printf("Unsubscribed '%+v' from '%+v'\n", sub.Sub, s)
 		}
 
 		//
-		if len(m.Subscriptions[t]) <= 0 {
-			delete(m.Subscriptions, t)
-			fmt.Printf("Removed empty subscription '%+v'\n", t)
+		if len(m.Subscriptions[tag]) <= 0 {
+			delete(m.Subscriptions, tag)
+			fmt.Printf("Removed empty subscription '%+v'\n", tag)
 		}
 	}
+
 	m.Unlock()
 }
 
-//
-func (m *Mist) List() error {
+// List
+func (m *Mist) List() {
 	fmt.Println(m.Subscriptions)
-	return nil
 }
