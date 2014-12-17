@@ -2,6 +2,7 @@ package mist
 
 import (
 	"bufio"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net"
@@ -10,7 +11,7 @@ import (
 
 // start
 func (m *Mist) start() {
-	m.log.Info("Starting Mist server...\n")
+	m.log.Info("[MIST] Starting server...\n")
 
 	//
 	go func() {
@@ -23,7 +24,7 @@ func (m *Mist) start() {
 
 		defer l.Close()
 
-		m.log.Info("Mist listening at %+v\n", m.port)
+		m.log.Info("[MIST] Listening on port %+v\n", m.port)
 
 		// Listen for an incoming connection.
 		for {
@@ -33,15 +34,15 @@ func (m *Mist) start() {
 			}
 
 			// Handle connections in a new goroutine.
-			go m.handleRequest(conn)
+			go m.handleConnection(conn)
 		}
 	}()
 }
 
-// handleRequest
-func (m *Mist) handleRequest(conn net.Conn) {
+// handleConnection
+func (m *Mist) handleConnection(conn net.Conn) {
 
-	m.log.Info("Handle request\n")
+	m.log.Debug("[MIST] New connection detected: %+v\n", conn)
 
 	var cmd string
 	var tags string
@@ -65,14 +66,16 @@ func (m *Mist) handleRequest(conn net.Conn) {
 			//
 			case msg := <-sub.Sub:
 
-				m.log.Info("SUB: %+v\nMSG:%+v\n", sub.Sub, msg)
-
 				b, err := json.Marshal(msg)
 				if err != nil {
-					m.log.Error("Failed to marshal: %v\n", err)
+					m.log.Error("[MIST] Failed to marshal message: %v\n", err)
 				}
 
-				if _, err := conn.Write(b); err != nil {
+				//
+				bsize := make([]byte, 4)
+    		binary.LittleEndian.PutUint32(bsize, uint32(len(b)))
+
+				if _, err := conn.Write(append(bsize, b...)); err != nil {
 					break
 				}
 
@@ -89,14 +92,13 @@ func (m *Mist) handleRequest(conn net.Conn) {
 		l, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				m.log.Info("EOF!\n")
 				conn.Close()
 				m.Unsubscribe(sub)
 				done <- true
 				// close(sub.Sub)
 				break
 			} else {
-				m.log.Error("Error reading: %+v\n", err.Error())
+				m.log.Error("[MIST] Error reading stream: %+v\n", err.Error())
 			}
 		}
 
@@ -105,12 +107,6 @@ func (m *Mist) handleRequest(conn net.Conn) {
 
 		if len(split) > 1 {
 			tags = split[1]
-		}
-
-		// if no tags are passed, send a message indicating that the server is up, but
-		// a subscription is needed
-		if len(tags) <= 0 {
-			conn.Write([]byte("Mist Server is running, subscribe to receive updates..."))
 		}
 
 		// create a subscription for each tag
@@ -125,7 +121,7 @@ func (m *Mist) handleRequest(conn net.Conn) {
 		case "subscriptions":
 			m.List()
 		default:
-			m.log.Error("Unknown command: %+v\n", cmd)
+			m.log.Error("[MIST] Unknown command: %+v\n", cmd)
 		}
 	}
 
