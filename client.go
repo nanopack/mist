@@ -1,8 +1,11 @@
 package mist
 
 import (
-// "io"
-// "net"
+  "encoding/binary"
+  "encoding/json"
+  "io"
+  "net"
+  "strings"
 )
 
 //
@@ -10,62 +13,77 @@ type (
 
 	// Client...
 	Client struct {
-		Subscriptions map[chan Message]chan bool
+    conn net.Conn
+    Data chan Message
 	}
 )
 
-// New creates a new Mist Client
-func (c *Client) New(opts map[string]string) (Client, error) {
+//
+func (c *Client) Connect(host, port string) (*Client, error) {
 
-	client := Client{}
-	client.Subscriptions = make(map[chan Message]chan bool)
+  //
+  c.Data = make(chan Message)
 
-	return client, nil
+  conn, err := net.Dial("tcp", host + ":" + port)
+  if err != nil {
+    return nil, err
+  }
+
+  c.conn = conn
+
+  go func(){
+    for {
+      bsize := make([]byte, 4)
+      if _, err := io.ReadFull(c.conn, bsize); err != nil {
+        c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
+        close(c.Data)
+      }
+
+      n := binary.LittleEndian.Uint32(bsize)
+
+      b := make([]byte, n)
+      if _, err := io.ReadFull(c.conn, b); err != nil {
+        c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
+        close(c.Data)
+      }
+
+      msg := Message{}
+
+      if err := json.Unmarshal(b, &msg); err != nil {
+        c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
+        close(c.Data)
+      }
+
+      c.Data <- msg
+    }
+  }()
+
+	return c, nil
 }
 
 // Subscribe
 func (c *Client) Subscribe(tags []string) ([]string, error) {
+  if _, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n" )); err != nil{
+    return nil, err
+  }
 
-	// go func{
-
-	// }()
-
-	//
-	// res, err := http.Get("http://127.0.0.1:1445/mist?subscribe="+strings.Join(tags, ","))
-	// if err != nil {
-	//   return tags, err
-	// }
-
-	// defer res.Body.Close()
-
-	//
-	// var b []byte
-
-	//
-	// for {
-	//   b = make([]byte, bytes.MinRead)
-
-	//   _, err := res.Body.Read(b)
-	//   if err != nil {
-	//     if err == io.EOF {
-	//       break
-	//     } else {
-	//       return tags, done, err
-	//     }
-	//   }
-
-	//   b = bytes.Trim(b, "\x00")
-	// }
-
-	return tags, nil
+  return tags, nil
 }
 
 // Unsubscribe
-func (c *Client) Unsubscribe(tags []string) {
-	// unsubscribe from a channel
+func (c *Client) Unsubscribe(tags []string) error {
+	if _, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n" )); err != nil{
+    return err
+  }
+
+  return nil
 }
 
 // Subscriptions
-// func (c *Client) Subscriptions() {
-//   // get a list of all subscriptions
-// }
+func (c *Client) Subscriptions() error {
+  if _, err := c.conn.Write([]byte("subscriptions\n")); err != nil {
+    return err
+  }
+
+  return nil
+}

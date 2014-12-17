@@ -11,7 +11,7 @@ import (
 
 // start
 func (m *Mist) start() {
-	m.log.Info("[MIST] Starting server...\n")
+	m.log.Info("[MIST :: SERVER] Starting server...\n")
 
 	//
 	go func() {
@@ -24,7 +24,7 @@ func (m *Mist) start() {
 
 		defer l.Close()
 
-		m.log.Info("[MIST] Listening on port %+v\n", m.port)
+		m.log.Info("[MIST :: SERVER] Listening on port %+v\n", m.port)
 
 		// Listen for an incoming connection.
 		for {
@@ -42,7 +42,7 @@ func (m *Mist) start() {
 // handleConnection
 func (m *Mist) handleConnection(conn net.Conn) {
 
-	m.log.Debug("[MIST] New connection detected: %+v\n", conn)
+	m.log.Debug("[MIST :: SERVER] New connection detected: %+v\n", conn)
 
 	var cmd string
 	var tags string
@@ -68,7 +68,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 
 				b, err := json.Marshal(msg)
 				if err != nil {
-					m.log.Error("[MIST] Failed to marshal message: %v\n", err)
+					m.log.Error("[MIST :: SERVER] Failed to marshal message: %v\n", err)
 				}
 
 				//
@@ -98,7 +98,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 				// close(sub.Sub)
 				break
 			} else {
-				m.log.Error("[MIST] Error reading stream: %+v\n", err.Error())
+				m.log.Error("[MIST :: SERVER] Error reading stream: %+v\n", err.Error())
 			}
 		}
 
@@ -121,7 +121,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		case "subscriptions":
 			m.List()
 		default:
-			m.log.Error("[MIST] Unknown command: %+v\n", cmd)
+			m.log.Error("[MIST :: SERVER] Unknown command: %+v\n", cmd)
 		}
 	}
 
