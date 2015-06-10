@@ -80,7 +80,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 
 				//
 				bsize := make([]byte, 4)
-    		binary.LittleEndian.PutUint32(bsize, uint32(len(b)))
+				binary.LittleEndian.PutUint32(bsize, uint32(len(b)))
 
 				if _, err := conn.Write(append(bsize, b...)); err != nil {
 					break
