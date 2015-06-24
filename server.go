@@ -97,7 +97,11 @@ func (m *Mist) handleConnection(conn net.Conn) {
 	//
 	for {
 		l, err := r.ReadString('\n')
+
+		//
 		if err != nil {
+
+			//
 			if err == io.EOF {
 				conn.Close()
 				m.Unsubscribe(sub)

@@ -79,7 +79,7 @@ func (c *Client) Subscribe(tags []string) ([]string, error) {
 
 // Unsubscribe
 func (c *Client) Unsubscribe(tags []string) error {
-	if _, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n")); err != nil {
+	if _, err := c.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n")); err != nil {
 		return err
 	}
 
@@ -93,4 +93,10 @@ func (c *Client) Subscriptions() error {
 	}
 
 	return nil
+}
+
+// Close
+func (c *Client) Close() error {
+	close(c.Data)
+	return c.conn.Close()
 }
