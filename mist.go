@@ -29,7 +29,7 @@ type (
 
 		log           hatchet.Logger //
 		port          string
-		Subscriptions map[string]map[chan Message]string //
+		Subscriptions []Subscription //
 	}
 
 	//
@@ -56,7 +56,7 @@ func New(port string, logger hatchet.Logger) *Mist {
 	mist := &Mist{
 		log:           logger,
 		port:          port,
-		Subscriptions: make(map[string]map[chan Message]string),
+		Subscriptions: []Subscription{},
 	}
 
 	mist.start()
@@ -77,38 +77,9 @@ func (m *Mist) Publish(tags []string, data string) {
 
 	m.log.Info("MSG: %#v\n", msg)
 
-	// a unique list of recipients (may contain duplicate channels from multiple
-	// subscriptions)
-	recipients := make(map[chan Message]int)
-
-	// iterate through each provided tag looking for subscriptions to publish to
-	for _, tag := range tags {
-
-		// keep track of how many times a subscription is requested
-		used := 0
-
-		// iterate through any matching subscriptions and add all of that subscriptions
-		// channels to the list of recipients
-		if sub, ok := m.Subscriptions[tag]; ok {
-
-			for ch, _ := range sub {
-
-				// ensure that we keep the list of recipients unique, by checking each
-				// match against a temporary map of found channels.
-				if _, ok := recipients[ch]; !ok {
-					used++
-
-					m.log.Info("PUBLISH!!! %#v\n", msg)
-
-					//
-					m.log.Debug("[MIST] Publishing: %+v\n", msg)
-					go func(ch chan Message) { ch <- msg }(ch)
-
-					// update our list of found channels, with a value of how many times
-					// that channel has been subscribed to
-					recipients[ch] = used
-				}
-			}
+	for _, subscription := range m.Subscriptions {
+		if contains(tags, subscription.Tags) {
+			go func(ch chan Message, msg Message) { ch <- msg }(subscription.Sub, msg)
 		}
 	}
 }
@@ -116,27 +87,7 @@ func (m *Mist) Publish(tags []string, data string) {
 // Subscribe
 func (m *Mist) Subscribe(sub Subscription) {
 	m.Lock()
-
-	//
-	m.log.Debug("[MIST] Subscribe: %+v\n", sub.Tags)
-
-	// iterate over each subscription, adding it to our list of subscriptions (if
-	// not already found), and then adding the channel into the subscription's list
-	// of subscribers.
-	for _, tag := range sub.Tags {
-
-		// if we don't find a subscription, make one (type []chan Message), and add
-		// it to our list of subscriptions
-		if _, ok := m.Subscriptions[tag]; !ok {
-			m.Subscriptions[tag] = make(map[chan Message]string)
-			m.log.Debug("[MIST] Created new subscription '%+v'\n", tag)
-		}
-
-		// add the channel to each subscription...
-		m.Subscriptions[tag][sub.Sub] = ""
-		m.log.Debug("[MIST] Subscribed '%+v' to '%+v'\n", sub.Sub, tag)
-	}
-
+	m.Subscriptions = append(m.Subscriptions, sub)
 	m.Unlock()
 }
 
@@ -144,24 +95,13 @@ func (m *Mist) Subscribe(sub Subscription) {
 func (m *Mist) Unsubscribe(sub Subscription) {
 	m.Lock()
 
-	//
-	m.log.Debug("[MIST] Unsubscribing '%+v' from '%+v'\n", sub.Sub, sub.Tags)
-
-	//
-	for _, tag := range sub.Tags {
-
-		//
-		if s, ok := m.Subscriptions[tag]; ok {
-			delete(s, sub.Sub)
-			m.log.Debug("[MIST] Unsubscribed '%+v' from '%+v'\n", sub.Sub, s)
-		}
-
-		//
-		if len(m.Subscriptions[tag]) <= 0 {
-			delete(m.Subscriptions, tag)
-			m.log.Debug("[MIST] Removed empty subscription '%+v'\n", tag)
+	newSubscriptions := []Subscription{}
+	for _, subscription := range m.Subscriptions {
+		if !sameSub(subscription, sub) {
+			newSubscriptions = append(newSubscriptions, sub)
 		}
 	}
+	m.Subscriptions = newSubscriptions
 
 	m.Unlock()
 }
@@ -169,4 +109,31 @@ func (m *Mist) Unsubscribe(sub Subscription) {
 // List
 func (m *Mist) List() {
 	fmt.Println(m.Subscriptions)
+}
+
+func contains(full, subset []string) bool {
+	fullMap := map[string]interface{}{}
+	for _, str := range full {
+		fullMap[str] = ""
+	}
+	for _, str := range subset {
+		if fullMap[str] == nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+func sameSub(x, y Subscription) bool {
+	if len(x.Tags) != len(y.Tags) || x.Sub != y.Sub {
+		return false
+	}
+	for i := 0; i < len(x.Tags); i++ {
+		if x.Tags[i] != y.Tags[i] {
+			return false
+		}
+	}
+
+	return true
 }
