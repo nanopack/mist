@@ -41,7 +41,7 @@ type (
 	//
 	Message struct {
 		Tags []string `json:"tags"`
-		Data string   `json:"data"`
+		Data string   `json:"data, string"`
 	}
 )
 
@@ -70,8 +70,12 @@ func New(port string, logger hatchet.Logger) *Mist {
 // than once over a channel
 func (m *Mist) Publish(tags []string, data string) {
 
+	m.log.Info("PUBLISH!! %v, %v", tags, data)
+
 	// create a message
 	msg := Message{Tags: tags, Data: data}
+
+	m.log.Info("MSG: %#v\n", msg)
 
 	// a unique list of recipients (may contain duplicate channels from multiple
 	// subscriptions)
@@ -93,6 +97,8 @@ func (m *Mist) Publish(tags []string, data string) {
 				// match against a temporary map of found channels.
 				if _, ok := recipients[ch]; !ok {
 					used++
+
+					m.log.Info("PUBLISH!!! %#v\n", msg)
 
 					//
 					m.log.Debug("[MIST] Publishing: %+v\n", msg)

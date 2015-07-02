@@ -10,9 +10,11 @@ package mist
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"strings"
+	"time"
 )
 
 //
@@ -31,34 +33,62 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 	//
 	c.Data = make(chan Message)
 
-	conn, err := net.Dial("tcp", host+":"+port)
-	if err != nil {
-		return nil, err
+	maxRetries := 60
+
+	// attempt to connect to the host:port
+	for i := 0; i < maxRetries; i++ {
+		if conn, err := net.Dial("tcp", host + ":" + port); err != nil {
+
+			// max number of attempted retrys failed...
+			if i >= maxRetries {
+				fmt.Println("[MIST :: CLIENT] Failed to connect...")
+				return nil, err
+			}
+			fmt.Printf("\r[MIST :: CLIENT] Unable to connect, retrying... (%v/%v attempts)", i, maxRetries)
+
+			// connection successful
+		} else {
+			fmt.Println("\n[MIST :: CLIENT] Connected...")
+			c.conn = conn
+			break
+		}
+
+		//
+		time.Sleep(1*time.Second)
 	}
 
-	c.conn = conn
-
+	//
 	go func() {
 		for {
+
+			// read the first 4 bytes of the message so we know how long the message
+			// is expected to be
 			bsize := make([]byte, 4)
 			if _, err := io.ReadFull(c.conn, bsize); err != nil {
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
+				// c.Close()
 			}
 
+			// create a buffer that is the length of the expected message
 			n := binary.LittleEndian.Uint32(bsize)
 
+			// read the length of the message up to the expected bytes
 			b := make([]byte, n)
 			if _, err := io.ReadFull(c.conn, b); err != nil {
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
+				// c.Close()
 			}
 
+			//
 			msg := Message{}
 
+			//
 			if err := json.Unmarshal(b, &msg); err != nil {
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
+				// c.Close()
 			}
 
 			c.Data <- msg
@@ -98,5 +128,6 @@ func (c *Client) Subscriptions() error {
 // Close
 func (c *Client) Close() error {
 	close(c.Data)
-	return c.conn.Close()
+	// return c.conn.Close()
+	return nil
 }
