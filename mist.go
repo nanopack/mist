@@ -41,7 +41,7 @@ type (
 	//
 	Message struct {
 		Tags []string `json:"tags"`
-		Data string   `json:"data, string"`
+		Data string   `json:"data,string"`
 	}
 )
 
