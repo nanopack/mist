@@ -88,7 +88,6 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 				close(c.Data)
 				// c.Close()
 			}
-			fmt.Printf("msg: %#v\n", msg)
 
 			c.Data <- msg
 		}
