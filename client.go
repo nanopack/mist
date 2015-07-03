@@ -65,6 +65,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 			// is expected to be
 			bsize := make([]byte, 4)
 			if _, err := io.ReadFull(c.conn, bsize); err != nil {
+				fmt.Println(err)
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
 				// c.Close()
@@ -76,6 +77,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 			// read the length of the message up to the expected bytes
 			b := make([]byte, n)
 			if _, err := io.ReadFull(c.conn, b); err != nil {
+				fmt.Println(err)
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
 				// c.Close()
@@ -86,6 +88,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 
 			//
 			if err := json.Unmarshal(b, &msg); err != nil {
+				fmt.Println(err)
 				c.Data <- Message{Tags: []string{"ERROR"}, Data: err.Error()}
 				close(c.Data)
 				// c.Close()
