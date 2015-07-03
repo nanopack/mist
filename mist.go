@@ -69,13 +69,8 @@ func New(port string, logger hatchet.Logger) *Mist {
 // list of recipients is a unique set, so as not to publish the same message more
 // than once over a channel
 func (m *Mist) Publish(tags []string, data string) {
-
-	m.log.Info("PUBLISH!! %v, %v", tags, data)
-
 	// create a message
 	msg := Message{Tags: tags, Data: data}
-
-	m.log.Info("MSG: %#v\n", msg)
 
 	for _, subscription := range m.Subscriptions {
 		if contains(tags, subscription.Tags) {
