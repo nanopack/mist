@@ -60,7 +60,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 	//
 	go func() {
 		for {
-
+			fmt.Println("for looping!")
 			// read the first 4 bytes of the message so we know how long the message
 			// is expected to be
 			bsize := make([]byte, 4)
@@ -70,10 +70,12 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 				close(c.Data)
 				// c.Close()
 			}
+			fmt.Println("bsize:", bsize)
 
 			// create a buffer that is the length of the expected message
 			n := binary.LittleEndian.Uint32(bsize)
 
+			fmt.Println("len:", n)
 			// read the length of the message up to the expected bytes
 			b := make([]byte, n)
 			if _, err := io.ReadFull(c.conn, b); err != nil {
@@ -82,7 +84,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 				close(c.Data)
 				// c.Close()
 			}
-
+			fmt.Println("b: ",b)
 			//
 			msg := Message{}
 
@@ -93,6 +95,7 @@ func (c *Client) Connect(host, port string) (*Client, error) {
 				close(c.Data)
 				// c.Close()
 			}
+			fmt.Printf("msg: %#v\n", msg)
 
 			c.Data <- msg
 		}
