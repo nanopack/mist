@@ -36,7 +36,7 @@ type (
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
 func (c *Client) Connect() error {
-	fmt.Print("+> Attempting to connect to mist...")
+	fmt.Printf("+> Attempting to connect to mist...\n")
 
 	// number of seconds/attempts to try when failing to conenct to mist server
 	maxRetries := 60
