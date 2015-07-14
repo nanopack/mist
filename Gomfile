@@ -1,2 +1,3 @@
-gom 'github.com/pagodabox/nanobox-golang-stylish'
+gom 'github.com/mitchellh/go-wordwrap'
 gom 'github.com/pagodabox/golang-hatchet'
+gom 'github.com/pagodabox/nanobox-golang-stylish'
