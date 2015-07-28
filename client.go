@@ -36,7 +36,7 @@ type (
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
 func (c *Client) Connect() error {
-	fmt.Printf("+> Attempting to connect to mist...\n")
+	fmt.Printf(stylish.Bullet("Attempting to connect to mist..."))
 
 	// number of seconds/attempts to try when failing to conenct to mist server
 	maxRetries := 60
@@ -47,15 +47,16 @@ func (c *Client) Connect() error {
 
 			// max number of attempted retrys failed...
 			if i >= maxRetries {
-				fmt.Printf(stylish.Error("\nmist connection failed", "The attempted connection to mist failed. This shouldn't effect any running processes, however no output should be expected"))
+				fmt.Printf(stylish.Error("mist connection failed", "The attempted connection to mist failed. This shouldn't effect any running processes, however no output should be expected"))
 				return err
 			}
-			fmt.Printf("\r+> Connection failed! Retrying (%v/%v attempts)...", i, maxRetries)
+			fmt.Printf("\r   Connection failed! Retrying (%v/%v attempts)...", i, maxRetries)
 
 			// upon successful connection, set the clients connection (conn) to the tcp
 			// connection that was established with the server
 		} else {
-			fmt.Printf(stylish.Bullet("Successfully connected to mist"))
+			fmt.Printf(stylish.SubBullet("- Connection established"))
+			fmt.Printf(stylish.Success())
 			c.conn = conn
 			break
 		}
@@ -75,7 +76,14 @@ func (c *Client) Connect() error {
 			// is expected to be
 			bsize := make([]byte, 4)
 			if _, err := io.ReadFull(c.conn, bsize); err != nil {
-				c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+				// if the connection is closed just kill the goroutine, otherwise send the
+				// error along the channel
+				switch err.(type) {
+				case *net.OpError:
+					break
+				default:
+					c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+				}
 			}
 
 			// create a buffer that is the length of the expected message
@@ -84,7 +92,14 @@ func (c *Client) Connect() error {
 			// read the length of the message up to the expected bytes
 			b := make([]byte, n)
 			if _, err := io.ReadFull(c.conn, b); err != nil {
-				c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+				// if the connection is closed just kill the goroutine, otherwise send the
+				// error along the channel
+				switch err.(type) {
+				case *net.OpError:
+					break
+				default:
+					c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+				}
 			}
 
 			// create a new message
