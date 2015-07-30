@@ -76,14 +76,11 @@ func (c *Client) Connect() error {
 			// is expected to be
 			bsize := make([]byte, 4)
 			if _, err := io.ReadFull(c.conn, bsize); err != nil {
-				// if the connection is closed just kill the goroutine, otherwise send the
-				// error along the channel
-				switch err.(type) {
-				case *net.OpError:
-					break
-				default:
-					c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
-				}
+
+				// for now, the only err I can see causing problems here is a closed
+				// connection, so for now we'll just break until we need to handle
+				// different types
+				break
 			}
 
 			// create a buffer that is the length of the expected message
@@ -92,14 +89,11 @@ func (c *Client) Connect() error {
 			// read the length of the message up to the expected bytes
 			b := make([]byte, n)
 			if _, err := io.ReadFull(c.conn, b); err != nil {
-				// if the connection is closed just kill the goroutine, otherwise send the
-				// error along the channel
-				switch err.(type) {
-				case *net.OpError:
-					break
-				default:
-					c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
-				}
+
+				// for now, the only err I can see causing problems here is a closed
+				// connection, so for now we'll just break until we need to handle
+				// different types
+				break
 			}
 
 			// create a new message
