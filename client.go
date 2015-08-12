@@ -8,10 +8,9 @@
 package mist
 
 import (
-	"encoding/binary"
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 	"time"
@@ -27,6 +26,7 @@ type (
 	// to the server
 	Client struct {
 		conn net.Conn     // the connection the mist server
+		done chan bool    // the channel to indicate that the connection is closed
 		Data chan Message // the channel that mist server 'publishes' updates to
 		Host string       // the connection host for where mist server is running
 		Port string       // the connection port for where mist server is running
@@ -70,43 +70,31 @@ func (c *Client) Connect() error {
 
 	// continually read from conn, forwarding the data onto the clients data channel
 	go func() {
+		defer close(c.Data)
+
+		r := bufio.NewReader(c.conn)
 		for {
-
-			// read the first 4 bytes of the message so we know how long the message
-			// is expected to be
-			bsize := make([]byte, 4)
-			if _, err := io.ReadFull(c.conn, bsize); err != nil {
-
-				// for now, the only err I can see causing problems here is a closed
-				// connection, so for now we'll just break until we need to handle
-				// different types
-				break
-			}
-
-			// create a buffer that is the length of the expected message
-			n := binary.LittleEndian.Uint32(bsize)
-
-			// read the length of the message up to the expected bytes
-			b := make([]byte, n)
-			if _, err := io.ReadFull(c.conn, b); err != nil {
-
-				// for now, the only err I can see causing problems here is a closed
-				// connection, so for now we'll just break until we need to handle
-				// different types
-				break
+			bytes, err := r.ReadBytes('\n')
+			if err != nil {
+				// do we need to log the error?
+				return
 			}
 
 			// create a new message
 			msg := Message{}
 
 			// unmarshal the raw message into a mist message
-			if err := json.Unmarshal(b, &msg); err != nil {
-				c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+			if err := json.Unmarshal(bytes, &msg); err != nil {
+				// or send the error if there is one
+				msg = Message{Tags: []string{"err"}, Data: err.Error()}
 			}
 
-			// send the message on the client data channel to be handled from the clients
-			// user
-			c.Data <- msg
+			// send the message on the client data channel, or close if this connection is done
+			select {
+			case c.Data <- msg:
+			case <-c.done:
+				return
+			}
 		}
 	}()
 
@@ -126,24 +114,23 @@ func (c *Client) Subscribe(tags []string) ([]string, error) {
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
 func (c *Client) Unsubscribe(tags []string) error {
-	if _, err := c.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n")); err != nil {
-		return err
-	}
+	_, err := c.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n"))
 
-	return nil
+	return err
 }
 
 // Subscriptions requests a list of current mist subscriptions from the server
 func (c *Client) Subscriptions() error {
-	if _, err := c.conn.Write([]byte("subscriptions\n")); err != nil {
-		return err
-	}
+	_, err := c.conn.Write([]byte("subscriptions\n"))
 
-	return nil
+	return err
 }
 
 // Close closes the client data channel and the connection to the server
 func (c *Client) Close() error {
-	close(c.Data)
-	return c.conn.Close()
+	// we need to do it in this order incase the goproc is stuck waiting for
+	// more data from the socket
+	err := c.conn.Close()
+	close(c.done)
+	return err
 }
