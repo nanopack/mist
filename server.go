@@ -13,86 +13,79 @@ import (
 	"io"
 	"net"
 	"strings"
-
-	"github.com/pagodabox/nanobox-golang-stylish"
 )
 
 // build a small applicationController so that we don't have to play with
 type (
 	handler struct {
 		argCount int
-		handle   func(*Mist, []string) error
+		handle   func(*MistClient, []string) error
 	}
 )
 
 var (
 	commandMap = map[string]handler{
-		"subscribe":     {1, handleSubscribe},
-		"unsubscribe":   {1, handleUnubscribe},
-		"subscriptions": {0, handleSubscriptions},
-		"publish":       {2, handlePublish},
+		"subscribe":   {1, handleSubscribe},
+		"unsubscribe": {1, handleUnubscribe},
+		"list":        {0, handleList},
+		"publish":     {2, handlePublish},
 	}
 )
 
-func handleSubscribe(m *Mist, args []string) error {
-	m.Subscribe(args[0])
+func handleSubscribe(client *MistClient, args []string) error {
+	tags := strings.Split(args[0], ",")
+	client.Subscribe(tags)
 	return nil
 }
-func handleUnubscribe(m *Mist, args []string) error {
-	m.Unsubscribe(args[0])
+func handleUnubscribe(client *MistClient, args []string) error {
+	tags := strings.Split(args[0], ",")
+	client.Unsubscribe(tags)
 	return nil
 }
-func handleSubscriptions(m *Mist, args []string) error {
+func handleList(client *MistClient, args []string) error {
 	// don't know how this works yet
-	m.List()
+	// client.List()
 	return nil
 }
-func handlePublish(m *Mist, args []string) error {
-	m.Publish(args[0], args[1])
+func handlePublish(client *MistClient, args []string) error {
+	tags := strings.Split(args[0], ",")
+	client.Publish(tags, args[1])
 	return nil
 }
 
-// start starts a tcp server listening on the specified port (default 1445), it
-// then continually reads from the server handling any incoming connections
-func (m *Mist) start() {
-	m.log.Info(stylish.Bullet("Starting mist server..."))
-
-	serverSocket, err := net.Listen("tcp", ":"+m.port)
-	if err != nil {
-		m.log.Error("%+v\n", err)
-		return
+// start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
+// it then continually reads from the server handling any incoming connections
+func (m *Mist) listen(address string) error {
+	if address == "" {
+		address = "127.0.0.1:1445"
 	}
-	m.log.Info(stylish.Bullet("Mist listening on port " + m.port))
-
+	serverSocket, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
 	//
-	go func(serverSocket net.Listener) {
-		//
-		defer serverSocket.Close()
+	defer serverSocket.Close()
 
-		// Continually listen for any incoming connections.
-		for {
-			conn, err := serverSocket.Accept()
-			if err != nil {
-				m.log.Error("%+v\n", err)
-				return
-			}
-
-			// handle each connection individually (non-blocking)
-			go m.handleConnection(conn)
+	// Continually listen for any incoming connections.
+	for {
+		conn, err := serverSocket.Accept()
+		if err != nil {
+			return err
 		}
-	}(serverSocket)
+
+		// handle each connection individually (non-blocking)
+		go m.handleConnection(conn)
+	}
 }
 
 // handleConnection takes an incoming connection from a mist client (or other client)
 // and sets up a new subscription for that connection, and a 'publish handler'
 // that is used to publish messages to the data channel of the subscription
 func (m *Mist) handleConnection(conn net.Conn) {
-	m.log.Debug("[MIST :: SERVER] New connection detected: %+v\n", conn)
 
-	// create a new subscription
-	sub := Subscription{
-		Sub: make(chan Message),
-	}
+	// create a new client to match with this connection
+
+	client := m.Client(0)
 
 	// make a done channel
 	done := make(chan bool)
@@ -100,10 +93,8 @@ func (m *Mist) handleConnection(conn net.Conn) {
 	// clean up everything that we have setup
 	defer func() {
 		conn.Close()
-		m.Unsubscribe(sub)
+		client.Close()
 		close(done)
-		// the channel is not closed here, because this is left up to the client
-		// close(sub.Sub)
 	}()
 
 	// create a 'publish handler'
@@ -113,12 +104,11 @@ func (m *Mist) handleConnection(conn net.Conn) {
 			// when a message is recieved on the subscriptions channel write the message
 			// to the connection
 			select {
-			case msg := <-sub.Sub:
+			case msg := <-client.Messages():
 
 				bytes, err := json.Marshal(msg)
 				if err != nil {
-					m.log.Error("[MIST :: SERVER] Failed to marshal message: %v\n", err)
-					continue
+					continue // what should I do with these messages?
 				}
 
 				// 15 is '\n' or a newline character
@@ -143,7 +133,6 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		line, err := r.ReadString('\n')
 		if err != nil && err != io.EOF {
 			// some unexpected error happened
-			m.log.Error("[MIST :: SERVER] Error reading stream: %+v\n", err.Error())
 			return
 		}
 
@@ -155,18 +144,18 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		handler, found := commandMap[cmd]
 
 		if !found {
-			m.log.Error("[MIST :: SERVER] Unknown command: %+v\n", cmd)
+			// m.log.Error("[MIST :: SERVER] Unknown command: %+v\n", cmd)
 			continue
 		}
 
 		args := split[1:]
 		if handler.argCount != len(args) {
-			m.log.Error("[MIST :: SERVER] incorrect number of arguments for `%v`", cmd)
+			// m.log.Error("[MIST :: SERVER] incorrect number of arguments for `%v`", cmd)
 			continue
 		}
 
-		if err := handler.handle(m, args); err != nil {
-			m.log.Error("[MIST :: SERVER] %v", err)
+		if err := handler.handle(client, args); err != nil {
+			// m.log.Error("[MIST :: SERVER] %v", err)
 		}
 	}
 }

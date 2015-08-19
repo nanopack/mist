@@ -86,7 +86,7 @@ func (c *Client) Connect() error {
 			// unmarshal the raw message into a mist message
 			if err := json.Unmarshal(bytes, &msg); err != nil {
 				// or send the error if there is one
-				msg = Message{Tags: []string{"err"}, Data: err.Error()}
+				// msg = Message{Tags: []string{"err"}, Data: err.Error()}
 			}
 
 			// send the message on the client data channel, or close if this connection is done
