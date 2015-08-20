@@ -9,7 +9,6 @@ package mist
 
 import (
 	"bufio"
-	"encoding/json"
 	"net"
 	"strings"
 )
@@ -21,10 +20,11 @@ type (
 	// receives messages from the server, ad a host and port to use when connecting
 	// to the server
 	Client struct {
-		conn  net.Conn     // the connection the mist server
-		done  chan bool    // the channel to indicate that the connection is closed
-		error chan error   // the channel for error messages
-		Data  chan Message // the channel that mist server 'publishes' updates to
+		conn net.Conn        // the connection the mist server
+		done chan bool       // the channel to indicate that the connection is closed
+		pong chan bool       // the channel for ping responses
+		list chan [][]string // the channel for subscription listing
+		Data chan Message    // the channel that mist server 'publishes' updates to
 	}
 )
 
@@ -47,6 +47,10 @@ func (c *Client) Connect(address string) error {
 
 		r := bufio.NewReader(c.conn)
 		for {
+			var listChan chan [][]string
+			var pongChan chan bool
+			var dataChan chan Message
+
 			line, err := r.ReadString('\n')
 			if err != nil {
 				// do we need to log the error?
@@ -54,28 +58,35 @@ func (c *Client) Connect(address string) error {
 			}
 
 			// create a new message
-			msg := Message{}
+			var msg Message
+			var list [][]string
 
 			split := strings.SplitN(line, " ", 1)
 
 			switch split[0] {
 			case "publish":
-				if err := json.Unmarshal([]byte(split[1]), &msg); err != nil {
-					// or send the error if there is one
-					msg = Message{Tags: []string{"err"}, Data: err.Error()}
+				split := strings.SplitN(split[1], " ", 2)
+				msg = Message{
+					Tags: strings.Split(split[0], ","),
+					Data: split[1],
 				}
-			case "ok":
-				if len(split) > 1 {
-					// I don't know how to get this to the right place yet.
+				dataChan = c.Data
+			case "pong":
+				pongChan = c.pong
+			case "list":
+				split := strings.Split(split[1], " ")
+				list = make([][]string, len(split))
+				for idx, subscription := range split {
+					list[idx] = strings.Split(subscription, ",")
 				}
-			case "error":
-				// I don't know how to get this to the right place yet.
-				// msg = Message{Tags: []string{"err"}, Data: split[1]}
+				listChan = c.list
 			}
 
 			// send the message on the client data channel, or close if this connection is done
 			select {
-			case c.Data <- msg:
+			case listChan <- list:
+			case pongChan <- true:
+			case dataChan <- msg:
 			case <-c.done:
 				return
 			}
@@ -85,29 +96,54 @@ func (c *Client) Connect(address string) error {
 	return nil
 }
 
+// Publish sends a message to the mist server to be published to all subscribed clients
+func (c *Client) Publish(tags []string, data string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	_, err := c.conn.Write([]byte("publish " + strings.Join(tags, ",") + "\n"))
+
+	return err
+}
+
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
-func (c *Client) Subscribe(tags []string) ([]string, error) {
-	if _, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n")); err != nil {
-		return nil, err
+func (c *Client) Subscribe(tags []string) error {
+	if len(tags) == 0 {
+		return nil
 	}
+	_, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n"))
 
-	return tags, nil
+	return err
 }
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
 func (c *Client) Unsubscribe(tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
 	_, err := c.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n"))
 
 	return err
 }
 
 // Subscriptions requests a list of current mist subscriptions from the server
-func (c *Client) Subscriptions() error {
-	_, err := c.conn.Write([]byte("list\n"))
+func (c *Client) Subscriptions() ([][]string, error) {
+	if _, err := c.conn.Write([]byte("list\n")); err != nil {
+		return nil, err
+	}
+	return <-c.list, nil
+}
 
-	return err
+// Ping pong the server
+func (c *Client) Ping() error {
+	if _, err := c.conn.Write([]byte("ping\n")); err != nil {
+		return err
+	}
+	// wait for the pong to come back
+	<-c.pong
+	return nil
 }
 
 // Close closes the client data channel and the connection to the server
