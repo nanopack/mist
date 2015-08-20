@@ -4,16 +4,17 @@ Mist is a simple pub/sub based on the idea that messages are tagged. To subscrib
 
 ## Protocol
 
-The protocol to talk to mist is a simple line based tcp protocol. It was designed to be readable and debuggable without specialized tools needed to decode framed packets.
+The protocol to talk to mist is a simple line based tcp protocol. It was designed to be readable, debuggable and observable without specialized tools needed to decode framed packets.
 
 ### Client commands:
 
 | command format | description | server response |
 | --- | --- | --- |
-| `publish {tags} {data}` | publish a message {data} with a list of comma delimited tags | `ok` |
-| `subscribe {tags}` | subscribe to messages that contain ALL tags in {tags} | `ok` |
-| `unsubscribe {tags}` | unsubscribe to a previous subscription to {tags}, order of the tags does not matter | `ok` |
-| `list` | list all current subscriptions active with the current client, returns a space delimited set of subscriptions, where each tag in the subscription is delimited with a comma | `ok {subscriptions}` |
+| `ping` | ask for a pong response, mainly to ensure that the conenction is alive | `pong`
+| `publish {tags} {data}` | publish a message `data` with a list of comma delimited tags | nil |
+| `subscribe {tags}` | subscribe to messages that contain ALL tags in `tags` |  nil |
+| `unsubscribe {tags}` | unsubscribe to a previous subscription to `tags`, order of the tags does not matter | nil |
+| `list` | list all current subscriptions active with the current client, returns a space delimited set of subscriptions, where each tag in the subscription is delimited with a comma | `list {subscriptions}` |
 
 ### Published message format
 

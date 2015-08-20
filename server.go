@@ -20,7 +20,7 @@ import (
 type (
 	handler struct {
 		argCount int
-		handle   func(*MistClient, []string) (string, error)
+		handle   func(*MistClient, []string) string
 	}
 )
 
@@ -30,32 +30,42 @@ var (
 		"unsubscribe": {1, handleUnubscribe},
 		"list":        {0, handleList},
 		"publish":     {2, handlePublish},
+		"ping":        {0, handlePing},
 	}
 )
 
-func handleSubscribe(client *MistClient, args []string) (string, error) {
+func handlePing(client *MistClient, args []string) string {
+	return "pong\n"
+}
+
+func handleSubscribe(client *MistClient, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
-	return "ok\n", nil
+	return ""
 }
-func handleUnubscribe(client *MistClient, args []string) (string, error) {
+
+func handleUnubscribe(client *MistClient, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
-	return "ok\n", nil
+	return ""
 }
-func handleList(client *MistClient, args []string) (string, error) {
+
+func handleList(client *MistClient, args []string) string {
 	list := client.List()
-	// don't know if json conforms to the protocol well enough
-	json, err := json.Marshal(list)
-	if err != nil {
-		return "", err
+	tmp := make([]string, len(list))
+
+	for idx, subscription := range list {
+		tmp[idx] = strings.Join(subscription, ",")
 	}
-	return fmt.Sprintf("ok %v\n", json), nil
+
+	response := strings.Join(tmp, " ")
+	return fmt.Sprintf("list %v\n", response)
 }
-func handlePublish(client *MistClient, args []string) (string, error) {
+
+func handlePublish(client *MistClient, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
-	return "ok\n", nil
+	return ""
 }
 
 // start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
@@ -160,15 +170,15 @@ func (m *Mist) handleConnection(conn net.Conn) {
 			response = fmt.Sprintf("error Incorrect number of arguments for '%v'\n", cmd)
 			goto send
 		}
-		response, err = handler.handle(client, args)
-		if err != nil {
-			response = fmt.Sprintf("error %v\n", err)
-		}
+
+		response = handler.handle(client, args)
 
 	send:
-		// Is it safe to send from 2 gorountines at the same time?
-		if _, err := conn.Write([]byte(response)); err != nil {
-			break
+		if response != "" {
+			// Is it safe to send from 2 gorountines at the same time?
+			if _, err := conn.Write([]byte(response)); err != nil {
+				break
+			}
 		}
 	}
 }
