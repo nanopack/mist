@@ -82,7 +82,7 @@ func (c *Client) Connect(address string) error {
 				listChan = c.list
 			}
 
-			// send the message on the client data channel, or close if this connection is done
+			// send the message on the client channel, or close if this connection is done
 			select {
 			case listChan <- list:
 			case pongChan <- true:
