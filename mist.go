@@ -99,7 +99,7 @@ func (mist *Mist) Client(buffer int) *MistClient {
 		for {
 			select {
 			case msg := <-client.check:
-				// we do this so that we can do this check without holding a mutex
+				// we do this so that we don't need a mutex
 				subscriptions := client.subscriptions
 				for _, subscription := range subscriptions {
 					if subscription.IsSubset(msg.tags) {
@@ -150,6 +150,18 @@ func (client *MistClient) Unsubscribe(tags []string) {
 	client.subscriptions = keep
 
 	client.Unlock()
+}
+
+func (client *MistClient) List() [][]string {
+	subscriptions := make([][]string, len(client.subscriptions))
+	for i, subscription := range client.subscriptions {
+		sub := make([]string, subscription.Cardinality())
+		for j, tag := range subscription.ToSlice() {
+			sub[j] = tag.(string)
+		}
+		subscriptions[i] = sub
+	}
+	return subscriptions
 }
 
 func (client *MistClient) Close() {

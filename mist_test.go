@@ -35,6 +35,19 @@ func TestMistCore(test *testing.T) {
 
 }
 
+func BenchmarkMistCore(b *testing.B) {
+	mist := New()
+	client := mist.Client(0)
+	defer client.Close()
+	client.Subscribe([]string{"tag0"})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		mist.Publish([]string{"tag0"}, []byte("this is my data"))
+		_ = <-client.Messages()
+	}
+}
+
 func assert(test *testing.T, check bool, fmt string, args ...interface{}) {
 	if !check {
 		test.Logf(fmt, args...)

@@ -10,6 +10,7 @@ package mist
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -19,7 +20,7 @@ import (
 type (
 	handler struct {
 		argCount int
-		handle   func(*MistClient, []string) error
+		handle   func(*MistClient, []string) (string, error)
 	}
 )
 
@@ -32,25 +33,29 @@ var (
 	}
 )
 
-func handleSubscribe(client *MistClient, args []string) error {
+func handleSubscribe(client *MistClient, args []string) (string, error) {
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
-	return nil
+	return "ok\n", nil
 }
-func handleUnubscribe(client *MistClient, args []string) error {
+func handleUnubscribe(client *MistClient, args []string) (string, error) {
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
-	return nil
+	return "ok\n", nil
 }
-func handleList(client *MistClient, args []string) error {
-	// don't know how this works yet
-	// client.List()
-	return nil
+func handleList(client *MistClient, args []string) (string, error) {
+	list := client.List()
+	// don't know if json conforms to the protocol well enough
+	json, err := json.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("ok %v\n", json), nil
 }
-func handlePublish(client *MistClient, args []string) error {
+func handlePublish(client *MistClient, args []string) (string, error) {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
-	return nil
+	return "ok\n", nil
 }
 
 // start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
@@ -112,7 +117,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 				}
 
 				// 15 is '\n' or a newline character
-				if _, err := conn.Write(append(bytes, 15)); err != nil {
+				if _, err := conn.Write([]byte(fmt.Sprintf("publish %v\n", string(bytes)))); err != nil {
 					break
 				}
 
@@ -143,19 +148,27 @@ func (m *Mist) handleConnection(conn net.Conn) {
 
 		handler, found := commandMap[cmd]
 
-		if !found {
-			// m.log.Error("[MIST :: SERVER] Unknown command: %+v\n", cmd)
-			continue
-		}
-
+		var response string
 		args := split[1:]
-		if handler.argCount != len(args) {
-			// m.log.Error("[MIST :: SERVER] incorrect number of arguments for `%v`", cmd)
-			continue
+
+		if !found {
+			response = fmt.Sprintf("error Unknown command '%v'\n", cmd)
+			goto send
 		}
 
-		if err := handler.handle(client, args); err != nil {
-			// m.log.Error("[MIST :: SERVER] %v", err)
+		if handler.argCount != len(args) {
+			response = fmt.Sprintf("error Incorrect number of arguments for '%v'\n", cmd)
+			goto send
+		}
+		response, err = handler.handle(client, args)
+		if err != nil {
+			response = fmt.Sprintf("error %v\n", err)
+		}
+
+	send:
+		// Is it safe to send from 2 gorountines at the same time?
+		if _, err := conn.Write([]byte(response)); err != nil {
+			break
 		}
 	}
 }

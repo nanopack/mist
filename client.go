@@ -10,12 +10,8 @@ package mist
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"net"
 	"strings"
-	"time"
-
-	"github.com/pagodabox/nanobox-golang-stylish"
 )
 
 //
@@ -25,45 +21,22 @@ type (
 	// receives messages from the server, ad a host and port to use when connecting
 	// to the server
 	Client struct {
-		conn net.Conn     // the connection the mist server
-		done chan bool    // the channel to indicate that the connection is closed
-		Data chan Message // the channel that mist server 'publishes' updates to
-		Host string       // the connection host for where mist server is running
-		Port string       // the connection port for where mist server is running
+		conn  net.Conn     // the connection the mist server
+		done  chan bool    // the channel to indicate that the connection is closed
+		error chan error   // the channel for error messages
+		Data  chan Message // the channel that mist server 'publishes' updates to
 	}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
-func (c *Client) Connect() error {
-	fmt.Printf(stylish.Bullet("Attempting to connect to mist..."))
-
-	// number of seconds/attempts to try when failing to conenct to mist server
-	maxRetries := 60
-
-	// attempt to connect to the host:port
-	for i := 0; i < maxRetries; i++ {
-		if conn, err := net.Dial("tcp", c.Host+":"+c.Port); err != nil {
-
-			// max number of attempted retrys failed...
-			if i >= maxRetries {
-				fmt.Printf(stylish.Error("mist connection failed", "The attempted connection to mist failed. This shouldn't effect any running processes, however no output should be expected"))
-				return err
-			}
-			fmt.Printf("\r   Connection failed! Retrying (%v/%v attempts)...", i, maxRetries)
-
-			// upon successful connection, set the clients connection (conn) to the tcp
-			// connection that was established with the server
-		} else {
-			fmt.Printf(stylish.SubBullet("- Connection established"))
-			fmt.Printf(stylish.Success())
-			c.conn = conn
-			break
-		}
-
-		//
-		time.Sleep(1 * time.Second)
+func (c *Client) Connect(address string) error {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return err
 	}
+
+	c.conn = conn
 
 	// create a channel on which to publish messages received from mist server
 	c.Data = make(chan Message)
@@ -74,7 +47,7 @@ func (c *Client) Connect() error {
 
 		r := bufio.NewReader(c.conn)
 		for {
-			bytes, err := r.ReadBytes('\n')
+			line, err := r.ReadString('\n')
 			if err != nil {
 				// do we need to log the error?
 				return
@@ -83,10 +56,21 @@ func (c *Client) Connect() error {
 			// create a new message
 			msg := Message{}
 
-			// unmarshal the raw message into a mist message
-			if err := json.Unmarshal(bytes, &msg); err != nil {
-				// or send the error if there is one
-				// msg = Message{Tags: []string{"err"}, Data: err.Error()}
+			split := strings.SplitN(line, " ", 1)
+
+			switch split[0] {
+			case "publish":
+				if err := json.Unmarshal([]byte(split[1]), &msg); err != nil {
+					// or send the error if there is one
+					msg = Message{Tags: []string{"err"}, Data: err.Error()}
+				}
+			case "ok":
+				if len(split) > 1 {
+					// I don't know how to get this to the right place yet.
+				}
+			case "error":
+				// I don't know how to get this to the right place yet.
+				// msg = Message{Tags: []string{"err"}, Data: split[1]}
 			}
 
 			// send the message on the client data channel, or close if this connection is done
@@ -121,7 +105,7 @@ func (c *Client) Unsubscribe(tags []string) error {
 
 // Subscriptions requests a list of current mist subscriptions from the server
 func (c *Client) Subscriptions() error {
-	_, err := c.conn.Write([]byte("subscriptions\n"))
+	_, err := c.conn.Write([]byte("list\n"))
 
 	return err
 }
