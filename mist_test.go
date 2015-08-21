@@ -48,6 +48,36 @@ func BenchmarkMistCore(b *testing.B) {
 	}
 }
 
+func TestMistApi(test *testing.T) {
+	mist := New()
+	serverSocket, err := mist.Listen("127.0.0.1:1234")
+	defer serverSocket.Close()
+	assert(test, err == nil, "listen errored: %v", err)
+
+	client, err := mist.Connect("127.0.0.1:1234")
+	defer client.Close()
+	assert(test, err == nil, "connect errored: %v", err)
+
+	assert(test, client.Ping() == nil, "ping failed")
+
+	client.Subscribe([]string{"tag"})
+	client.Subscribe([]string{"other", "what", "is", "going", "on"})
+
+	client.Publish([]string{"tag"}, "message")
+
+	list, err := client.Subscriptions()
+	assert(test, err == nil, "listing subsctiptions failed %v", err)
+	assert(test, len(list) == 2, "wrong number of subscriptions were returned %v", list)
+	assert(test, len(list[0]) == 1, "wrong number of tags %v", list[0])
+	assert(test, len(list[1]) == 5, "wrong number of tags %v", list[1])
+
+	msg, ok := <-client.Data
+
+	assert(test, ok, "got a nil message")
+	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
+
+}
+
 func assert(test *testing.T, check bool, fmt string, args ...interface{}) {
 	if !check {
 		test.Logf(fmt, args...)

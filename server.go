@@ -9,7 +9,6 @@ package mist
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -70,27 +69,30 @@ func handlePublish(client *MistClient, args []string) string {
 
 // start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
 // it then continually reads from the server handling any incoming connections
-func (m *Mist) listen(address string) error {
+func (m *Mist) Listen(address string) (net.Listener, error) {
 	if address == "" {
 		address = "127.0.0.1:1445"
 	}
 	serverSocket, err := net.Listen("tcp", address)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	//
-	defer serverSocket.Close()
 
-	// Continually listen for any incoming connections.
-	for {
-		conn, err := serverSocket.Accept()
-		if err != nil {
-			return err
+	go func() {
+		defer serverSocket.Close()
+		// Continually listen for any incoming connections.
+		for {
+			conn, err := serverSocket.Accept()
+			if err != nil {
+				// what should we do with the error?
+				return
+			}
+
+			// handle each connection individually (non-blocking)
+			go m.handleConnection(conn)
 		}
-
-		// handle each connection individually (non-blocking)
-		go m.handleConnection(conn)
-	}
+	}()
+	return serverSocket, nil
 }
 
 // handleConnection takes an incoming connection from a mist client (or other client)
@@ -121,13 +123,8 @@ func (m *Mist) handleConnection(conn net.Conn) {
 			select {
 			case msg := <-client.Messages():
 
-				bytes, err := json.Marshal(msg)
-				if err != nil {
-					continue // what should I do with these messages?
-				}
-
 				// 15 is '\n' or a newline character
-				if _, err := conn.Write([]byte(fmt.Sprintf("publish %v\n", string(bytes)))); err != nil {
+				if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
 					break
 				}
 
@@ -150,6 +147,8 @@ func (m *Mist) handleConnection(conn net.Conn) {
 			// some unexpected error happened
 			return
 		}
+
+		line = strings.TrimSuffix(line, "\n")
 
 		// this is the general format of the commands that are accepted
 		// ["cmd" ,"tag,tag2", "all the rest"]

@@ -71,6 +71,7 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 		Data: data}
 
 	for _, client := range mist.clients {
+		// currently a slow reader will cause all readers to be slow.
 		select {
 		case <-client.done:
 		case client.check <- message:
