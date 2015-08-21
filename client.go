@@ -86,6 +86,11 @@ func (m *Mist) Connect(address string) (*Client, error) {
 					list[idx] = strings.Split(subscription, ",")
 				}
 				listChan = client.list
+			case "error":
+				// need to report the error somehow
+				// close the connection as something is seriously wrong
+				client.Close()
+				return
 			}
 
 			// send the message on the client channel, or close if this connection is done
@@ -154,7 +159,7 @@ func (client *Client) Ping() error {
 
 // Close closes the client data channel and the connection to the server
 func (client *Client) Close() error {
-	// we need to do it in this order incase the goproc is stuck waiting for
+	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
 	err := client.conn.Close()
 	close(client.done)

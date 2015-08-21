@@ -15,7 +15,8 @@ import (
 	"strings"
 )
 
-// build a small applicationController so that we don't have to play with
+// build a small applicationController so that we don't have to play with a large
+// switch statement
 type (
 	handler struct {
 		argCount int

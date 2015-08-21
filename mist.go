@@ -166,7 +166,7 @@ func (client *MistClient) List() [][]string {
 }
 
 func (client *MistClient) Close() {
-	// this closes the goproc that is matching messages to subscriptions
+	// this closes the goroutine that is matching messages to subscriptions
 	close(client.done)
 
 	// remove this client from mist
