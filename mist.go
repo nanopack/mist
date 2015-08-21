@@ -39,8 +39,8 @@ type (
 	// published through mist
 	Message struct {
 		tags set.Set
-		Tags []string
-		Data interface{}
+		Tags []string    `json:"tags"`
+		Data interface{} `json:"data"`
 	}
 )
 
