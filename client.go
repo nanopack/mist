@@ -17,9 +17,7 @@ import (
 //
 type (
 
-	// A Client has a connection to the mist server, a data channel from which it
-	// receives messages from the server, ad a host and port to use when connecting
-	// to the server
+	// A Client represents a connection to the mist server
 	Client struct {
 		conn net.Conn        // the connection the mist server
 		done chan bool       // the channel to indicate that the connection is closed
