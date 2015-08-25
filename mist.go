@@ -75,8 +75,8 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 		select {
 		case <-client.done:
 		case client.check <- message:
-			// default:
-			// 	// do we drop the message? enqueue it? pull one off the front and then add this one?
+		default:
+			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
 }
