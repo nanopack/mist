@@ -45,5 +45,5 @@ Mist also comes with an embeddable websocket api, that can be dropped into an al
 | nil | Frame forwarded as a result of matching a subscription | `{"keys":["tag1","tag2"],"data":"Opaque Data encoded as a json string"}` |
 
 
-### Node
+### Notes
 - publishing is not allowed over websockets.
