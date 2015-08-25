@@ -43,7 +43,7 @@ func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 		}
 
 		// we don't want this to be buffered
-		client := mist.NewClient(0)
+		client := NewLocalClient(mist, 0)
 
 		write := make(chan string)
 		done := make(chan bool)
@@ -102,7 +102,11 @@ func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 				write <- "{\"success\":true,\"command\":\"unsubscribe\"}"
 			case "list":
 				list := list{}
-				list.Subscriptions = client.List()
+				list.Subscriptions, err = client.List()
+				if err != nil {
+					// do we need to do something with this error?
+					return
+				}
 				list.Command = "list"
 				list.Success = true
 				bytes, err := json.Marshal(list)

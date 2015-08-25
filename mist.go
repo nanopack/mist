@@ -13,17 +13,25 @@ import (
 	"sync/atomic"
 )
 
-//
 type (
-
-	//
-	Mist struct {
-		clients map[uint32]MistClient
-		next    uint32
+	Client interface {
+		List() ([][]string, error)
+		Subscribe(tags []string) error
+		Unsubscribe(tags []string) error
+		Publish(tags []string, data string) error
+		Ping() error
+		Close() error
+		Messages() <-chan Message
 	}
 
 	//
-	MistClient struct {
+	Mist struct {
+		subscribers map[uint32]subscriber
+		next        uint32
+	}
+
+	//
+	subscriber struct {
 		sync.Mutex
 
 		check chan Message
@@ -48,20 +56,23 @@ type (
 func New() *Mist {
 
 	return &Mist{
-		clients: make(map[uint32]MistClient),
+		subscribers: make(map[uint32]subscriber),
 	}
 }
-
-func makeSet(tags []string) set.Set {
-	set := set.NewThreadUnsafeSet()
-	for _, i := range tags {
-		set.Add(i)
-	}
-
-	return set
+func (mist *Mist) nextId() uint32 {
+	return atomic.AddUint32(&mist.next, 1)
 }
 
-// Publish takes a list of tags and iterates through mist's list of clients,
+func (mist *Mist) addSubscriber(subscriber *subscriber) {
+	mist.subscribers[subscriber.id] = *subscriber
+}
+
+func (mist *Mist) removeSubscriber(id uint32) {
+	// remove this subscriber from mist
+	delete(mist.subscribers, id)
+}
+
+// Publish takes a list of tags and iterates through mist's list of subscribers,
 // sending to each if they are available.
 func (mist *Mist) Publish(tags []string, data interface{}) {
 
@@ -70,116 +81,12 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 		tags: makeSet(tags),
 		Data: data}
 
-	for _, client := range mist.clients {
-		// currently a slow reader will cause all readers to be slow.
+	for _, subscriber := range mist.subscribers {
 		select {
-		case <-client.done:
-		case client.check <- message:
-		default:
+		case <-subscriber.done:
+		case subscriber.check <- message:
+			// default:
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
-}
-
-func (mist *Mist) NewClient(buffer int) *MistClient {
-	client := MistClient{
-		check: make(chan Message, buffer),
-		done:  make(chan bool),
-		pipe:  make(chan Message),
-		mist:  mist,
-		id:    atomic.AddUint32(&mist.next, 1)}
-
-	// this gofunc handles matching messages to subscriptions for the client
-	go func(client *MistClient) {
-
-		defer func() {
-			close(client.check)
-			close(client.pipe)
-		}()
-
-		for {
-			select {
-			case msg := <-client.check:
-				// we do this so that we don't need a mutex
-				subscriptions := client.subscriptions
-				for _, subscription := range subscriptions {
-					if subscription.IsSubset(msg.tags) {
-						client.pipe <- msg
-					}
-				}
-			case <-client.done:
-				return
-			}
-		}
-	}(&client)
-
-	mist.clients[client.id] = client
-
-	return &client
-}
-
-func (client *MistClient) Subscribe(tags []string) {
-	subscription := makeSet(tags)
-
-	client.Lock()
-	client.subscriptions = append(client.subscriptions, subscription)
-	client.Unlock()
-}
-
-// Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
-// that aren't the specified subscription
-func (client *MistClient) Unsubscribe(tags []string) {
-	client.Lock()
-
-	//create a set for quick comparison
-	test := makeSet(tags)
-
-	// create a slice of subscriptions that are going to be kept
-	keep := []set.Set{}
-
-	// iterate over all of mist clients subscriptions looking for ones that match the
-	// subscription to unsubscribe
-	for _, subscription := range client.subscriptions {
-
-		// if they are not the same set (meaning they are a different subscription) then add them
-		// to the keep set
-		if !test.Equal(subscription) {
-			keep = append(keep, subscription)
-		}
-	}
-
-	client.subscriptions = keep
-
-	client.Unlock()
-}
-
-func (client *MistClient) List() [][]string {
-	subscriptions := make([][]string, len(client.subscriptions))
-	for i, subscription := range client.subscriptions {
-		sub := make([]string, subscription.Cardinality())
-		for j, tag := range subscription.ToSlice() {
-			sub[j] = tag.(string)
-		}
-		subscriptions[i] = sub
-	}
-	return subscriptions
-}
-
-func (client *MistClient) Close() {
-	// this closes the goroutine that is matching messages to subscriptions
-	close(client.done)
-
-	// remove this client from mist
-	delete(client.mist.clients, client.id)
-}
-
-// Returns all messages that have sucessfully matched the list of subscriptions that this
-// client has subscribed to
-func (client *MistClient) Messages() <-chan Message {
-	return client.pipe
-}
-
-// Sends a message across mist
-func (client *MistClient) Publish(tags []string, data interface{}) {
-	client.mist.Publish(tags, data)
 }
