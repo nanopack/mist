@@ -35,6 +35,7 @@ type (
 	}
 )
 
+//
 func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)

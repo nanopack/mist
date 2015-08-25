@@ -13,14 +13,16 @@ import (
 )
 
 type (
+
+	//
 	Client interface {
 		List() ([][]string, error)
 		Subscribe(tags []string) error
 		Unsubscribe(tags []string) error
 		Publish(tags []string, data string) error
 		Ping() error
-		Close() error
 		Messages() <-chan Message
+		Close() error
 	}
 
 	//
@@ -46,19 +48,6 @@ func New() *Mist {
 	}
 }
 
-func (mist *Mist) nextId() uint32 {
-	return atomic.AddUint32(&mist.next, 1)
-}
-
-func (mist *Mist) addSubscriber(localSubscriber *localSubscriber) {
-	mist.subscribers[localSubscriber.id] = *localSubscriber
-}
-
-func (mist *Mist) removeSubscriber(id uint32) {
-	// remove this localSubscriber from mist
-	delete(mist.subscribers, id)
-}
-
 // Publish takes a list of tags and iterates through mist's list of subscribers,
 // sending to each if they are available.
 func (mist *Mist) Publish(tags []string, data interface{}) {
@@ -76,4 +65,9 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
+}
+
+//
+func (mist *Mist) nextId() uint32 {
+	return atomic.AddUint32(&mist.next, 1)
 }

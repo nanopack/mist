@@ -105,14 +105,12 @@ func NewRemoteClient(address string) (Client, error) {
 	return &client, nil
 }
 
-// Publish sends a message to the mist server to be published to all subscribed clients
-func (client *remoteSubscriber) Publish(tags []string, data string) error {
-	if len(tags) == 0 {
-		return nil
+// List requests a list of current mist subscriptions from the server
+func (client *remoteSubscriber) List() ([][]string, error) {
+	if _, err := client.conn.Write([]byte("list\n")); err != nil {
+		return nil, err
 	}
-	_, err := client.conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(tags, ","), data)))
-
-	return err
+	return <-client.list, nil
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
@@ -137,12 +135,14 @@ func (client *remoteSubscriber) Unsubscribe(tags []string) error {
 	return err
 }
 
-// List requests a list of current mist subscriptions from the server
-func (client *remoteSubscriber) List() ([][]string, error) {
-	if _, err := client.conn.Write([]byte("list\n")); err != nil {
-		return nil, err
+// Publish sends a message to the mist server to be published to all subscribed clients
+func (client *remoteSubscriber) Publish(tags []string, data string) error {
+	if len(tags) == 0 {
+		return nil
 	}
-	return <-client.list, nil
+	_, err := client.conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(tags, ","), data)))
+
+	return err
 }
 
 // Ping pong the server
@@ -155,6 +155,11 @@ func (client *remoteSubscriber) Ping() error {
 	return nil
 }
 
+//
+func (client *remoteSubscriber) Messages() <-chan Message {
+	return client.data
+}
+
 // Close closes the client data channel and the connection to the server
 func (client *remoteSubscriber) Close() error {
 	// we need to do it in this order in case the goroutine is stuck waiting for
@@ -162,8 +167,4 @@ func (client *remoteSubscriber) Close() error {
 	err := client.conn.Close()
 	close(client.done)
 	return err
-}
-
-func (client *remoteSubscriber) Messages() <-chan Message {
-	return client.data
 }
