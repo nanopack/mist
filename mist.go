@@ -81,7 +81,7 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 	}
 }
 
-func (mist *Mist) Client(buffer int) *MistClient {
+func (mist *Mist) NewClient(buffer int) *MistClient {
 	client := MistClient{
 		check: make(chan Message, buffer),
 		done:  make(chan bool),

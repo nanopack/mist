@@ -43,7 +43,7 @@ func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 		}
 
 		// we don't want this to be buffered
-		client := mist.Client(0)
+		client := mist.NewClient(0)
 
 		write := make(chan string)
 		done := make(chan bool)
@@ -77,7 +77,7 @@ func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 			}
 
 			if messageType != websocket.TextMessage {
-				write <- "{\"success\":false,\"error\":\"I don't undersand binary messages\"}"
+				write <- "{\"success\":false,\"error\":\"I don't understand binary messages\"}"
 				continue
 			}
 

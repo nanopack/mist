@@ -103,7 +103,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 
 	// create a new client to match with this connection
 
-	client := m.Client(0)
+	client := m.NewClient(0)
 
 	// make a done channel
 	done := make(chan bool)
@@ -124,7 +124,6 @@ func (m *Mist) handleConnection(conn net.Conn) {
 			select {
 			case msg := <-client.Messages():
 
-				// 15 is '\n' or a newline character
 				if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
 					break
 				}
@@ -161,19 +160,15 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		var response string
 		args := split[1:]
 
-		if !found {
+		switch {
+		case !found:
 			response = fmt.Sprintf("error Unknown command '%v'\n", cmd)
-			goto send
-		}
-
-		if handler.argCount != len(args) {
+		case handler.argCount != len(args):
 			response = fmt.Sprintf("error Incorrect number of arguments for '%v'\n", cmd)
-			goto send
+		default:
+			response = handler.handle(client, args)
 		}
 
-		response = handler.handle(client, args)
-
-	send:
 		if response != "" {
 			// Is it safe to send from 2 gorountines at the same time?
 			if _, err := conn.Write([]byte(response)); err != nil {

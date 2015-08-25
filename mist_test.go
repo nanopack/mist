@@ -13,7 +13,7 @@ import (
 
 func TestMistCore(test *testing.T) {
 	mist := New()
-	client := mist.Client(0)
+	client := mist.NewClient(0)
 	defer client.Close()
 
 	client.Subscribe([]string{"tag0"})
@@ -37,7 +37,7 @@ func TestMistCore(test *testing.T) {
 
 func BenchmarkMistCore(b *testing.B) {
 	mist := New()
-	client := mist.Client(0)
+	client := mist.NewClient(0)
 	defer client.Close()
 	client.Subscribe([]string{"tag0"})
 
