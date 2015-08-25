@@ -8,142 +8,158 @@
 package mist
 
 import (
-	"encoding/binary"
-	"encoding/json"
+	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"strings"
-	"time"
-
-	"github.com/pagodabox/nanobox-golang-stylish"
 )
 
 //
 type (
 
-	// A Client has a connection to the mist server, a data channel from which it
-	// receives messages from the server, ad a host and port to use when connecting
-	// to the server
+	// A Client represents a connection to the mist server
 	Client struct {
-		conn net.Conn     // the connection the mist server
-		Data chan Message // the channel that mist server 'publishes' updates to
-		Host string       // the connection host for where mist server is running
-		Port string       // the connection port for where mist server is running
+		conn net.Conn        // the connection the mist server
+		done chan bool       // the channel to indicate that the connection is closed
+		pong chan bool       // the channel for ping responses
+		list chan [][]string // the channel for subscription listing
+		Data chan Message    // the channel that mist server 'publishes' updates to
 	}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
-func (c *Client) Connect() error {
-	fmt.Printf(stylish.Bullet("Attempting to connect to mist..."))
-
-	// number of seconds/attempts to try when failing to conenct to mist server
-	maxRetries := 60
-
-	// attempt to connect to the host:port
-	for i := 0; i < maxRetries; i++ {
-		if conn, err := net.Dial("tcp", c.Host+":"+c.Port); err != nil {
-
-			// max number of attempted retrys failed...
-			if i >= maxRetries {
-				fmt.Printf(stylish.Error("mist connection failed", "The attempted connection to mist failed. This shouldn't effect any running processes, however no output should be expected"))
-				return err
-			}
-			fmt.Printf("\r   Connection failed! Retrying (%v/%v attempts)...", i, maxRetries)
-
-			// upon successful connection, set the clients connection (conn) to the tcp
-			// connection that was established with the server
-		} else {
-			fmt.Printf(stylish.SubBullet("- Connection established"))
-			fmt.Printf(stylish.Success())
-			c.conn = conn
-			break
-		}
-
-		//
-		time.Sleep(1 * time.Second)
+func (m *Mist) Connect(address string) (*Client, error) {
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return nil, err
 	}
+	client := Client{
+		done: make(chan bool),
+		pong: make(chan bool),
+		list: make(chan [][]string),
+	}
+	client.conn = conn
 
 	// create a channel on which to publish messages received from mist server
-	c.Data = make(chan Message)
+	client.Data = make(chan Message)
 
 	// continually read from conn, forwarding the data onto the clients data channel
 	go func() {
+		defer close(client.Data)
+
+		r := bufio.NewReader(client.conn)
 		for {
+			var listChan chan [][]string
+			var pongChan chan bool
+			var dataChan chan Message
 
-			// read the first 4 bytes of the message so we know how long the message
-			// is expected to be
-			bsize := make([]byte, 4)
-			if _, err := io.ReadFull(c.conn, bsize); err != nil {
-
-				// for now, the only err I can see causing problems here is a closed
-				// connection, so for now we'll just break until we need to handle
-				// different types
-				break
+			line, err := r.ReadString('\n')
+			if err != nil {
+				// do we need to log the error?
+				return
 			}
-
-			// create a buffer that is the length of the expected message
-			n := binary.LittleEndian.Uint32(bsize)
-
-			// read the length of the message up to the expected bytes
-			b := make([]byte, n)
-			if _, err := io.ReadFull(c.conn, b); err != nil {
-
-				// for now, the only err I can see causing problems here is a closed
-				// connection, so for now we'll just break until we need to handle
-				// different types
-				break
-			}
+			line = strings.TrimSuffix(line, "\n")
 
 			// create a new message
-			msg := Message{}
+			var msg Message
+			var list [][]string
 
-			// unmarshal the raw message into a mist message
-			if err := json.Unmarshal(b, &msg); err != nil {
-				c.Data <- Message{Tags: []string{"err"}, Data: err.Error()}
+			split := strings.SplitN(line, " ", 2)
+
+			switch split[0] {
+			case "publish":
+				split := strings.SplitN(split[1], " ", 2)
+				msg = Message{
+					Tags: strings.Split(split[0], ","),
+					Data: split[1],
+				}
+				dataChan = client.Data
+			case "pong":
+				pongChan = client.pong
+			case "list":
+				split := strings.Split(split[1], " ")
+				list = make([][]string, len(split))
+				for idx, subscription := range split {
+					list[idx] = strings.Split(subscription, ",")
+				}
+				listChan = client.list
+			case "error":
+				// need to report the error somehow
+				// close the connection as something is seriously wrong
+				client.Close()
+				return
 			}
 
-			// send the message on the client data channel to be handled from the clients
-			// user
-			c.Data <- msg
+			// send the message on the client channel, or close if this connection is done
+			select {
+			case listChan <- list:
+			case pongChan <- true:
+			case dataChan <- msg:
+			case <-client.done:
+				return
+			}
 		}
 	}()
 
-	return nil
+	return &client, nil
+}
+
+// Publish sends a message to the mist server to be published to all subscribed clients
+func (client *Client) Publish(tags []string, data string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	_, err := client.conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(tags, ","), data)))
+
+	return err
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
-func (c *Client) Subscribe(tags []string) ([]string, error) {
-	if _, err := c.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n")); err != nil {
-		return nil, err
+func (client *Client) Subscribe(tags []string) error {
+	if len(tags) == 0 {
+		return nil
 	}
+	_, err := client.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n"))
 
-	return tags, nil
+	return err
 }
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
-func (c *Client) Unsubscribe(tags []string) error {
-	if _, err := c.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n")); err != nil {
-		return err
+func (client *Client) Unsubscribe(tags []string) error {
+	if len(tags) == 0 {
+		return nil
 	}
+	_, err := client.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n"))
 
-	return nil
+	return err
 }
 
 // Subscriptions requests a list of current mist subscriptions from the server
-func (c *Client) Subscriptions() error {
-	if _, err := c.conn.Write([]byte("subscriptions\n")); err != nil {
+func (client *Client) Subscriptions() ([][]string, error) {
+	if _, err := client.conn.Write([]byte("list\n")); err != nil {
+		return nil, err
+	}
+	return <-client.list, nil
+}
+
+// Ping pong the server
+func (client *Client) Ping() error {
+	if _, err := client.conn.Write([]byte("ping\n")); err != nil {
 		return err
 	}
-
+	// wait for the pong to come back
+	<-client.pong
 	return nil
 }
 
 // Close closes the client data channel and the connection to the server
-func (c *Client) Close() error {
-	close(c.Data)
-	return c.conn.Close()
+func (client *Client) Close() error {
+	// we need to do it in this order in case the goroutine is stuck waiting for
+	// more data from the socket
+	err := client.conn.Close()
+	close(client.done)
+	return err
 }
