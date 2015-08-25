@@ -17,8 +17,8 @@ import (
 //
 type (
 
-	// A remoteClient represents a connection to the mist server
-	remoteClient struct {
+	// A remoteSubscriber represents a connection to the mist server
+	remoteSubscriber struct {
 		conn net.Conn        // the connection the mist server
 		done chan bool       // the channel to indicate that the connection is closed
 		pong chan bool       // the channel for ping responses
@@ -34,7 +34,7 @@ func NewRemoteClient(address string) (Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	client := remoteClient{
+	client := remoteSubscriber{
 		done: make(chan bool),
 		pong: make(chan bool),
 		list: make(chan [][]string),
@@ -106,7 +106,7 @@ func NewRemoteClient(address string) (Client, error) {
 }
 
 // Publish sends a message to the mist server to be published to all subscribed clients
-func (client *remoteClient) Publish(tags []string, data string) error {
+func (client *remoteSubscriber) Publish(tags []string, data string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (client *remoteClient) Publish(tags []string, data string) error {
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
-func (client *remoteClient) Subscribe(tags []string) error {
+func (client *remoteSubscriber) Subscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (client *remoteClient) Subscribe(tags []string) error {
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
-func (client *remoteClient) Unsubscribe(tags []string) error {
+func (client *remoteSubscriber) Unsubscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -138,7 +138,7 @@ func (client *remoteClient) Unsubscribe(tags []string) error {
 }
 
 // List requests a list of current mist subscriptions from the server
-func (client *remoteClient) List() ([][]string, error) {
+func (client *remoteSubscriber) List() ([][]string, error) {
 	if _, err := client.conn.Write([]byte("list\n")); err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (client *remoteClient) List() ([][]string, error) {
 }
 
 // Ping pong the server
-func (client *remoteClient) Ping() error {
+func (client *remoteSubscriber) Ping() error {
 	if _, err := client.conn.Write([]byte("ping\n")); err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (client *remoteClient) Ping() error {
 }
 
 // Close closes the client data channel and the connection to the server
-func (client *remoteClient) Close() error {
+func (client *remoteSubscriber) Close() error {
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
 	err := client.conn.Close()
@@ -164,6 +164,6 @@ func (client *remoteClient) Close() error {
 	return err
 }
 
-func (client *remoteClient) Messages() <-chan Message {
+func (client *remoteSubscriber) Messages() <-chan Message {
 	return client.data
 }

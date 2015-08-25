@@ -20,7 +20,7 @@ import (
 type (
 	handler struct {
 		argCount int
-		handle   func(*subscriber, []string) string
+		handle   func(*localSubscriber, []string) string
 	}
 )
 
@@ -34,23 +34,23 @@ var (
 	}
 )
 
-func handlePing(client *subscriber, args []string) string {
+func handlePing(client *localSubscriber, args []string) string {
 	return "pong\n"
 }
 
-func handleSubscribe(client *subscriber, args []string) string {
+func handleSubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
 	return ""
 }
 
-func handleUnubscribe(client *subscriber, args []string) string {
+func handleUnubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
 	return ""
 }
 
-func handleList(client *subscriber, args []string) string {
+func handleList(client *localSubscriber, args []string) string {
 	list, err := client.List()
 	if err != nil {
 		return err.Error()
@@ -65,7 +65,7 @@ func handleList(client *subscriber, args []string) string {
 	return fmt.Sprintf("list %v\n", response)
 }
 
-func handlePublish(client *subscriber, args []string) string {
+func handlePublish(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
 	return ""

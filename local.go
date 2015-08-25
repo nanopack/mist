@@ -9,6 +9,21 @@ package mist
 
 import (
 	set "github.com/deckarep/golang-set"
+	"sync"
+)
+
+type (
+	localSubscriber struct {
+		sync.Mutex
+
+		check chan Message
+		done  chan bool
+		pipe  chan Message
+
+		subscriptions []set.Set
+		mist          *Mist
+		id            uint32
+	}
 )
 
 func makeSet(tags []string) set.Set {
@@ -20,8 +35,8 @@ func makeSet(tags []string) set.Set {
 	return set
 }
 
-func NewLocalClient(mist *Mist, buffer int) *subscriber {
-	client := &subscriber{
+func NewLocalClient(mist *Mist, buffer int) *localSubscriber {
+	client := &localSubscriber{
 		check: make(chan Message, buffer),
 		done:  make(chan bool),
 		pipe:  make(chan Message),
@@ -29,7 +44,7 @@ func NewLocalClient(mist *Mist, buffer int) *subscriber {
 		id:    mist.nextId()}
 
 	// this gofunc handles matching messages to subscriptions for the client
-	go func(client *subscriber) {
+	go func(client *localSubscriber) {
 
 		defer func() {
 			close(client.check)
@@ -56,7 +71,13 @@ func NewLocalClient(mist *Mist, buffer int) *subscriber {
 	return client
 }
 
-func (client *subscriber) Subscribe(tags []string) {
+// Sends a message across mist
+func (client *localSubscriber) Publish(tags []string, data interface{}) error {
+	client.mist.Publish(tags, data)
+	return nil
+}
+
+func (client *localSubscriber) Subscribe(tags []string) {
 	subscription := makeSet(tags)
 
 	client.Lock()
@@ -66,7 +87,7 @@ func (client *subscriber) Subscribe(tags []string) {
 
 // Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
 // that aren't the specified subscription
-func (client *subscriber) Unsubscribe(tags []string) {
+func (client *localSubscriber) Unsubscribe(tags []string) {
 	client.Lock()
 
 	//create a set for quick comparison
@@ -91,7 +112,7 @@ func (client *subscriber) Unsubscribe(tags []string) {
 	client.Unlock()
 }
 
-func (client *subscriber) List() ([][]string, error) {
+func (client *localSubscriber) List() ([][]string, error) {
 	subscriptions := make([][]string, len(client.subscriptions))
 	for i, subscription := range client.subscriptions {
 		sub := make([]string, subscription.Cardinality())
@@ -103,7 +124,11 @@ func (client *subscriber) List() ([][]string, error) {
 	return subscriptions, nil
 }
 
-func (client *subscriber) Close() error {
+func (client *localSubscriber) Ping() error {
+	return nil
+}
+
+func (client *localSubscriber) Close() error {
 	// this closes the goroutine that is matching messages to subscriptions
 	close(client.done)
 
@@ -113,16 +138,6 @@ func (client *subscriber) Close() error {
 
 // Returns all messages that have sucessfully matched the list of subscriptions that this
 // client has subscribed to
-func (client *subscriber) Messages() <-chan Message {
+func (client *localSubscriber) Messages() <-chan Message {
 	return client.pipe
-}
-
-// Sends a message across mist
-func (client *subscriber) Publish(tags []string, data interface{}) error {
-	client.mist.Publish(tags, data)
-	return nil
-}
-
-func (client *subscriber) Ping() error {
-	return nil
 }

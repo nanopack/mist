@@ -9,7 +9,6 @@ package mist
 
 import (
 	set "github.com/deckarep/golang-set"
-	"sync"
 	"sync/atomic"
 )
 
@@ -26,21 +25,8 @@ type (
 
 	//
 	Mist struct {
-		subscribers map[uint32]subscriber
+		subscribers map[uint32]localSubscriber
 		next        uint32
-	}
-
-	//
-	subscriber struct {
-		sync.Mutex
-
-		check chan Message
-		done  chan bool
-		pipe  chan Message
-
-		subscriptions []set.Set
-		mist          *Mist
-		id            uint32
 	}
 
 	// A Message contains the tags used when subscribing, and the data that is being
@@ -56,19 +42,20 @@ type (
 func New() *Mist {
 
 	return &Mist{
-		subscribers: make(map[uint32]subscriber),
+		subscribers: make(map[uint32]localSubscriber),
 	}
 }
+
 func (mist *Mist) nextId() uint32 {
 	return atomic.AddUint32(&mist.next, 1)
 }
 
-func (mist *Mist) addSubscriber(subscriber *subscriber) {
-	mist.subscribers[subscriber.id] = *subscriber
+func (mist *Mist) addSubscriber(localSubscriber *localSubscriber) {
+	mist.subscribers[localSubscriber.id] = *localSubscriber
 }
 
 func (mist *Mist) removeSubscriber(id uint32) {
-	// remove this subscriber from mist
+	// remove this localSubscriber from mist
 	delete(mist.subscribers, id)
 }
 
@@ -81,10 +68,10 @@ func (mist *Mist) Publish(tags []string, data interface{}) {
 		tags: makeSet(tags),
 		Data: data}
 
-	for _, subscriber := range mist.subscribers {
+	for _, localSubscriber := range mist.subscribers {
 		select {
-		case <-subscriber.done:
-		case subscriber.check <- message:
+		case <-localSubscriber.done:
+		case localSubscriber.check <- message:
 			// default:
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
