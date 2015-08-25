@@ -13,11 +13,10 @@ import (
 
 func TestMistCore(test *testing.T) {
 	mist := New()
-	client := mist.NewClient(0)
+	client := NewLocalClient(mist, 0)
 	defer client.Close()
 
 	client.Subscribe([]string{"tag0"})
-
 	for count := 0; count < 2; count++ {
 		mist.Publish([]string{"tag0"}, []byte("this is my data"))
 		message := <-client.Messages()
@@ -37,7 +36,7 @@ func TestMistCore(test *testing.T) {
 
 func BenchmarkMistCore(b *testing.B) {
 	mist := New()
-	client := mist.NewClient(0)
+	client := NewLocalClient(mist, 0)
 	defer client.Close()
 	client.Subscribe([]string{"tag0"})
 
@@ -54,7 +53,7 @@ func TestMistApi(test *testing.T) {
 	defer serverSocket.Close()
 	assert(test, err == nil, "listen errored: %v", err)
 
-	client, err := mist.Connect("127.0.0.1:1234")
+	client, err := NewRemoteClient("127.0.0.1:1234")
 	defer client.Close()
 	assert(test, err == nil, "connect errored: %v", err)
 
@@ -65,13 +64,13 @@ func TestMistApi(test *testing.T) {
 
 	client.Publish([]string{"tag"}, "message")
 
-	list, err := client.Subscriptions()
+	list, err := client.List()
 	assert(test, err == nil, "listing subsctiptions failed %v", err)
 	assert(test, len(list) == 2, "wrong number of subscriptions were returned %v", list)
 	assert(test, len(list[0]) == 1, "wrong number of tags %v", list[0])
 	assert(test, len(list[1]) == 5, "wrong number of tags %v", list[1])
 
-	msg, ok := <-client.Data
+	msg, ok := <-client.Messages()
 
 	assert(test, ok, "got a nil message")
 	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)

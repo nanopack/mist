@@ -17,24 +17,24 @@ import (
 //
 type (
 
-	// A Client represents a connection to the mist server
-	Client struct {
+	// A remoteSubscriber represents a connection to the mist server
+	remoteSubscriber struct {
 		conn net.Conn        // the connection the mist server
 		done chan bool       // the channel to indicate that the connection is closed
 		pong chan bool       // the channel for ping responses
 		list chan [][]string // the channel for subscription listing
-		Data chan Message    // the channel that mist server 'publishes' updates to
+		data chan Message    // the channel that mist server 'publishes' updates to
 	}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
-func (m *Mist) Connect(address string) (*Client, error) {
+func NewRemoteClient(address string) (Client, error) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
 		return nil, err
 	}
-	client := Client{
+	client := remoteSubscriber{
 		done: make(chan bool),
 		pong: make(chan bool),
 		list: make(chan [][]string),
@@ -42,11 +42,11 @@ func (m *Mist) Connect(address string) (*Client, error) {
 	client.conn = conn
 
 	// create a channel on which to publish messages received from mist server
-	client.Data = make(chan Message)
+	client.data = make(chan Message)
 
 	// continually read from conn, forwarding the data onto the clients data channel
 	go func() {
-		defer close(client.Data)
+		defer close(client.data)
 
 		r := bufio.NewReader(client.conn)
 		for {
@@ -74,7 +74,7 @@ func (m *Mist) Connect(address string) (*Client, error) {
 					Tags: strings.Split(split[0], ","),
 					Data: split[1],
 				}
-				dataChan = client.Data
+				dataChan = client.data
 			case "pong":
 				pongChan = client.pong
 			case "list":
@@ -106,7 +106,7 @@ func (m *Mist) Connect(address string) (*Client, error) {
 }
 
 // Publish sends a message to the mist server to be published to all subscribed clients
-func (client *Client) Publish(tags []string, data string) error {
+func (client *remoteSubscriber) Publish(tags []string, data string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (client *Client) Publish(tags []string, data string) error {
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
-func (client *Client) Subscribe(tags []string) error {
+func (client *remoteSubscriber) Subscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -128,7 +128,7 @@ func (client *Client) Subscribe(tags []string) error {
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
-func (client *Client) Unsubscribe(tags []string) error {
+func (client *remoteSubscriber) Unsubscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -137,8 +137,8 @@ func (client *Client) Unsubscribe(tags []string) error {
 	return err
 }
 
-// Subscriptions requests a list of current mist subscriptions from the server
-func (client *Client) Subscriptions() ([][]string, error) {
+// List requests a list of current mist subscriptions from the server
+func (client *remoteSubscriber) List() ([][]string, error) {
 	if _, err := client.conn.Write([]byte("list\n")); err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (client *Client) Subscriptions() ([][]string, error) {
 }
 
 // Ping pong the server
-func (client *Client) Ping() error {
+func (client *remoteSubscriber) Ping() error {
 	if _, err := client.conn.Write([]byte("ping\n")); err != nil {
 		return err
 	}
@@ -156,10 +156,14 @@ func (client *Client) Ping() error {
 }
 
 // Close closes the client data channel and the connection to the server
-func (client *Client) Close() error {
+func (client *remoteSubscriber) Close() error {
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
 	err := client.conn.Close()
 	close(client.done)
 	return err
+}
+
+func (client *remoteSubscriber) Messages() <-chan Message {
+	return client.data
 }

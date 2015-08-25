@@ -20,7 +20,7 @@ import (
 type (
 	handler struct {
 		argCount int
-		handle   func(*MistClient, []string) string
+		handle   func(*localSubscriber, []string) string
 	}
 )
 
@@ -34,24 +34,27 @@ var (
 	}
 )
 
-func handlePing(client *MistClient, args []string) string {
+func handlePing(client *localSubscriber, args []string) string {
 	return "pong\n"
 }
 
-func handleSubscribe(client *MistClient, args []string) string {
+func handleSubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
 	return ""
 }
 
-func handleUnubscribe(client *MistClient, args []string) string {
+func handleUnubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
 	return ""
 }
 
-func handleList(client *MistClient, args []string) string {
-	list := client.List()
+func handleList(client *localSubscriber, args []string) string {
+	list, err := client.List()
+	if err != nil {
+		return err.Error()
+	}
 	tmp := make([]string, len(list))
 
 	for idx, subscription := range list {
@@ -62,7 +65,7 @@ func handleList(client *MistClient, args []string) string {
 	return fmt.Sprintf("list %v\n", response)
 }
 
-func handlePublish(client *MistClient, args []string) string {
+func handlePublish(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
 	return ""
@@ -103,7 +106,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 
 	// create a new client to match with this connection
 
-	client := m.NewClient(0)
+	client := NewLocalClient(m, 0)
 
 	// make a done channel
 	done := make(chan bool)
