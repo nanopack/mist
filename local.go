@@ -26,15 +26,7 @@ type (
 	}
 )
 
-func makeSet(tags []string) set.Set {
-	set := set.NewThreadUnsafeSet()
-	for _, i := range tags {
-		set.Add(i)
-	}
-
-	return set
-}
-
+//
 func NewLocalClient(mist *Mist, buffer int) *localSubscriber {
 	client := &localSubscriber{
 		check: make(chan Message, buffer),
@@ -67,16 +59,26 @@ func NewLocalClient(mist *Mist, buffer int) *localSubscriber {
 		}
 	}(client)
 
-	mist.addSubscriber(client)
+	// add the local client to mists list of subscribers
+	mist.subscribers[client.id] = *client
+
 	return client
 }
 
-// Sends a message across mist
-func (client *localSubscriber) Publish(tags []string, data interface{}) error {
-	client.mist.Publish(tags, data)
-	return nil
+//
+func (client *localSubscriber) List() ([][]string, error) {
+	subscriptions := make([][]string, len(client.subscriptions))
+	for i, subscription := range client.subscriptions {
+		sub := make([]string, subscription.Cardinality())
+		for j, tag := range subscription.ToSlice() {
+			sub[j] = tag.(string)
+		}
+		subscriptions[i] = sub
+	}
+	return subscriptions, nil
 }
 
+//
 func (client *localSubscriber) Subscribe(tags []string) {
 	subscription := makeSet(tags)
 
@@ -112,27 +114,14 @@ func (client *localSubscriber) Unsubscribe(tags []string) {
 	client.Unlock()
 }
 
-func (client *localSubscriber) List() ([][]string, error) {
-	subscriptions := make([][]string, len(client.subscriptions))
-	for i, subscription := range client.subscriptions {
-		sub := make([]string, subscription.Cardinality())
-		for j, tag := range subscription.ToSlice() {
-			sub[j] = tag.(string)
-		}
-		subscriptions[i] = sub
-	}
-	return subscriptions, nil
-}
-
-func (client *localSubscriber) Ping() error {
+// Sends a message across mist
+func (client *localSubscriber) Publish(tags []string, data interface{}) error {
+	client.mist.Publish(tags, data)
 	return nil
 }
 
-func (client *localSubscriber) Close() error {
-	// this closes the goroutine that is matching messages to subscriptions
-	close(client.done)
-
-	client.mist.removeSubscriber(client.id)
+//
+func (client *localSubscriber) Ping() error {
 	return nil
 }
 
@@ -140,4 +129,25 @@ func (client *localSubscriber) Close() error {
 // client has subscribed to
 func (client *localSubscriber) Messages() <-chan Message {
 	return client.pipe
+}
+
+//
+func (client *localSubscriber) Close() error {
+	// this closes the goroutine that is matching messages to subscriptions
+	close(client.done)
+
+	// remove the local client from mists list of subscribers
+	delete(client.mist.subscribers, client.id)
+
+	return nil
+}
+
+//
+func makeSet(tags []string) set.Set {
+	set := set.NewThreadUnsafeSet()
+	for _, i := range tags {
+		set.Add(i)
+	}
+
+	return set
 }

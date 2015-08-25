@@ -26,30 +26,34 @@ type (
 
 var (
 	commandMap = map[string]handler{
+		"list":        {0, handleList},
 		"subscribe":   {1, handleSubscribe},
 		"unsubscribe": {1, handleUnubscribe},
-		"list":        {0, handleList},
 		"publish":     {2, handlePublish},
 		"ping":        {0, handlePing},
 	}
 )
 
+//
 func handlePing(client *localSubscriber, args []string) string {
 	return "pong\n"
 }
 
+//
 func handleSubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
 	return ""
 }
 
+//
 func handleUnubscribe(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
 	return ""
 }
 
+//
 func handleList(client *localSubscriber, args []string) string {
 	list, err := client.List()
 	if err != nil {
@@ -65,6 +69,7 @@ func handleList(client *localSubscriber, args []string) string {
 	return fmt.Sprintf("list %v\n", response)
 }
 
+//
 func handlePublish(client *localSubscriber, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
