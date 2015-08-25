@@ -35,8 +35,8 @@ type (
 	// published through mist
 	Message struct {
 		tags set.Set
-		Tags []string    `json:"tags"`
-		Data interface{} `json:"data"`
+		Tags []string `json:"tags"`
+		Data string   `json:"data"`
 	}
 )
 
@@ -50,12 +50,13 @@ func New() *Mist {
 
 // Publish takes a list of tags and iterates through mist's list of subscribers,
 // sending to each if they are available.
-func (mist *Mist) Publish(tags []string, data interface{}) {
+func (mist *Mist) Publish(tags []string, data string) {
 
 	message := Message{
 		Tags: tags,
 		tags: makeSet(tags),
-		Data: data}
+		Data: data,
+	}
 
 	for _, localSubscriber := range mist.subscribers {
 		select {

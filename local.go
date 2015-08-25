@@ -115,7 +115,7 @@ func (client *localSubscriber) Unsubscribe(tags []string) {
 }
 
 // Sends a message across mist
-func (client *localSubscriber) Publish(tags []string, data interface{}) error {
+func (client *localSubscriber) Publish(tags []string, data string) error {
 	client.mist.Publish(tags, data)
 	return nil
 }
