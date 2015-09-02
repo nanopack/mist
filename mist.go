@@ -50,7 +50,7 @@ func New() *Mist {
 
 // Publish takes a list of tags and iterates through mist's list of subscribers,
 // sending to each if they are available.
-func (mist *Mist) Publish(tags []string, data string) {
+func (mist *Mist) Publish(tags []string, data string) error {
 
 	message := Message{
 		Tags: tags,
@@ -66,6 +66,8 @@ func (mist *Mist) Publish(tags []string, data string) {
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
+
+	return nil
 }
 
 //
