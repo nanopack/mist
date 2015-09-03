@@ -8,6 +8,8 @@
 package mist
 
 import (
+	"net"
+	"net/http"
 	"testing"
 )
 
@@ -18,14 +20,14 @@ func TestMistCore(test *testing.T) {
 
 	client.Subscribe([]string{"tag0"})
 	for count := 0; count < 2; count++ {
-		mist.Publish([]string{"tag0"}, []byte("this is my data"))
+		mist.Publish([]string{"tag0"}, "this is my data")
 		message := <-client.Messages()
 		assert(test, len(message.Tags) == 1, "wrong number of tags")
 		// assert(test, message.Data == []byte("this is my data"), "data was incorrect")
 	}
 
 	client.Unsubscribe([]string{"tag0"})
-	mist.Publish([]string{"tag0"}, []byte("this is my data"))
+	mist.Publish([]string{"tag0"}, "this is my data")
 	select {
 	case <-client.Messages():
 		assert(test, false, "the message should not have been received")
@@ -42,7 +44,7 @@ func BenchmarkMistCore(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		mist.Publish([]string{"tag0"}, []byte("this is my data"))
+		mist.Publish([]string{"tag0"}, "this is my data")
 		_ = <-client.Messages()
 	}
 }
@@ -75,6 +77,35 @@ func TestMistApi(test *testing.T) {
 	assert(test, ok, "got a nil message")
 	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
 
+}
+
+func TestMistWebsocket(test *testing.T) {
+	mist := New()
+	httpListener, err := net.Listen("tcp", "127.0.0.1:2345")
+	assert(test, err == nil, "unable to listen to websockets %v", err)
+
+	defer httpListener.Close()
+
+	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist))
+
+	header := make(http.Header, 0)
+	client, err := NewWebsocketClient("ws://127.0.0.1:2345/", header)
+	assert(test, err == nil, "unable to connect %v", err)
+	defer client.Close()
+	err = client.Subscribe([]string{"test"})
+	assert(test, err == nil, "subscription failed %v", err)
+	mist.Publish([]string{"test"}, "some data")
+	<-client.Messages()
+	list, err := client.List()
+	assert(test, err == nil, "unable to list %v", err)
+	assert(test, len(list) == 1, "list of subscriptions is wrong %v", list)
+	assert(test, len(list[0]) == 1, "wrong number of tags in subscription %v", list[0])
+	err = client.Unsubscribe([]string{"test"})
+	list, err = client.List()
+	assert(test, err == nil, "unable to list %v", err)
+	assert(test, len(list) == 0, "list of subscriptions is wrong %v", list)
+	mist.Publish([]string{"test"}, "more data")
+	client.Close()
 }
 
 func assert(test *testing.T, check bool, fmt string, args ...interface{}) {

@@ -27,7 +27,7 @@ type (
 )
 
 //
-func NewLocalClient(mist *Mist, buffer int) *localSubscriber {
+func NewLocalClient(mist *Mist, buffer int) Client {
 	client := &localSubscriber{
 		check: make(chan Message, buffer),
 		done:  make(chan bool),
@@ -79,17 +79,18 @@ func (client *localSubscriber) List() ([][]string, error) {
 }
 
 //
-func (client *localSubscriber) Subscribe(tags []string) {
+func (client *localSubscriber) Subscribe(tags []string) error {
 	subscription := makeSet(tags)
 
 	client.Lock()
 	client.subscriptions = append(client.subscriptions, subscription)
 	client.Unlock()
+	return nil
 }
 
 // Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
 // that aren't the specified subscription
-func (client *localSubscriber) Unsubscribe(tags []string) {
+func (client *localSubscriber) Unsubscribe(tags []string) error {
 	client.Lock()
 
 	//create a set for quick comparison
@@ -112,6 +113,7 @@ func (client *localSubscriber) Unsubscribe(tags []string) {
 	client.subscriptions = keep
 
 	client.Unlock()
+	return nil
 }
 
 // Sends a message across mist
