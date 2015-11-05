@@ -52,12 +52,19 @@ func New() *Mist {
 // sending to each if they are available.
 func (mist *Mist) Publish(tags []string, data string) error {
 
+	// is this an error? or just something we need to ignore
+	if len(tags) == 0 {
+		return nil
+	}
+
 	message := Message{
 		Tags: tags,
-		tags: makeSet(tags),
+		tags: makeBareSet(tags),
 		Data: data,
 	}
 
+	// this should be more optimized, but it might not be an issue unless thousands of clients
+	// are using mist.
 	for _, localSubscriber := range mist.subscribers {
 		select {
 		case <-localSubscriber.done:

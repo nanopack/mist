@@ -9,10 +9,17 @@ package mist
 
 import (
 	set "github.com/deckarep/golang-set"
+	"strings"
 	"sync"
 )
 
 type (
+	tagSlice     []string
+	subscription struct {
+		present set.Set
+		absent  set.Set
+	}
+
 	localSubscriber struct {
 		sync.Mutex
 
@@ -20,7 +27,7 @@ type (
 		done  chan bool
 		pipe  chan Message
 
-		subscriptions []set.Set
+		subscriptions []subscription
 		mist          *Mist
 		id            uint32
 	}
@@ -49,7 +56,7 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 				// we do this so that we don't need a mutex
 				subscriptions := client.subscriptions
 				for _, subscription := range subscriptions {
-					if subscription.IsSubset(msg.tags) {
+					if subscription.Check(msg.tags) {
 						client.pipe <- msg
 					}
 				}
@@ -69,35 +76,49 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 func (client *localSubscriber) List() ([][]string, error) {
 	subscriptions := make([][]string, len(client.subscriptions))
 	for i, subscription := range client.subscriptions {
-		sub := make([]string, subscription.Cardinality())
-		for j, tag := range subscription.ToSlice() {
-			sub[j] = tag.(string)
-		}
-		subscriptions[i] = sub
+		subscriptions[i] = tagSlice(subscription.ToSlice()).Clean()
 	}
 	return subscriptions, nil
 }
 
 //
 func (client *localSubscriber) Subscribe(tags []string) error {
-	subscription := makeSet(tags)
+	if len(tags) == 0 {
+		return nil
+	}
+	subscription := makeSubscription(append(tags, "-__mist*internal__")...)
 
 	client.Lock()
 	client.subscriptions = append(client.subscriptions, subscription)
 	client.Unlock()
+
+	client.mist.Publish(append(tags, "__mist*internal__"), "subscribe")
+
+	return nil
+}
+
+func (client *localSubscriber) TailSubscriptions() error {
+	sub := makeSubscription("__mist*internal__")
+	client.Lock()
+	client.subscriptions = []subscription{sub}
+	client.Unlock()
+
 	return nil
 }
 
 // Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
 // that aren't the specified subscription
 func (client *localSubscriber) Unsubscribe(tags []string) error {
-	client.Lock()
-
+	if len(tags) == 0 {
+		return nil
+	}
 	//create a set for quick comparison
-	test := makeSet(tags)
+	test := makeSubscription(append(tags, "-__mist*internal__")...)
 
 	// create a slice of subscriptions that are going to be kept
-	keep := []set.Set{}
+	keep := []subscription{}
+
+	client.Lock()
 
 	// iterate over all of mist clients subscriptions looking for ones that match the
 	// subscription to unsubscribe
@@ -113,11 +134,16 @@ func (client *localSubscriber) Unsubscribe(tags []string) error {
 	client.subscriptions = keep
 
 	client.Unlock()
+
+	client.mist.Publish(append(tags, "__mist*internal__"), "unsubscribe")
 	return nil
 }
 
 // Sends a message across mist
 func (client *localSubscriber) Publish(tags []string, data string) error {
+	// remove all internal tags from the tag list
+	tags = tagSlice(tags).Clean()
+
 	client.mist.Publish(tags, data)
 	return nil
 }
@@ -141,15 +167,71 @@ func (client *localSubscriber) Close() error {
 	// remove the local client from mists list of subscribers
 	delete(client.mist.subscribers, client.id)
 
+	// send out the unsubscribe message to anyone listening
+	for _, subscription := range client.subscriptions {
+		client.Publish(append(subscription.ToSlice(), "__mist*internal__"), "unsubscribe")
+	}
+
 	return nil
 }
 
 //
-func makeSet(tags []string) set.Set {
-	set := set.NewThreadUnsafeSet()
+func makeSubscription(tags ...string) subscription {
+	present := set.NewThreadUnsafeSet()
+	absent := set.NewThreadUnsafeSet()
 	for _, i := range tags {
-		set.Add(i)
+		switch {
+		case strings.HasPrefix(i, "-"):
+			absent.Add(i[1:])
+		default:
+			present.Add(i)
+		}
 	}
 
-	return set
+	return subscription{
+		absent:  absent,
+		present: present,
+	}
+}
+
+func makeBareSet(tags []string) set.Set {
+	tagSlice := set.NewThreadUnsafeSet()
+	for _, i := range tags {
+		tagSlice.Add(i)
+	}
+
+	return tagSlice
+}
+
+func (tags tagSlice) Clean() tagSlice {
+	for i := len(tags) - 1; i >= 0; i-- {
+		switch {
+		case tags[i] == "__mist*internal__":
+			fallthrough
+		case tags[i] == "-__mist*internal__":
+			tags = append(tags[:i], tags[i+1:]...)
+		}
+	}
+	return tags
+}
+
+func (sub subscription) Check(tags set.Set) bool {
+	return sub.present.IsSubset(tags) && sub.absent.Intersect(tags).Cardinality() == 0
+}
+
+func (sub subscription) Equal(test subscription) bool {
+	return sub.absent.Equal(test.absent) && sub.present.Equal(test.present)
+}
+
+func (sub subscription) ToSlice() []string {
+	slice := make([]string, sub.absent.Cardinality()+sub.present.Cardinality())
+	for j, tag := range sub.absent.ToSlice() {
+		slice[j] = "-" + tag.(string)
+	}
+	i := sub.absent.Cardinality()
+	for j, tag := range sub.present.ToSlice() {
+		slice[i+j] = tag.(string)
+	}
+
+	return slice
 }

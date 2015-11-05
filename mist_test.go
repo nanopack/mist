@@ -18,7 +18,7 @@ func TestMistCore(test *testing.T) {
 	client := NewLocalClient(mist, 0)
 	defer client.Close()
 
-	client.Subscribe([]string{"tag0"})
+	client.Subscribe([]string{"tag0", "-neg"})
 	for count := 0; count < 2; count++ {
 		mist.Publish([]string{"tag0"}, "this is my data")
 		message := <-client.Messages()
@@ -26,7 +26,14 @@ func TestMistCore(test *testing.T) {
 		// assert(test, message.Data == []byte("this is my data"), "data was incorrect")
 	}
 
-	client.Unsubscribe([]string{"tag0"})
+	mist.Publish([]string{"tag0", "-neg"}, "this is my data")
+	select {
+	case <-client.Messages():
+		assert(test, false, "the neg message should not have been received")
+	default:
+	}
+
+	client.Unsubscribe([]string{"tag0", "-neg"})
 	mist.Publish([]string{"tag0"}, "this is my data")
 	select {
 	case <-client.Messages():
@@ -51,7 +58,7 @@ func BenchmarkMistCore(b *testing.B) {
 
 func TestMistApi(test *testing.T) {
 	mist := New()
-	serverSocket, err := mist.Listen("127.0.0.1:1234")
+	serverSocket, err := mist.Listen("127.0.0.1:1234", nil)
 	defer serverSocket.Close()
 	assert(test, err == nil, "listen errored: %v", err)
 
