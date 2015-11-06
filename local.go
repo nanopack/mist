@@ -21,6 +21,15 @@ type (
 		Match([]string) bool
 		ToSlice() [][]string
 	}
+
+	EnableReplication interface {
+		EnableReplication() error
+	}
+
+	EnableInternal interface {
+		EnableInternal()
+	}
+
 	localSubscriber struct {
 		sync.Mutex
 
@@ -32,6 +41,7 @@ type (
 		mist          *Mist
 		id            uint32
 		internal      bool
+		replicated    bool
 	}
 )
 
@@ -92,7 +102,17 @@ func (client *localSubscriber) EnableInternal() {
 	// this will stop that
 	delete(client.mist.subscribers, client.id)
 	client.internal = true
+	client.mist.internal[client.id] = client
+}
+
+func (client *localSubscriber) EnableReplication() error {
+	// we need to flag that this client doesn't use publish any more.
+	client.replicated = true
+
+	// this client is no longer a subscriber.
+	delete(client.mist.subscribers, client.id)
 	client.mist.replicators[client.id] = client
+	return nil
 }
 
 //
@@ -145,7 +165,12 @@ func (client *localSubscriber) Publish(tags []string, data string) error {
 	if client.internal {
 		return InternalErr
 	}
-	client.mist.Publish(tags, data)
+	switch client.replicated {
+	case true:
+		client.mist.Replicate(tags, data)
+	default:
+		client.mist.Publish(tags, data)
+	}
 	return nil
 }
 
@@ -167,7 +192,7 @@ func (client *localSubscriber) Close() error {
 
 	// remove the local client from mists list of subscribers/replicators
 	delete(client.mist.subscribers, client.id)
-	delete(client.mist.replicators, client.id)
+	delete(client.mist.internal, client.id)
 
 	// send out the unsubscribe message to anyone listening
 	for _, subscription := range client.subscriptions.ToSlice() {

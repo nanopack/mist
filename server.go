@@ -26,11 +26,12 @@ type (
 
 var (
 	commandMap = map[string]Handler{
-		"list":        {0, handleList},
-		"subscribe":   {1, handleSubscribe},
-		"unsubscribe": {1, handleUnubscribe},
-		"publish":     {2, handlePublish},
-		"ping":        {0, handlePing},
+		"list":                {0, handleList},
+		"subscribe":           {1, handleSubscribe},
+		"unsubscribe":         {1, handleUnubscribe},
+		"publish":             {2, handlePublish},
+		"ping":                {0, handlePing},
+		"disable-replication": {0, handleEnableReplication},
 	}
 )
 
@@ -73,6 +74,11 @@ func handleList(client Client, args []string) string {
 func handlePublish(client Client, args []string) string {
 	tags := strings.Split(args[0], ",")
 	client.Publish(tags, args[1])
+	return ""
+}
+
+func handleEnableReplication(client Client, args []string) string {
+	client.(EnableReplication).EnableReplication()
 	return ""
 }
 

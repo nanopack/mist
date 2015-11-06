@@ -29,6 +29,7 @@ type (
 	Mist struct {
 		subscribers map[uint32]*localSubscriber
 		replicators map[uint32]*localSubscriber
+		internal    map[uint32]*localSubscriber
 		next        uint32
 	}
 
@@ -47,6 +48,7 @@ func New() *Mist {
 	return &Mist{
 		subscribers: make(map[uint32]*localSubscriber),
 		replicators: make(map[uint32]*localSubscriber),
+		internal:    make(map[uint32]*localSubscriber),
 	}
 }
 
@@ -63,6 +65,25 @@ func (mist *Mist) Publish(tags []string, data string) error {
 		Tags: tags,
 		Data: data,
 	}
+	// publishes go to both subscribers, and to replicators
+	forward(message, mist.subscribers)
+	forward(message, mist.replicators)
+
+	return nil
+}
+
+func (mist *Mist) Replicate(tags []string, data string) error {
+
+	// is this an error? or just something we need to ignore
+	if len(tags) == 0 {
+		return nil
+	}
+
+	message := Message{
+		Tags: tags,
+		Data: data,
+	}
+	// replicate only goes to subscribers
 	forward(message, mist.subscribers)
 
 	return nil
@@ -79,7 +100,7 @@ func (mist *Mist) publish(tags []string, data string) error {
 		internal: true,
 		Data:     data,
 	}
-	forward(message, mist.replicators)
+	forward(message, mist.internal)
 
 	return nil
 }
