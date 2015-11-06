@@ -28,6 +28,7 @@ type (
 	//
 	Mist struct {
 		subscribers map[uint32]localSubscriber
+		replicators map[uint32]localSubscriber
 		next        uint32
 	}
 
@@ -45,6 +46,7 @@ func New() *Mist {
 
 	return &Mist{
 		subscribers: make(map[uint32]localSubscriber),
+		replicators: make(map[uint32]localSubscriber),
 	}
 }
 
@@ -66,6 +68,32 @@ func (mist *Mist) Publish(tags []string, data string) error {
 	// this should be more optimized, but it might not be an issue unless thousands of clients
 	// are using mist.
 	for _, localSubscriber := range mist.subscribers {
+		select {
+		case <-localSubscriber.done:
+		case localSubscriber.check <- message:
+			// default:
+			// do we drop the message? enqueue it? pull one off the front and then add this one?
+		}
+	}
+
+	return nil
+}
+
+func (mist *Mist) Replicate(tags []string, data string) error {
+	// is this an error? or just something we need to ignore
+	if len(tags) == 0 {
+		return nil
+	}
+
+	message := Message{
+		Tags: tags,
+		tags: makeBareSet(tags),
+		Data: data,
+	}
+
+	// this should be more optimized, but it might not be an issue unless thousands of clients
+	// are using mist.
+	for _, localSubscriber := range mist.replicators {
 		select {
 		case <-localSubscriber.done:
 		case localSubscriber.check <- message:

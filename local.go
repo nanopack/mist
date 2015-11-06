@@ -31,6 +31,11 @@ type (
 		mist          *Mist
 		id            uint32
 	}
+
+	Replicator interface {
+		EnableReplication() Replicator
+		Replicate([]string, string) error
+	}
 )
 
 //
@@ -68,8 +73,20 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 
 	// add the local client to mists list of subscribers
 	mist.subscribers[client.id] = *client
+	mist.replicators[client.id] = *client
 
 	return client
+}
+
+func (client *localSubscriber) EnableReplication() Replicator {
+	// we don't want any already replicated messages to come across on this client
+	// this will stop that
+	mist.replicators[client.id] = nil
+	return client
+}
+
+func (client *localSubscriber) Replicate(tags []string, data string) error {
+	return client.mist.Replicate(tags, data)
 }
 
 //
