@@ -33,11 +33,6 @@ type (
 		id            uint32
 		internal      bool
 	}
-
-	Replicator interface {
-		EnableReplication() Replicator
-		Replicate([]string, string) error
-	}
 )
 
 var (
