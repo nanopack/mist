@@ -8,18 +8,19 @@
 package mist
 
 import (
-	set "github.com/deckarep/golang-set"
-	"strings"
+	"errors"
+	"github.com/nanobox-io/golang-mist/subscription"
+	"sort"
 	"sync"
 )
 
 type (
-	tagSlice     []string
-	subscription struct {
-		present set.Set
-		absent  set.Set
+	Subscriptions interface {
+		Add([]string)
+		Remove([]string)
+		Match([]string) bool
+		ToSlice() [][]string
 	}
-
 	localSubscriber struct {
 		sync.Mutex
 
@@ -27,9 +28,10 @@ type (
 		done  chan bool
 		pipe  chan Message
 
-		subscriptions []subscription
+		subscriptions Subscriptions
 		mist          *Mist
 		id            uint32
+		internal      bool
 	}
 
 	Replicator interface {
@@ -38,14 +40,21 @@ type (
 	}
 )
 
+var (
+	InternalErr = errors.New("Unable to perform action, internal mode enabled")
+)
+
 //
 func NewLocalClient(mist *Mist, buffer int) Client {
 	client := &localSubscriber{
-		check: make(chan Message, buffer),
-		done:  make(chan bool),
-		pipe:  make(chan Message),
-		mist:  mist,
-		id:    mist.nextId()}
+		check:         make(chan Message, buffer),
+		done:          make(chan bool),
+		pipe:          make(chan Message),
+		mist:          mist,
+		id:            mist.nextId(),
+		subscriptions: subscription.NewNode(),
+		internal:      false,
+	}
 
 	// this gofunc handles matching messages to subscriptions for the client
 	go func(client *localSubscriber) {
@@ -58,10 +67,16 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 		for {
 			select {
 			case msg := <-client.check:
-				// we do this so that we don't need a mutex
-				subscriptions := client.subscriptions
-				for _, subscription := range subscriptions {
-					if subscription.Check(msg.tags) {
+
+				switch {
+				case msg.internal && client.internal:
+					client.pipe <- msg
+				default:
+					client.Lock()
+					match := client.subscriptions.Match(msg.Tags)
+					client.Unlock()
+
+					if match {
 						client.pipe <- msg
 					}
 				}
@@ -72,53 +87,42 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 	}(client)
 
 	// add the local client to mists list of subscribers
-	mist.subscribers[client.id] = *client
-	mist.replicators[client.id] = *client
+	mist.subscribers[client.id] = client
 
 	return client
 }
 
-func (client *localSubscriber) EnableReplication() Replicator {
+func (client *localSubscriber) EnableInternal() {
 	// we don't want any already replicated messages to come across on this client
 	// this will stop that
-	mist.replicators[client.id] = nil
-	return client
-}
-
-func (client *localSubscriber) Replicate(tags []string, data string) error {
-	return client.mist.Replicate(tags, data)
+	delete(client.mist.subscribers, client.id)
+	client.internal = true
+	client.mist.replicators[client.id] = client
 }
 
 //
 func (client *localSubscriber) List() ([][]string, error) {
-	subscriptions := make([][]string, len(client.subscriptions))
-	for i, subscription := range client.subscriptions {
-		subscriptions[i] = tagSlice(subscription.ToSlice()).Clean()
+	if client.internal {
+		return nil, InternalErr
 	}
-	return subscriptions, nil
+	return client.subscriptions.ToSlice(), nil
 }
 
 //
 func (client *localSubscriber) Subscribe(tags []string) error {
+	if client.internal {
+		return InternalErr
+	}
 	if len(tags) == 0 {
 		return nil
 	}
-	subscription := makeSubscription(append(tags, "-__mist*internal__")...)
-
+	sort.Sort(sort.StringSlice(tags))
 	client.Lock()
-	client.subscriptions = append(client.subscriptions, subscription)
+	client.subscriptions.Add(tags)
 	client.Unlock()
 
-	client.mist.Publish(append(tags, "__mist*internal__"), "subscribe")
-
-	return nil
-}
-
-func (client *localSubscriber) TailSubscriptions() error {
-	sub := makeSubscription("__mist*internal__")
-	client.Lock()
-	client.subscriptions = []subscription{sub}
-	client.Unlock()
+	// notify anyone who is interested about the new subscription
+	client.mist.publish(tags, "subscribe")
 
 	return nil
 }
@@ -126,41 +130,26 @@ func (client *localSubscriber) TailSubscriptions() error {
 // Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
 // that aren't the specified subscription
 func (client *localSubscriber) Unsubscribe(tags []string) error {
+	if client.internal {
+		return InternalErr
+	}
 	if len(tags) == 0 {
 		return nil
 	}
-	//create a set for quick comparison
-	test := makeSubscription(append(tags, "-__mist*internal__")...)
-
-	// create a slice of subscriptions that are going to be kept
-	keep := []subscription{}
-
+	sort.Sort(sort.StringSlice(tags))
 	client.Lock()
-
-	// iterate over all of mist clients subscriptions looking for ones that match the
-	// subscription to unsubscribe
-	for _, subscription := range client.subscriptions {
-
-		// if they are not the same set (meaning they are a different subscription) then add them
-		// to the keep set
-		if !test.Equal(subscription) {
-			keep = append(keep, subscription)
-		}
-	}
-
-	client.subscriptions = keep
-
+	client.subscriptions.Remove(tags)
 	client.Unlock()
 
-	client.mist.Publish(append(tags, "__mist*internal__"), "unsubscribe")
+	client.mist.publish(tags, "unsubscribe")
 	return nil
 }
 
 // Sends a message across mist
 func (client *localSubscriber) Publish(tags []string, data string) error {
-	// remove all internal tags from the tag list
-	tags = tagSlice(tags).Clean()
-
+	if client.internal {
+		return InternalErr
+	}
 	client.mist.Publish(tags, data)
 	return nil
 }
@@ -181,74 +170,14 @@ func (client *localSubscriber) Close() error {
 	// this closes the goroutine that is matching messages to subscriptions
 	close(client.done)
 
-	// remove the local client from mists list of subscribers
+	// remove the local client from mists list of subscribers/replicators
 	delete(client.mist.subscribers, client.id)
+	delete(client.mist.replicators, client.id)
 
 	// send out the unsubscribe message to anyone listening
-	for _, subscription := range client.subscriptions {
-		client.Publish(append(subscription.ToSlice(), "__mist*internal__"), "unsubscribe")
+	for _, subscription := range client.subscriptions.ToSlice() {
+		client.mist.publish(subscription, "unsubscribe")
 	}
 
 	return nil
-}
-
-//
-func makeSubscription(tags ...string) subscription {
-	present := set.NewThreadUnsafeSet()
-	absent := set.NewThreadUnsafeSet()
-	for _, i := range tags {
-		switch {
-		case strings.HasPrefix(i, "-"):
-			absent.Add(i[1:])
-		default:
-			present.Add(i)
-		}
-	}
-
-	return subscription{
-		absent:  absent,
-		present: present,
-	}
-}
-
-func makeBareSet(tags []string) set.Set {
-	tagSlice := set.NewThreadUnsafeSet()
-	for _, i := range tags {
-		tagSlice.Add(i)
-	}
-
-	return tagSlice
-}
-
-func (tags tagSlice) Clean() tagSlice {
-	for i := len(tags) - 1; i >= 0; i-- {
-		switch {
-		case tags[i] == "__mist*internal__":
-			fallthrough
-		case tags[i] == "-__mist*internal__":
-			tags = append(tags[:i], tags[i+1:]...)
-		}
-	}
-	return tags
-}
-
-func (sub subscription) Check(tags set.Set) bool {
-	return sub.present.IsSubset(tags) && sub.absent.Intersect(tags).Cardinality() == 0
-}
-
-func (sub subscription) Equal(test subscription) bool {
-	return sub.absent.Equal(test.absent) && sub.present.Equal(test.present)
-}
-
-func (sub subscription) ToSlice() []string {
-	slice := make([]string, sub.absent.Cardinality()+sub.present.Cardinality())
-	for j, tag := range sub.absent.ToSlice() {
-		slice[j] = "-" + tag.(string)
-	}
-	i := sub.absent.Cardinality()
-	for j, tag := range sub.present.ToSlice() {
-		slice[i+j] = tag.(string)
-	}
-
-	return slice
 }

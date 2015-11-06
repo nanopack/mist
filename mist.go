@@ -8,7 +8,7 @@
 package mist
 
 import (
-	set "github.com/deckarep/golang-set"
+	"sort"
 	"sync/atomic"
 )
 
@@ -27,17 +27,17 @@ type (
 
 	//
 	Mist struct {
-		subscribers map[uint32]localSubscriber
-		replicators map[uint32]localSubscriber
+		subscribers map[uint32]*localSubscriber
+		replicators map[uint32]*localSubscriber
 		next        uint32
 	}
 
 	// A Message contains the tags used when subscribing, and the data that is being
 	// published through mist
 	Message struct {
-		tags set.Set
-		Tags []string `json:"tags"`
-		Data string   `json:"data"`
+		internal bool
+		Tags     []string `json:"tags"`
+		Data     string   `json:"data"`
 	}
 )
 
@@ -45,8 +45,8 @@ type (
 func New() *Mist {
 
 	return &Mist{
-		subscribers: make(map[uint32]localSubscriber),
-		replicators: make(map[uint32]localSubscriber),
+		subscribers: make(map[uint32]*localSubscriber),
+		replicators: make(map[uint32]*localSubscriber),
 	}
 }
 
@@ -61,48 +61,42 @@ func (mist *Mist) Publish(tags []string, data string) error {
 
 	message := Message{
 		Tags: tags,
-		tags: makeBareSet(tags),
 		Data: data,
 	}
-
-	// this should be more optimized, but it might not be an issue unless thousands of clients
-	// are using mist.
-	for _, localSubscriber := range mist.subscribers {
-		select {
-		case <-localSubscriber.done:
-		case localSubscriber.check <- message:
-			// default:
-			// do we drop the message? enqueue it? pull one off the front and then add this one?
-		}
-	}
+	forward(message, mist.subscribers)
 
 	return nil
 }
 
-func (mist *Mist) Replicate(tags []string, data string) error {
+func (mist *Mist) publish(tags []string, data string) error {
 	// is this an error? or just something we need to ignore
 	if len(tags) == 0 {
 		return nil
 	}
 
 	message := Message{
-		Tags: tags,
-		tags: makeBareSet(tags),
-		Data: data,
+		Tags:     tags,
+		internal: true,
+		Data:     data,
 	}
+	forward(message, mist.replicators)
 
+	return nil
+}
+
+func forward(msg Message, subscribers map[uint32]*localSubscriber) {
+	// we do this here so that the tags come pre sorted for the clients
+	sort.Sort(sort.StringSlice(msg.Tags))
 	// this should be more optimized, but it might not be an issue unless thousands of clients
 	// are using mist.
-	for _, localSubscriber := range mist.replicators {
+	for _, localReplicator := range subscribers {
 		select {
-		case <-localSubscriber.done:
-		case localSubscriber.check <- message:
+		case <-localReplicator.done:
+		case localReplicator.check <- msg:
 			// default:
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
-
-	return nil
 }
 
 //

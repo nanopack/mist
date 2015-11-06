@@ -7,10 +7,6 @@
 
 package subscription
 
-import (
-	"sort"
-)
-
 const (
 	create = iota
 	remove
@@ -18,39 +14,38 @@ const (
 )
 
 type (
-	node struct {
+	Node struct {
 		id       uint64
 		key      string
 		count    int
-		children map[string]*node
-		parent   *node
-		leafs    map[uint64]*node
+		children map[string]*Node
+		parent   *Node
+		leafs    map[uint64]*Node
 	}
 )
 
-func NewNode() *node {
+func NewNode() *Node {
 	child := newNode()
-	child.leafs = map[uint64]*node{}
+	child.leafs = map[uint64]*Node{}
 	return child
 }
 
-func newNode() *node {
-	return &node{
+func newNode() *Node {
+	return &Node{
 		id:       0,
 		count:    0,
-		children: map[string]*node{},
+		children: map[string]*Node{},
 	}
 }
 
-func (root *node) Len() int {
+func (root *Node) Len() int {
 	return len(root.leafs)
 }
 
-func (root *node) Add(keys []string) {
+func (root *Node) Add(keys []string) {
 	if len(keys) == 0 {
 		return
 	}
-	sort.Sort(sort.StringSlice(keys))
 	last, _ := root.traverse(keys, create)
 	last.count++
 	if last.count == 1 {
@@ -60,11 +55,10 @@ func (root *node) Add(keys []string) {
 	}
 }
 
-func (root *node) Remove(keys []string) {
+func (root *Node) Remove(keys []string) {
 	if len(keys) == 0 {
 		return
 	}
-	sort.Sort(sort.StringSlice(keys))
 	found, _ := root.traverse(keys, remove)
 	if found != nil {
 		found.count--
@@ -74,31 +68,29 @@ func (root *node) Remove(keys []string) {
 	}
 }
 
-func (root *node) Match(keys []string) bool {
-	sort.Sort(sort.StringSlice(keys))
+func (root *Node) Match(keys []string) bool {
 	last, count := root.traverse(keys, nothing)
 	return last != nil && count != -1
 }
 
-func (root *node) ToSlice(keys []string) [][]string {
+func (root *Node) ToSlice() [][]string {
 	paths := make([][]string, len(root.leafs))
-	for _, leaf := range root.leafs {
-		path := make([]string, 1)
-		for ; leaf != nil; leaf = leaf.parent {
+	for idx, leaf := range root.leafs {
+		path := make([]string, 0)
+		for ; leaf != nil && leaf != root; leaf = leaf.parent {
 			path = append(path, leaf.key)
 		}
-		paths = append(paths, path)
+		paths[idx] = path
 	}
 	return paths
 }
 
-func (root *node) Find(keys []string) *node {
-	sort.Sort(sort.StringSlice(keys))
+func (root *Node) Find(keys []string) *Node {
 	child, _ := root.traverse(keys, nothing)
 	return child
 }
 
-func (root *node) traverse(keys []string, action int) (*node, int) {
+func (root *Node) traverse(keys []string, action int) (*Node, int) {
 	if len(keys) == 0 {
 		if root.count == 0 {
 			// this node is not a leaf, so return -1 so it doesn't get deleted
@@ -110,7 +102,7 @@ func (root *node) traverse(keys []string, action int) (*node, int) {
 	key := keys[0]
 
 	var ok bool
-	var child *node
+	var child *Node
 	child, ok = root.children[key]
 
 	switch action {
