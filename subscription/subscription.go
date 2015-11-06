@@ -19,19 +19,18 @@ const (
 
 type (
 	node struct {
-		id       int
+		id       uint64
 		key      string
 		count    int
-		positive map[string]*node
-		negative map[string]*node
+		children map[string]*node
 		parent   *node
-		leafs    map[int]*node
+		leafs    map[uint64]*node
 	}
 )
 
 func NewNode() *node {
 	child := newNode()
-	child.leafs = map[int]*node{}
+	child.leafs = map[uint64]*node{}
 	return child
 }
 
@@ -39,8 +38,7 @@ func newNode() *node {
 	return &node{
 		id:       0,
 		count:    0,
-		positive: map[string]*node{},
-		negative: map[string]*node{},
+		children: map[string]*node{},
 	}
 }
 
@@ -56,7 +54,8 @@ func (root *node) Add(keys []string) {
 	last, _ := root.traverse(keys, create)
 	last.count++
 	if last.count == 1 {
-		root.leafs[root.id] = last
+		last.id = root.id
+		root.leafs[last.id] = last
 		root.id++
 	}
 }
@@ -67,9 +66,11 @@ func (root *node) Remove(keys []string) {
 	}
 	sort.Sort(sort.StringSlice(keys))
 	found, _ := root.traverse(keys, remove)
-	found.count--
-	if found.count == 0 {
-		delete(root.leafs, found.id)
+	if found != nil {
+		found.count--
+		if found.count == 0 {
+			delete(root.leafs, found.id)
+		}
 	}
 }
 
@@ -107,36 +108,29 @@ func (root *node) traverse(keys []string, action int) (*node, int) {
 	}
 
 	key := keys[0]
-	var check map[string]*node
-
-	switch {
-	case key[0] == byte(155):
-		check = root.negative
-		key = key[1:]
-	default:
-		check = root.positive
-	}
 
 	var ok bool
 	var child *node
-	child, ok = check[key]
+	child, ok = root.children[key]
 
 	switch action {
 	case remove:
-		found, count := child.traverse(keys[1:], action)
-		if found != nil && count == 0 {
-			if child.count == 0 {
-				delete(check, key)
+		if ok {
+			found, count := child.traverse(keys[1:], action)
+			if found != nil && count == 1 {
+				if child.count == 0 && len(child.children) == 0 {
+					delete(root.children, key)
+				}
 			}
-			count = child.count
+			return found, count
 		}
-		return found, count
+		return nil, 0
 	case create:
 		if !ok {
 			child = newNode()
 			child.parent = root
 			child.key = keys[0] // preserve the original key
-			check[key] = child
+			root.children[key] = child
 		}
 		return child.traverse(keys[1:], action)
 	default:

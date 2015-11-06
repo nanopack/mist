@@ -71,17 +71,44 @@ func TestAddRemoveDuplicate(test *testing.T) {
 	}
 }
 
+func TestAddRemoveSimilarDuplicate(test *testing.T) {
+	node := subscription.NewNode()
+	node.Add([]string{"a", "b"})
+	if node.Len() != 1 {
+		test.Log("similar duplicate add should have added a node")
+		test.FailNow()
+	}
+	node.Add([]string{"a", "b", "c"})
+	if node.Len() != 2 {
+		test.Log("similar duplicate add should not have added a node")
+		test.FailNow()
+	}
+
+	node.Remove([]string{"a", "b"})
+	if node.Len() != 1 {
+		test.Log("similar duplicate remove should not have removed a node with a count > 1")
+		test.FailNow()
+	}
+	node.Remove([]string{"a", "b", "c"})
+	if node.Len() != 0 {
+		test.Log("similar duplicate remove should have removed a node", node.Len())
+		test.FailNow()
+	}
+}
+
 func TestMatches(test *testing.T) {
 	matches := []matchTest{
 		{
 			[]string{},
 			[]subTest{
 				{[]string{"a"}, false},
+				{[]string{}, false},
 			},
 		},
 		{
 			[]string{"a", "b"},
 			[]subTest{
+				{[]string{}, false},
 				{[]string{"a", "b"}, true},
 				{[]string{"b", "a"}, true},
 				{[]string{"b", "a", "c"}, true},
@@ -89,28 +116,6 @@ func TestMatches(test *testing.T) {
 				{[]string{"c", "a"}, false},
 				{[]string{"c", "b"}, false},
 				{[]string{"c"}, false},
-			},
-		},
-		{
-			[]string{"a", "b", "-z", "-y"},
-			[]subTest{
-				{[]string{"a", "b"}, true},
-				{[]string{"b", "a"}, true},
-				{[]string{"b", "a", "c"}, true},
-				{[]string{"c", "a", "b"}, true},
-				{[]string{"c", "a"}, false},
-				{[]string{"c", "b"}, false},
-				{[]string{"c"}, false},
-				{[]string{"a", "b", "-z"}, false},
-				{[]string{"a", "b", "-y"}, false},
-				{[]string{"a", "b", "-y", "-z"}, false},
-			},
-		},
-		{
-			[]string{"a", "-a"},
-			[]subTest{
-				{[]string{"a"}, false},
-				{[]string{"b"}, false},
 			},
 		},
 	}
@@ -122,6 +127,13 @@ func TestMatches(test *testing.T) {
 		for _, t := range match.tests {
 			if node.Match(t.test) != t.result {
 				test.Logf("match failed: %v:%v expected %v", match.sub, t.test, t.result)
+				test.Fail()
+			}
+		}
+		node.Remove(match.sub)
+		for _, t := range match.tests {
+			if node.Match(t.test) {
+				test.Logf("match failed: []:%v expected false", t.test)
 				test.Fail()
 			}
 		}
