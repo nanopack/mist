@@ -130,7 +130,7 @@ func TestMistWebsocket(test *testing.T) {
 
 	defer httpListener.Close()
 
-	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist))
+	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist, nil))
 
 	header := make(http.Header, 0)
 	client, err := NewWebsocketClient("ws://127.0.0.1:2345/", header)

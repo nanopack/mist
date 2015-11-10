@@ -21,6 +21,14 @@ import (
 var (
 	NotSupported = errors.New("Command is not supported over websockets")
 
+	// we use a map to avoid a nasty switch/case statement
+	commandWebsocketMap = map[string]WebsocketHandler{
+		"list":        handleWebsocketList,
+		"subscribe":   handleWebsocketSubscribe,
+		"unsubscribe": handleWebsocketUnubscribe,
+		"ping":        handleWebsocketPing,
+	}
+
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -28,7 +36,8 @@ var (
 )
 
 type (
-	subscribe struct {
+	WebsocketHandler func([]byte, chan<- string, Client) error
+	subscribe        struct {
 		Command string   `json:"command"`
 		Tags    []string `json:"tags"`
 	}
@@ -61,12 +70,63 @@ type (
 	}
 )
 
+func handleWebsocketList(frame []byte, write chan<- string, client Client) error {
+	list := list{}
+	var err error
+	list.Subscriptions, err = client.List()
+	if err != nil {
+		return err
+	}
+	list.Command = "list"
+	list.Success = true
+	bytes, err := json.Marshal(list)
+	if err != nil {
+		return err
+	}
+	write <- string(bytes)
+	return nil
+}
+
+func handleWebsocketSubscribe(frame []byte, write chan<- string, client Client) error {
+	tags := tagList{}
+	// error would already be caught by unmarshalling the command
+	json.Unmarshal(frame, &tags)
+	client.Subscribe(tags.Tags)
+	write <- "{\"success\":true,\"command\":\"subscribe\"}"
+	return nil
+}
+
+func handleWebsocketUnubscribe(frame []byte, write chan<- string, client Client) error {
+	tags := tagList{}
+	// error would already be caught by unmarshalling the command
+	json.Unmarshal(frame, &tags)
+	client.Unsubscribe(tags.Tags)
+	write <- "{\"success\":true,\"command\":\"unsubscribe\"}"
+	return nil
+}
+
+func handleWebsocketPing(frame []byte, write chan<- string, client Client) error {
+	write <- "{\"success\":true,\"command\":\"ping\"}"
+	return nil
+}
+
 //
-func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
+func GenerateWebsocketUpgrade(mist *Mist, additinal map[string]WebsocketHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			return
+		}
+
+		// copy the original commands
+		commands := make(map[string]WebsocketHandler)
+		for key, value := range commandWebsocketMap {
+			commands[key] = value
+		}
+
+		// add additional commands into the map
+		for key, value := range additinal {
+			commands[key] = value
 		}
 
 		// we don't want this to be buffered
@@ -113,38 +173,14 @@ func GenerateWebsocketUpgrade(mist *Mist) http.HandlerFunc {
 				write <- "{\"success\":false,\"error\":\"Invalid json\"}"
 				continue
 			}
-			switch cmd.Command {
-			case "subscribe":
-				tags := tagList{}
-				// error would already be caught by unmarshalling the command
-				json.Unmarshal(frame, &tags)
-				client.Subscribe(tags.Tags)
-				write <- "{\"success\":true,\"command\":\"subscribe\"}"
-			case "unsubscribe":
-				tags := tagList{}
-				// error would already be caught by unmarshalling the command
-				json.Unmarshal(frame, &tags)
-				client.Unsubscribe(tags.Tags)
-				write <- "{\"success\":true,\"command\":\"unsubscribe\"}"
-			case "list":
-				list := list{}
-				list.Subscriptions, err = client.List()
-				if err != nil {
-					// do we need to do something with this error?
-					return
-				}
-				list.Command = "list"
-				list.Success = true
-				bytes, err := json.Marshal(list)
-				if err != nil {
-					// Do I need to do something more here?
-					return
-				}
-				write <- string(bytes)
-			case "ping":
-				write <- "{\"success\":true,\"command\":\"ping\"}"
-			default:
+			command, ok := commandWebsocketMap[cmd.Command]
+			if !ok {
 				write <- "{\"success\":false,\"error\":\"unknown command\"}"
+				continue
+			}
+			if err := command(frame, write, client); err != nil {
+				// I should do something with this error..
+				return
 			}
 		}
 	}
