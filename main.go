@@ -64,8 +64,12 @@ func main() {
 	}
 	defer discover.Close()
 
+	// advertise this nodes listen address
+	discover.Add("mist", listen)
+
 	// enable replication between mist nodes
-	handlers.EnableReplication(listen, mist, discover)
+	replicate := handlers.EnableReplication(mist, discover)
+	go replicate.Monitor()
 
 	// start up the authenticated websocket connection
 	authenticator := authenticate.NewNoopAuthenticator()

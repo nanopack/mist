@@ -136,8 +136,12 @@ func (client *localSubscriber) Subscribe(tags []string) error {
 	client.subscriptions.Add(tags)
 	client.Unlock()
 
-	// notify anyone who is interested about the new subscription
-	client.mist.publish(tags, "subscribe")
+	// if this client is replicated, we don't need to inform other replicated
+	// clients of this subscription
+	if !client.replicated {
+		// notify anyone who is interested about the new subscription
+		client.mist.publish(tags, "subscribe")
+	}
 
 	return nil
 }
@@ -156,7 +160,11 @@ func (client *localSubscriber) Unsubscribe(tags []string) error {
 	client.subscriptions.Remove(tags)
 	client.Unlock()
 
-	client.mist.publish(tags, "unsubscribe")
+	// if this client is replicated, we don't need to inform other replicated
+	// clients of this unsubscription
+	if !client.replicated {
+		client.mist.publish(tags, "unsubscribe")
+	}
 	return nil
 }
 
@@ -190,8 +198,9 @@ func (client *localSubscriber) Close() error {
 	// this closes the goroutine that is matching messages to subscriptions
 	close(client.done)
 
-	// remove the local client from mists list of subscribers/replicators
+	// remove the local client from mists list of subscribers/replicators/internal
 	delete(client.mist.subscribers, client.id)
+	delete(client.mist.replicators, client.id)
 	delete(client.mist.internal, client.id)
 
 	// send out the unsubscribe message to anyone listening

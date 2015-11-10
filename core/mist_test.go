@@ -96,8 +96,8 @@ func BenchmarkMistCore(b *testing.B) {
 func TestMistApi(test *testing.T) {
 	mist := New()
 	serverSocket, err := mist.Listen("127.0.0.1:1234", nil)
-	defer serverSocket.Close()
 	assert(test, err == nil, "listen errored: %v", err)
+	defer serverSocket.Close()
 
 	client, err := NewRemoteClient("127.0.0.1:1234")
 	defer client.Close()

@@ -35,7 +35,7 @@ type (
 	}
 )
 
-func EnableReplication(advertise string, server *mist.Mist, discover discovery.Discover) (Looper, error) {
+func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicate {
 
 	replicate := &replicate{
 		mist:          server,
@@ -44,12 +44,9 @@ func EnableReplication(advertise string, server *mist.Mist, discover discovery.D
 		subscriptions: subscription.NewNode(),
 	}
 
-	discover.Add("mist", advertise)
 	discover.Handle("mist", replicate)
 
-	go replicate.Monitor()
-
-	return discover, nil
+	return replicate
 }
 
 func (rep *replicate) Monitor() {
@@ -92,15 +89,15 @@ func (rep *replicate) Monitor() {
 
 			// forward all published messages to the local mist server
 			go func() {
-				for msg := range client.Messages() {
+				for msg := range remote.Messages() {
 					rep.mist.Replicate(msg.Tags, msg.Data)
 				}
-				rep.doneClient <- client
+				rep.doneClient <- remote
 			}()
 
 			// send all subscriptions across the connection.
 			for _, subscription := range rep.subscriptions.ToSlice() {
-				forward(client, "subscribe", subscription)
+				forward(remote, "subscribe", subscription)
 			}
 		}
 	}
@@ -109,7 +106,7 @@ func (rep *replicate) Monitor() {
 func (rep replicate) forwardAll(fun string, subscription []string) {
 	perform := getFunc(fun)
 	for _, client := range rep.clients {
-		if perform(client, subscription) != nil {
+		if err := perform(client, subscription); err != nil {
 			// should we log this error?
 		}
 	}
@@ -117,7 +114,7 @@ func (rep replicate) forwardAll(fun string, subscription []string) {
 
 func forward(client mist.Client, fun string, subscription []string) {
 	perform := getFunc(fun)
-	if perform(client, subscription) != nil {
+	if err := perform(client, subscription); err != nil {
 		// should we log this error?
 	}
 }
