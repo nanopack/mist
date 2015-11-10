@@ -16,12 +16,14 @@ package main
 import (
 	"bitbucket.org/nanobox/na-api"
 	"github.com/jcelliott/lumber"
+	"github.com/nanobox-io/golang-discovery"
 	"github.com/nanobox-io/golang-mist/authenticate"
 	"github.com/nanobox-io/golang-mist/core"
 	"github.com/nanobox-io/golang-mist/handlers"
 	"github.com/nanobox-io/nanobox-config"
 	"os"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -46,15 +48,27 @@ func main() {
 	api.Logger = lumber.NewConsoleLogger(level)
 	api.User = mist
 
-	server, err := mist.Listen(config.Config["tcp_listen_address"], nil)
-	defer server.Close()
+	listen := config.Config["tcp_listen_address"]
+	server, err := mist.Listen(listen, nil)
 
 	if err != nil {
 		api.Logger.Fatal("unable to start mist tcp listener %v", err)
 		os.Exit(1)
 	}
+	defer server.Close()
+
+	// start discovering other mist nodes on the network
+	discover, err := discovery.NewDiscovery(config.Config["multicast_interface"], "mist", time.Second*2)
+	if err != nil {
+		panic(err)
+	}
+	defer discover.Close()
+
+	// enable replication between mist nodes
+	handlers.EnableReplication(listen, mist, discover)
+
+	// start up the authenticated websocket connection
 	authenticator := authenticate.NewNoopAuthenticator()
 	handlers.LoadWebsocketRoute(authenticator)
-	handlers.EnableReplication(config.Config["multicast_interface"], config.Config["tcp_listen_address"], mist)
 	api.Start(config.Config["http_listen_address"])
 }

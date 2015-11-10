@@ -35,11 +35,7 @@ type (
 	}
 )
 
-func EnableReplication(network, advertise string, server *mist.Mist) (Looper, error) {
-	discover, err := discovery.NewDiscovery(network, "nanoagent", time.Second*2)
-	if err != nil {
-		return nil, err
-	}
+func EnableReplication(advertise string, server *mist.Mist, discover discovery.Discover) (Looper, error) {
 
 	replicate := &replicate{
 		mist:          server,
