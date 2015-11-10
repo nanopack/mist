@@ -47,3 +47,22 @@ Mist also comes with an embeddable websocket api, that can be dropped into an al
 
 ### Notes
 - publishing is not allowed over websockets.
+
+## Subscription explanation
+
+All events passing through Mist have a list of tags associated with them. For example if Mist was forwarding irc messages, then the format could look something like this:
+
+```json
+{
+  "data":"How can I help?",
+  "tags": ["user:nanobot", "type:public", "room:#nanobox"]
+}
+```
+
+### Possible subscriptions
+
+| Tags | Description |
+| --- | --- |
+| `["user:nanobot"]` | subscribe only to messages from the user nanobot, ignore every one else |
+| `["room:#nanobox"]` | subscribe only to messages from everyone in the #nanobox channel |
+| `["room:#nanobox","user:nanobot"]` | subscribe only to messages from nanobot in the #nanobox channel |
