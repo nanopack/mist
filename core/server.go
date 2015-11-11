@@ -19,8 +19,8 @@ import (
 // switch statement
 type (
 	Handler struct {
-		argCount int
-		handle   func(Client, []string) string
+		ArgCount int
+		Handle   func(Client, []string) string
 	}
 )
 
@@ -37,7 +37,7 @@ var (
 
 //
 func handlePing(client Client, args []string) string {
-	return "pong\n"
+	return "pong"
 }
 
 //
@@ -67,7 +67,7 @@ func handleList(client Client, args []string) string {
 	}
 
 	response := strings.Join(tmp, " ")
-	return fmt.Sprintf("list %v\n", response)
+	return fmt.Sprintf("list %v", response)
 }
 
 //
@@ -187,16 +187,16 @@ func (m *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
 
 		switch {
 		case !found:
-			response = fmt.Sprintf("error Unknown command '%v'\n", cmd)
-		case handler.argCount != len(args):
-			response = fmt.Sprintf("error Incorrect number of arguments for '%v'\n", cmd)
+			response = fmt.Sprintf("error Unknown command '%v'", cmd)
+		case handler.ArgCount != len(args):
+			response = fmt.Sprintf("error Incorrect number of arguments for '%v'", cmd)
 		default:
-			response = handler.handle(client, args)
+			response = handler.Handle(client, args)
 		}
 
 		if response != "" {
 			// Is it safe to send from 2 gorountines at the same time?
-			if _, err := conn.Write([]byte(response)); err != nil {
+			if _, err := conn.Write([]byte(response + "\n")); err != nil {
 				break
 			}
 		}

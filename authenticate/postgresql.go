@@ -17,7 +17,7 @@ type (
 	postgresql string
 )
 
-func NewPostgreAuthenticator(user, database, address string) (postgresql, error) {
+func NewPostgresAuthenticator(user, database, address string) (postgresql, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return postgresql(""), err
