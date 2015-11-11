@@ -23,25 +23,36 @@ func NewPostgresqlAuthenticator(user, database, address string) (postgresql, err
 		return postgresql(""), err
 	}
 
-	pg := postgresql(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%d", user, database, host, port))
+	pg := postgresql(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%v", user, database, host, port))
 	// create the tables needed to support mist authentication
 	_, err = pg.exec(`
 CREATE TABLE IF NOT EXISTS tokens (
 	token text NOT NULL,
 	token_id SERIAL UNIQUE NOT NULL,
 	PRIMARY KEY (token)
-);
+)`)
 
+	if err != nil {
+		return pg, err
+	}
+
+	_, err = pg.exec(`
 CREATE TABLE IF NOT EXISTS tags (
-	token_id integer NOT NULL REFERENCES tokens (token_id) ON DELETE CASCADE,
-	tag text NOT NULL,
-	PRIMARY KEY (token_id, tag)
-);`)
+  token_id integer NOT NULL REFERENCES tokens (token_id) ON DELETE CASCADE,
+  tag text NOT NULL,
+  PRIMARY KEY (token_id, tag)
+)`)
+
 	return pg, err
 }
 
+func (p postgresql) Clear() error {
+	_, err := p.exec("TRUNCATE tokens, tags")
+	return err
+}
+
 func (p postgresql) TagsForToken(token string) ([]string, error) {
-	rows, err := p.query("SELECT tag FROM tags,tokens WHERE token = ?", token)
+	rows, err := p.query("SELECT tag FROM tags,tokens WHERE token = $1", token)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +67,11 @@ func (p postgresql) TagsForToken(token string) ([]string, error) {
 		}
 		tags = append(tags, tag)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	err = rows.Err()
+	if len(tags) == 0 && err == nil {
+		return tags, NotFound
 	}
-	return tags, nil
+	return tags, err
 
 }
 
@@ -67,23 +79,25 @@ func (p postgresql) AddTags(token string, tags []string) error {
 	// This could be optimized a LOT
 	for _, tag := range tags {
 		// errors are ignored, this may not be the best idea.
-		p.exec("INSERT INTO tags (token_id,tag) VALUES ((SELECT token_id FROM tokens WHERE token = ?) ?)", token, tag)
+		p.exec("INSERT INTO tags (token_id,tag) VALUES ((SELECT token_id FROM tokens WHERE token = $1), $2)", token, tag)
 	}
 	return nil
 }
 
 func (p postgresql) RemoveTags(token string, tags []string) error {
-	_, err := p.exec("DELETE FROM tags USING tokens WHERE token = ? AND tag IN ?", token, tags)
-	return err
+	for _, tag := range tags {
+		p.exec("DELETE FROM tags USING tokens WHERE token = $1 AND tag = $2", token, tag)
+	}
+	return nil
 }
 
 func (p postgresql) AddToken(token string) error {
-	_, err := p.exec("INSERT INTO tokens (token) VALUES (?)", token)
+	_, err := p.exec("INSERT INTO tokens (token) VALUES ($1)", token)
 	return err
 }
 
 func (p postgresql) RemoveToken(token string) error {
-	_, err := p.exec("DELETE FROM tokens WHERE token = ?", token)
+	_, err := p.exec("DELETE FROM tokens WHERE token = $1", token)
 	return err
 }
 
@@ -100,13 +114,7 @@ func (p postgresql) query(query string, args ...interface{}) (*sql.Rows, error) 
 	}
 	defer client.Close()
 
-	stmt, err := client.Prepare(query)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	return stmt.Query(args...)
+	return client.Query(query, args...)
 }
 
 // This could also be optimized a lot
@@ -117,11 +125,5 @@ func (p postgresql) exec(query string, args ...interface{}) (sql.Result, error) 
 	}
 	defer client.Close()
 
-	stmt, err := client.Prepare(query)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	return stmt.Exec(args...)
+	return client.Exec(query, args...)
 }
