@@ -1,13 +1,9 @@
-// -*- mode: go; tab-width: 2; indent-tabs-mode: 1; st-rulers: [70] -*-
-// vim: ts=4 sw=4 ft=lua noet
-//--------------------------------------------------------------------
-// @author Daniel Barney <daniel@nanobox.io>
-// @copyright 2015, Pagoda Box Inc.
-// @doc
+// Copyright (c) 2015 Pagoda Box Inc
 //
-// @end
-// Created :   12 August 2015 by Daniel Barney <daniel@nanobox.io>
-//--------------------------------------------------------------------
+// This Source Code Form is subject to the terms of the Mozilla Public License, v.
+// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
+// at http://mozilla.org/MPL/2.0/.
+//
 package mist
 
 import (
