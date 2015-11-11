@@ -30,6 +30,9 @@ func main() {
 		"http_listen_address": "127.0.0.1:8080",
 		"log_level":           "INFO",
 		"multicast_interface": "eth1",
+		"pg_user":             "postgres",
+		"pg_database":         "postgres",
+		"pg_address":          "127.0.0.1:5432",
 	}
 
 	config.Load(defaults, configFile)
@@ -41,8 +44,20 @@ func main() {
 	api.Logger = lumber.NewConsoleLogger(level)
 	api.User = mist
 
+	user := config.Config["pg_user"]
+	database := config.Config["pg_database"]
+	address := config.Config["pg_address"]
+
+	pgAuth, err := authenticate.NewPostgresqlAuthenticator(user, database, address)
+	if err != nil {
+		api.Logger.Fatal("unable to start postgresql authenticator %v", err)
+		os.Exit(1)
+	}
+
+	authCommands := handlers.GenerateAdditionalCommands(pgAuth)
+
 	listen := config.Config["tcp_listen_address"]
-	server, err := mist.Listen(listen, nil)
+	server, err := mist.Listen(listen, authCommands)
 
 	if err != nil {
 		api.Logger.Fatal("unable to start mist tcp listener %v", err)
