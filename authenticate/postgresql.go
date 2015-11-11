@@ -52,7 +52,7 @@ func (p postgresql) Clear() error {
 }
 
 func (p postgresql) TagsForToken(token string) ([]string, error) {
-	rows, err := p.query("SELECT tag FROM tags,tokens WHERE token = $1", token)
+	rows, err := p.query("SELECT tag FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1", token)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (p postgresql) AddTags(token string, tags []string) error {
 
 func (p postgresql) RemoveTags(token string, tags []string) error {
 	for _, tag := range tags {
-		p.exec("DELETE FROM tags USING tokens WHERE token = $1 AND tag = $2", token, tag)
+		p.exec("DELETE FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1 AND tag = $2", token, tag)
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ func TestAdditionalCommands(test *testing.T) {
 	tags := get(cmds, "tags")
 
 	// the client parameter is not used.
-	if res := reg(nil, []string{"token"}); res != "" {
+	if res := reg(nil, []string{"1,2,3,4", "token"}); res != "" {
 		test.Log(res)
 		test.FailNow()
 	}

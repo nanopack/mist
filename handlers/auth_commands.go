@@ -35,7 +35,7 @@ func GenerateAdditionalCommands(auth Authenticator) map[string]mist.Handler {
 
 func handleRegister(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
-		token := args[0]
+		token := args[1]
 		err := auth.AddToken(token)
 		if err != nil {
 			return "error " + err.Error()
