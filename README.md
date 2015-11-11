@@ -18,7 +18,7 @@ The protocol to talk to mist is a simple line based tcp protocol. It was designe
 | `register {tags} {token}` | register a token with a set of tags, this allows a websocket client to subscribe to tags | nil |
 | `unregister {token}` | removes a token from mist completely | nil |
 | `set {tags} {token}` | adds a set of tags to a token | nil |
-| `set {tags} {token}` | removes a set of tags from a token | nil |
+| `unset {tags} {token}` | removes a set of tags from a token | nil |
 | `tags {token}` | show tags that are assocated with a token | `tags {token} {tags}` |
 
 ### Published message format
