@@ -7,7 +7,7 @@
 package handlers
 
 import (
-	"github.com/nanobox-io/golang-mist/core"
+	"github.com/nanopack/mist/core"
 	"strings"
 )
 

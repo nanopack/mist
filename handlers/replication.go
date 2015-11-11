@@ -8,8 +8,8 @@ package handlers
 
 import (
 	"github.com/nanobox-io/golang-discovery"
-	"github.com/nanobox-io/golang-mist/core"
-	"github.com/nanobox-io/golang-mist/subscription"
+	"github.com/nanopack/mist/core"
+	"github.com/nanopack/mist/subscription"
 	"io"
 	"time"
 )

@@ -7,7 +7,7 @@
 package authenticate_test
 
 import (
-	"github.com/nanobox-io/golang-mist/authenticate"
+	"github.com/nanopack/mist/authenticate"
 	"os/user"
 	"testing"
 )

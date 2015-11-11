@@ -9,7 +9,7 @@ package handlers
 import (
 	"bitbucket.org/nanobox/na-api"
 	"encoding/json"
-	"github.com/nanobox-io/golang-mist/core"
+	"github.com/nanopack/mist/core"
 	"net/http"
 )
 

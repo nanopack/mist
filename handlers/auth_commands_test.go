@@ -7,9 +7,9 @@
 package handlers_test
 
 import (
-	"github.com/nanobox-io/golang-mist/authenticate"
-	"github.com/nanobox-io/golang-mist/core"
-	"github.com/nanobox-io/golang-mist/handlers"
+	"github.com/nanopack/mist/authenticate"
+	"github.com/nanopack/mist/core"
+	"github.com/nanopack/mist/handlers"
 	"testing"
 )
 

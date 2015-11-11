@@ -8,9 +8,9 @@ package handlers_test
 
 import (
 	"github.com/golang/mock/gomock"
-	"github.com/nanobox-io/golang-mist/core"
-	"github.com/nanobox-io/golang-mist/handlers"
-	"github.com/nanobox-io/golang-mist/handlers/mock"
+	"github.com/nanopack/mist/core"
+	"github.com/nanopack/mist/handlers"
+	"github.com/nanopack/mist/handlers/mock"
 	"testing"
 	"time"
 )

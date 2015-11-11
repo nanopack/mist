@@ -9,7 +9,7 @@ package mist
 
 import (
 	"errors"
-	"github.com/nanobox-io/golang-mist/subscription"
+	"github.com/nanopack/mist/subscription"
 	"sort"
 	"sync"
 )
