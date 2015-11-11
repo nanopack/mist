@@ -1,4 +1,4 @@
-# Mist [![Build Status](https://travis-ci.org/nanobox-io/golang-mist.svg)](https://travis-ci.org/nanobox-io/golang-mist)
+# Mist [![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
 
 Mist is a simple pub/sub based on the idea that messages are tagged. To subscribe the client simply constructs a list of tags that it is interested in, and all messages that are tagged with ALL the tags are sent to the client. A client may have multiple subscriptions active at the same time.
 
