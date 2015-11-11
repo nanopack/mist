@@ -26,7 +26,11 @@ func NewMemoryAuthenticator() memory {
 
 func (m memory) TagsForToken(token string) ([]string, error) {
 
-	stored := m[token].ToSlice()
+	value, ok := m[token]
+	if !ok {
+		return []string{}, NotFound
+	}
+	stored := value.ToSlice()
 	tags := make([]string, len(stored))
 	for idx, tag := range stored {
 		tags[idx] = tag.(string)

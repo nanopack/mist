@@ -25,7 +25,7 @@ type (
 
 func GenerateAdditionalCommands(auth Authenticator) map[string]mist.Handler {
 	return map[string]mist.Handler{
-		"register":   {1, handleRegister(auth)},
+		"register":   {2, handleRegister(auth)},
 		"unregister": {1, handleUnregister(auth)},
 		"set":        {2, handleSet(auth)},
 		"unset":      {2, handleUnset(auth)},
@@ -35,7 +35,13 @@ func GenerateAdditionalCommands(auth Authenticator) map[string]mist.Handler {
 
 func handleRegister(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
-		err := auth.AddToken(args[0])
+		token := args[0]
+		err := auth.AddToken(token)
+		if err != nil {
+			return "error " + err.Error()
+		}
+
+		err = auth.AddTags(token, strings.Split(args[0], ","))
 		if err != nil {
 			return "error " + err.Error()
 		}
@@ -55,8 +61,8 @@ func handleUnregister(auth Authenticator) handleFun {
 
 func handleSet(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
-		tags := strings.Split(args[1], ",")
-		err := auth.AddTags(args[0], tags)
+		tags := strings.Split(args[0], ",")
+		err := auth.AddTags(args[1], tags)
 		if err != nil {
 			return "error " + err.Error()
 		}
@@ -66,8 +72,8 @@ func handleSet(auth Authenticator) handleFun {
 
 func handleUnset(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
-		tags := strings.Split(args[1], ",")
-		err := auth.RemoveTags(args[0], tags)
+		tags := strings.Split(args[0], ",")
+		err := auth.RemoveTags(args[1], tags)
 		if err != nil {
 			return "error " + err.Error()
 		}
