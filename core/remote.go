@@ -8,10 +8,13 @@
 package mist
 
 import (
-	"bufio"
 	"fmt"
+	"github.com/nanopack/mist/subscription"
+	"io"
 	"net"
 	"strings"
+	"sync"
+	"time"
 )
 
 //
@@ -19,120 +22,142 @@ type (
 
 	// A remoteSubscriber represents a connection to the mist server
 	remoteSubscriber struct {
-		conn net.Conn        // the connection the mist server
-		done chan bool       // the channel to indicate that the connection is closed
-		pong chan bool       // the channel for ping responses
-		list chan [][]string // the channel for subscription listing
-		data chan Message    // the channel that mist server 'publishes' updates to
+		sync.Mutex
+
+		subscriptions Subscriptions      // local copy of subscriptions
+		conn          io.ReadWriteCloser // the connection the mist server
+		done          chan error         // the channel to indicate that the connection is closed
+		waiting       []chan remoteReply // all client waiting for a response
+		data          chan Message       // the channel that mist server 'publishes' updates to
+		open          bool               // flag that indicates that the conenction should reestablish
+		replicated    bool               // is replication enabled on this connection
 	}
+
+	remoteReply struct {
+		value interface{}
+		err   error
+	}
+	nothing struct{}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
 func NewRemoteClient(address string) (Client, error) {
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		return nil, err
+	client := &remoteSubscriber{
+		subscriptions: subscription.NewNode(),
+		done:          make(chan error),
+		waiting:       make([]chan remoteReply, 0),
+		data:          make(chan Message),
+		open:          true,
+		conn:          nothing{},
 	}
-	client := remoteSubscriber{
-		done: make(chan bool),
-		pong: make(chan bool),
-		list: make(chan [][]string),
-	}
-	client.conn = conn
+	go client.loop(address)
+	return client, nil
+}
 
-	// create a channel on which to publish messages received from mist server
-	client.data = make(chan Message)
+func (client *remoteSubscriber) loop(address string) {
+	// every time we disconnect, we want to reconnect
+	for client.open {
+		conn, err := net.Dial("tcp", address)
+		client.conn = conn
+		if err != nil || !client.open {
+			<-time.After(time.Second)
+			continue
+		}
+		// reenable replication
+		if client.replicated {
+			client.async("enable-replication\n")
+		}
 
-	// continually read from conn, forwarding the data onto the clients data channel
-	go func() {
-		defer close(client.data)
+		// send all saved subscriptions across the channel
+		client.Lock()
+		for _, subscription := range client.subscriptions.ToSlice() {
+			client.async("subscribe %v\n", strings.Join(subscription, ","))
+		}
+		client.Unlock()
 
-		r := bufio.NewReader(client.conn)
-		for {
-			var listChan chan [][]string
-			var pongChan chan bool
-			var dataChan chan Message
+		reader := newMistReader(conn)
 
-			line, err := r.ReadString('\n')
-			if err != nil {
-				// do we need to log the error?
-				return
-			}
-			line = strings.TrimSuffix(line, "\n")
-
-			// create a new message
-			var msg Message
-			var list [][]string
-
-			split := strings.SplitN(line, " ", 2)
-
-			switch split[0] {
+		for reader.Next() {
+			cmd := reader.Command()
+			switch cmd[0] {
 			case "publish":
-				split := strings.SplitN(split[1], " ", 2)
-				msg = Message{
-					Tags: strings.Split(split[0], ","),
-					Data: split[1],
+				msg := Message{
+					Tags: strings.Split(cmd[1], ","),
+					Data: cmd[2],
 				}
-				dataChan = client.data
+				select {
+				case client.data <- msg:
+				case <-client.done:
+				}
 			case "pong":
-				pongChan = client.pong
-			case "list":
-				split := strings.Split(split[1], " ")
-				list = make([][]string, len(split))
-				for idx, subscription := range split {
-					list[idx] = strings.Split(subscription, ",")
-				}
-				listChan = client.list
-			case "error":
-				// need to report the error somehow
-				// close the connection as something is seriously wrong
-				client.Close()
-				return
-			}
+				client.Lock()
+				wait := client.waiting[0]
+				client.waiting = client.waiting[1:]
+				client.Unlock()
 
-			// send the message on the client channel, or close if this connection is done
-			select {
-			case listChan <- list:
-			case pongChan <- true:
-			case dataChan <- msg:
-			case <-client.done:
-				return
+				wait <- remoteReply{"pong", nil}
+			case "list":
+				client.Lock()
+				wait := client.waiting[0]
+				client.waiting = client.waiting[1:]
+				client.Unlock()
+				list := [][]string{strings.Split(cmd[1], ",")}
+				if len(cmd) == 3 {
+					cmd := strings.Split(cmd[2], " ")
+					for _, subscription := range cmd {
+						list = append(list, strings.Split(subscription, ","))
+					}
+				}
+				wait <- remoteReply{list, nil}
+			case "error":
+				// close the connection as something is seriously wrong,
+				// it will reconnect and and continue on
+				conn.Close()
+
+				waiting := make([]chan remoteReply, 0)
+
+				client.Lock()
+				waiting, client.waiting = client.waiting, waiting
+				client.Unlock()
+
+				for _, wait := range waiting {
+					wait <- remoteReply{"", fmt.Errorf("%v", cmd[0])}
+				}
+
 			}
 		}
-	}()
-
-	return &client, nil
+	}
 }
 
 // List requests a list of current mist subscriptions from the server
 func (client *remoteSubscriber) List() ([][]string, error) {
-	if _, err := fmt.Fprintf(client.conn, "list\n"); err != nil {
-		return nil, err
-	}
-	return <-client.list, nil
+	remoteReply := client.sync("list\n")
+	return remoteReply.value.([][]string), remoteReply.err
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
 func (client *remoteSubscriber) Subscribe(tags []string) error {
+	client.Lock()
+	client.subscriptions.Add(tags)
+	client.Unlock()
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := fmt.Fprintf(client.conn, "subscribe %v\n", strings.Join(tags, ","))
-
-	return err
+	return client.async("subscribe %v\n", strings.Join(tags, ","))
 }
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
 func (client *remoteSubscriber) Unsubscribe(tags []string) error {
+	client.Lock()
+	client.subscriptions.Remove(tags)
+	client.Unlock()
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := fmt.Fprintf(client.conn, "unsubscribe %v\n", strings.Join(tags, ","))
-
-	return err
+	return client.async("unsubscribe %v\n", strings.Join(tags, ","))
 }
 
 // Publish sends a message to the mist server to be published to all subscribed clients
@@ -140,19 +165,13 @@ func (client *remoteSubscriber) Publish(tags []string, data string) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := fmt.Fprintf(client.conn, "publish %v %v\n", strings.Join(tags, ","), data)
-
-	return err
+	return client.async("publish %v %v\n", strings.Join(tags, ","), data)
 }
 
 // Ping pong the server
 func (client *remoteSubscriber) Ping() error {
-	if _, err := client.conn.Write([]byte("ping\n")); err != nil {
-		return err
-	}
-	// wait for the pong to come back
-	<-client.pong
-	return nil
+	remoteReply := client.sync("ping\n")
+	return remoteReply.err
 }
 
 //
@@ -160,16 +179,39 @@ func (client *remoteSubscriber) Messages() <-chan Message {
 	return client.data
 }
 
+func (client *remoteSubscriber) EnableReplication() error {
+	client.replicated = true
+	return client.async("enable-replication\n")
+}
+
 // Close closes the client data channel and the connection to the server
 func (client *remoteSubscriber) Close() error {
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
-	err := client.conn.Close()
+	client.open = false
+	client.conn.Close()
 	close(client.done)
+
+	return nil
+}
+
+func (client *remoteSubscriber) sync(command string) remoteReply {
+	wait := make(chan remoteReply, 1)
+	client.Lock()
+	if _, err := fmt.Fprintf(client.conn, command); err != nil {
+		client.Unlock()
+		return remoteReply{nil, err}
+	}
+	client.waiting = append(client.waiting, wait)
+	client.Unlock()
+	return <-wait
+}
+
+func (client *remoteSubscriber) async(format string, args ...interface{}) error {
+	_, err := fmt.Fprintf(client.conn, format, args...)
 	return err
 }
 
-func (client *remoteSubscriber) EnableReplication() error {
-	_, err := fmt.Fprintf(client.conn, "enable-replication\n")
-	return err
-}
+func (nothing) Read([]byte) (int, error)  { return 0, fmt.Errorf("closed") }
+func (nothing) Write([]byte) (int, error) { return 0, fmt.Errorf("closed") }
+func (nothing) Close() error              { return nil }
