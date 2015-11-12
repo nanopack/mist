@@ -10,7 +10,6 @@ package mist
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 )
@@ -21,6 +20,12 @@ type (
 	Handler struct {
 		ArgCount int
 		Handle   func(Client, []string) string
+	}
+
+	mistReader struct {
+		reader *bufio.Reader
+		err    error
+		cmd    []string
 	}
 )
 
@@ -160,30 +165,15 @@ func (m *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
 		}
 	}()
 
-	//
-	r := bufio.NewReader(conn)
+	reader := newMistReader(conn)
 
-	//
-	for {
+	for reader.Next() {
+		cmd := reader.Command()
 
-		// read messages coming across the tcp channel
-		line, err := r.ReadString('\n')
-		if err != nil && err != io.EOF {
-			// some unexpected error happened
-			return
-		}
-
-		line = strings.TrimSuffix(line, "\n")
-
-		// this is the general format of the commands that are accepted
-		// ["cmd" ,"tag,tag2", "all the rest"]
-		split := strings.SplitN(line, " ", 3)
-		cmd := split[0]
-
-		handler, found := commands[cmd]
+		handler, found := commands[cmd[0]]
 
 		var response string
-		args := split[1:]
+		args := cmd[1:]
 
 		switch {
 		case !found:
@@ -201,4 +191,34 @@ func (m *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
 			}
 		}
 	}
+	// what should we do with the error?
+	reader.Error()
+}
+
+func newMistReader(conn net.Conn) *mistReader {
+	reader := &mistReader{
+		reader: bufio.NewReader(conn),
+	}
+
+	return reader
+}
+
+func (r *mistReader) Next() bool {
+	line, err := r.reader.ReadString('\n')
+	if err != nil {
+		r.err = err
+		return false
+	}
+	line = strings.TrimSuffix(line, "\n")
+
+	r.cmd = strings.SplitN(line, " ", 3)
+	return true
+}
+
+func (r *mistReader) Command() []string {
+	return r.cmd
+}
+
+func (r *mistReader) Error() error {
+	return r.err
 }

@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestMistCore(test *testing.T) {
@@ -102,6 +103,8 @@ func TestMistApi(test *testing.T) {
 	client, err := NewRemoteClient("127.0.0.1:1234")
 	defer client.Close()
 	assert(test, err == nil, "connect errored: %v", err)
+
+	<-time.After(time.Millisecond * 10)
 
 	assert(test, client.Ping() == nil, "ping failed")
 
