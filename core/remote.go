@@ -140,12 +140,16 @@ func (client *remoteSubscriber) List() ([][]string, error) {
 // on those tags, returning the tags and an error or nil
 func (client *remoteSubscriber) Subscribe(tags []string) error {
 	client.Lock()
+	active := client.subscriptions.Match(tags)
 	client.subscriptions.Add(tags)
 	client.Unlock()
 	if len(tags) == 0 {
 		return nil
 	}
-	return client.async("subscribe %v\n", strings.Join(tags, ","))
+	if !active {
+		return client.async("subscribe %v\n", strings.Join(tags, ","))
+	}
+	return nil
 }
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
