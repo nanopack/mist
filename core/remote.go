@@ -107,7 +107,7 @@ func NewRemoteClient(address string) (Client, error) {
 
 // List requests a list of current mist subscriptions from the server
 func (client *remoteSubscriber) List() ([][]string, error) {
-	if _, err := client.conn.Write([]byte("list\n")); err != nil {
+	if _, err := fmt.Fprintf(client.conn, "list\n"); err != nil {
 		return nil, err
 	}
 	return <-client.list, nil
@@ -119,7 +119,7 @@ func (client *remoteSubscriber) Subscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := client.conn.Write([]byte("subscribe " + strings.Join(tags, ",") + "\n"))
+	_, err := fmt.Fprintf(client.conn, "subscribe %v\n", strings.Join(tags, ","))
 
 	return err
 }
@@ -130,7 +130,7 @@ func (client *remoteSubscriber) Unsubscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := client.conn.Write([]byte("unsubscribe " + strings.Join(tags, ",") + "\n"))
+	_, err := fmt.Fprintf(client.conn, "unsubscribe %v\n", strings.Join(tags, ","))
 
 	return err
 }
@@ -140,7 +140,7 @@ func (client *remoteSubscriber) Publish(tags []string, data string) error {
 	if len(tags) == 0 {
 		return nil
 	}
-	_, err := client.conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(tags, ","), data)))
+	_, err := fmt.Fprintf(client.conn, "publish %v %v\n", strings.Join(tags, ","), data)
 
 	return err
 }
@@ -166,5 +166,10 @@ func (client *remoteSubscriber) Close() error {
 	// more data from the socket
 	err := client.conn.Close()
 	close(client.done)
+	return err
+}
+
+func (client *remoteSubscriber) EnableReplication() error {
+	_, err := fmt.Fprintf(client.conn, "enable-replication\n")
 	return err
 }

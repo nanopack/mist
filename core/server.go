@@ -18,25 +18,26 @@ import (
 // build a small applicationController so that we don't have to play with a large
 // switch statement
 type (
-	handler struct {
-		argCount int
-		handle   func(Client, []string) string
+	Handler struct {
+		ArgCount int
+		Handle   func(Client, []string) string
 	}
 )
 
 var (
-	commandMap = map[string]handler{
-		"list":        {0, handleList},
-		"subscribe":   {1, handleSubscribe},
-		"unsubscribe": {1, handleUnubscribe},
-		"publish":     {2, handlePublish},
-		"ping":        {0, handlePing},
+	commandMap = map[string]Handler{
+		"list":               {0, handleList},
+		"subscribe":          {1, handleSubscribe},
+		"unsubscribe":        {1, handleUnubscribe},
+		"publish":            {2, handlePublish},
+		"ping":               {0, handlePing},
+		"enable-replication": {0, handleEnableReplication},
 	}
 )
 
 //
 func handlePing(client Client, args []string) string {
-	return "pong\n"
+	return "pong"
 }
 
 //
@@ -66,7 +67,7 @@ func handleList(client Client, args []string) string {
 	}
 
 	response := strings.Join(tmp, " ")
-	return fmt.Sprintf("list %v\n", response)
+	return fmt.Sprintf("list %v", response)
 }
 
 //
@@ -76,15 +77,31 @@ func handlePublish(client Client, args []string) string {
 	return ""
 }
 
+func handleEnableReplication(client Client, args []string) string {
+	client.(EnableReplication).EnableReplication()
+	return ""
+}
+
 // start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
 // it then continually reads from the server handling any incoming connections
-func (m *Mist) Listen(address string) (net.Listener, error) {
+func (m *Mist) Listen(address string, additinal map[string]Handler) (net.Listener, error) {
 	if address == "" {
 		address = "127.0.0.1:1445"
 	}
 	serverSocket, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
+	}
+
+	// copy the original commands
+	commands := make(map[string]Handler)
+	for key, value := range commandMap {
+		commands[key] = value
+	}
+
+	// add additional commands into the map
+	for key, value := range additinal {
+		commands[key] = value
 	}
 
 	go func() {
@@ -98,16 +115,16 @@ func (m *Mist) Listen(address string) (net.Listener, error) {
 			}
 
 			// handle each connection individually (non-blocking)
-			go m.handleConnection(conn)
+			go m.handleConnection(conn, commands)
 		}
 	}()
 	return serverSocket, nil
 }
 
 // handleConnection takes an incoming connection from a mist client (or other client)
-// and sets up a new subscription for that connection, and a 'publish handler'
+// and sets up a new subscription for that connection, and a 'publish Handler'
 // that is used to publish messages to the data channel of the subscription
-func (m *Mist) handleConnection(conn net.Conn) {
+func (m *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
 
 	// create a new client to match with this connection
 
@@ -123,7 +140,7 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		close(done)
 	}()
 
-	// create a 'publish handler'
+	// create a 'publish Handler'
 	go func() {
 		for {
 
@@ -163,23 +180,23 @@ func (m *Mist) handleConnection(conn net.Conn) {
 		split := strings.SplitN(line, " ", 3)
 		cmd := split[0]
 
-		handler, found := commandMap[cmd]
+		handler, found := commands[cmd]
 
 		var response string
 		args := split[1:]
 
 		switch {
 		case !found:
-			response = fmt.Sprintf("error Unknown command '%v'\n", cmd)
-		case handler.argCount != len(args):
-			response = fmt.Sprintf("error Incorrect number of arguments for '%v'\n", cmd)
+			response = fmt.Sprintf("error Unknown command '%v'", cmd)
+		case handler.ArgCount != len(args):
+			response = fmt.Sprintf("error Incorrect number of arguments for '%v'", cmd)
 		default:
-			response = handler.handle(client, args)
+			response = handler.Handle(client, args)
 		}
 
 		if response != "" {
 			// Is it safe to send from 2 gorountines at the same time?
-			if _, err := conn.Write([]byte(response)); err != nil {
+			if _, err := conn.Write([]byte(response + "\n")); err != nil {
 				break
 			}
 		}

@@ -36,6 +36,50 @@ func TestMistCore(test *testing.T) {
 
 }
 
+func TestMistReplication(test *testing.T) {
+	mist := New()
+	replication := NewLocalClient(mist, 0)
+	client := NewLocalClient(mist, 0)
+	replication1 := NewLocalClient(mist, 0)
+
+	defer replication.Close()
+	defer client.Close()
+	defer replication1.Close()
+
+	// two clients will represent remote replicated nodes
+	replication.(EnableReplication).EnableReplication()
+	replication1.(EnableReplication).EnableReplication()
+
+	client.Subscribe([]string{"foo"})
+	replication.Subscribe([]string{"foo"})
+	replication1.Subscribe([]string{"foo"})
+
+	// when a normal client publishes, both replicated clients receive the message
+	client.Publish([]string{"foo"}, "data")
+	<-replication.Messages()
+	<-replication1.Messages()
+	<-client.Messages()
+
+	replication.Publish([]string{"foo"}, "data")
+	<-client.Messages()
+	select {
+	case <-replication1.Messages():
+		test.Log("a replicated client should not get a message from another replicated client")
+		test.Fail()
+	default:
+	}
+
+	replication1.Publish([]string{"foo"}, "data")
+	<-client.Messages()
+	select {
+	case <-replication.Messages():
+		test.Log("a replicated client should not get a message from another replicated client")
+		test.Fail()
+	default:
+	}
+
+}
+
 func BenchmarkMistCore(b *testing.B) {
 	mist := New()
 	client := NewLocalClient(mist, 0)
@@ -51,9 +95,9 @@ func BenchmarkMistCore(b *testing.B) {
 
 func TestMistApi(test *testing.T) {
 	mist := New()
-	serverSocket, err := mist.Listen("127.0.0.1:1234")
-	defer serverSocket.Close()
+	serverSocket, err := mist.Listen("127.0.0.1:1234", nil)
 	assert(test, err == nil, "listen errored: %v", err)
+	defer serverSocket.Close()
 
 	client, err := NewRemoteClient("127.0.0.1:1234")
 	defer client.Close()
@@ -86,7 +130,7 @@ func TestMistWebsocket(test *testing.T) {
 
 	defer httpListener.Close()
 
-	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist))
+	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist, nil))
 
 	header := make(http.Header, 0)
 	client, err := NewWebsocketClient("ws://127.0.0.1:2345/", header)
