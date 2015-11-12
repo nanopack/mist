@@ -7,8 +7,8 @@
 package handlers
 
 import (
-	"bitbucket.org/nanobox/na-api"
 	"encoding/json"
+	"github.com/nanobox-io/nanobox-api"
 	"github.com/nanopack/mist/core"
 	"net/http"
 )
