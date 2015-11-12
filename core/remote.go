@@ -153,11 +153,15 @@ func (client *remoteSubscriber) Subscribe(tags []string) error {
 func (client *remoteSubscriber) Unsubscribe(tags []string) error {
 	client.Lock()
 	client.subscriptions.Remove(tags)
+	active := client.subscriptions.Match(tags)
 	client.Unlock()
 	if len(tags) == 0 {
 		return nil
 	}
-	return client.async("unsubscribe %v\n", strings.Join(tags, ","))
+	if !active {
+		return client.async("unsubscribe %v\n", strings.Join(tags, ","))
+	}
+	return nil
 }
 
 // Publish sends a message to the mist server to be published to all subscribed clients
