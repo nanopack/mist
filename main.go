@@ -7,9 +7,9 @@
 package main
 
 import (
-	"bitbucket.org/nanobox/na-api"
 	"github.com/jcelliott/lumber"
 	"github.com/nanobox-io/golang-discovery"
+	"github.com/nanobox-io/nanobox-api"
 	"github.com/nanobox-io/nanobox-config"
 	"github.com/nanopack/mist/authenticate"
 	"github.com/nanopack/mist/core"
