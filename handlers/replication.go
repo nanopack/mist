@@ -7,7 +7,6 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/nanobox-io/golang-discovery"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/subscription"
@@ -123,7 +122,6 @@ func getFunc(fun string) func(mist.Client, []string) error {
 func (rep *replicate) New(address string) io.Closer {
 	client, err := mist.NewRemoteClient(address)
 	if err != nil {
-		fmt.Println(err)
 		return nil
 	}
 
