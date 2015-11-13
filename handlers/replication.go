@@ -125,9 +125,8 @@ func (rep *replicate) New(address string) io.Closer {
 		return nil
 	}
 
-	if client.(mist.EnableReplication).EnableReplication() != nil {
-		return nil
-	}
+	client.(mist.EnableReplication).EnableReplication()
+
 	// add this client to the list of all clients
 	rep.newClient <- client
 

@@ -50,10 +50,10 @@ func TestReplication(test *testing.T) {
 	go rep2.Monitor()
 
 	// inform both replication monitors of the other nodes
-	repc1 := rep2.New("127.0.0.1:2223")
-	defer repc1.Close()
-	repc2 := rep1.New("127.0.0.1:2224")
+	repc2 := rep2.New("127.0.0.1:2223")
 	defer repc2.Close()
+	repc1 := rep1.New("127.0.0.1:2224")
+	defer repc1.Close()
 
 	// now we test the clients out.
 	client1 := mist.NewLocalClient(mist1, 0)
