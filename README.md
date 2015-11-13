@@ -1,4 +1,5 @@
-# Mist [![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
+[![mist logo](http://nano-assets.gopagoda.io/readme-headers/mist.png)](http://nanobox.io/open-source#mist)
+ [![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
 
 Mist is a simple pub/sub based on the idea that messages are tagged. To subscribe the client simply constructs a list of tags that it is interested in, and all messages that are tagged with ALL the tags are sent to the client. A client may have multiple subscriptions active at the same time.
 
@@ -73,3 +74,5 @@ All events passing through Mist have a list of tags associated with them. For ex
 | `["user:nanobot"]` | subscribe only to messages from the user nanobot, ignore every one else |
 | `["room:#nanobox"]` | subscribe only to messages from everyone in the #nanobox channel |
 | `["room:#nanobox","user:nanobot"]` | subscribe only to messages from nanobot in the #nanobox channel |
+
+[![open source](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
