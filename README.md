@@ -74,8 +74,6 @@ All events passing through Mist have a list of tags associated with them. For ex
 | `["room:#nanobox"]` | subscribe only to messages from everyone in the #nanobox channel |
 | `["room:#nanobox", "user:nanobot"]` | subscribe only to messages from nanobot in the #nanobox channel |
 
-[![open source](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
-
 ### Config
 - Config files must contain space separated keys/values
 ```ini
@@ -100,3 +98,5 @@ pg_address 127.0.0.1:5432
 
 ### Running
 - Run mist as follows `mist [CONFIG_FILE|-OPTION=VALUE]`
+
+[![open source](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
