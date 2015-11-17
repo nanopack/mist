@@ -11,7 +11,7 @@ The protocol to talk to mist is a simple line based tcp protocol. It was designe
 
 | command format | description | server response |
 | --- | --- | --- |
-| `ping` | ask for a pong response, mainly to ensure that the conenction is alive | `pong`
+| `ping` | ask for a pong response, mainly to ensure that the connection is alive | `pong`
 | `publish {tags} {data}` | publish a message `data` with a list of comma delimited tags | nil |
 | `subscribe {tags}` | subscribe to messages that contain ALL tags in `tags` |  nil |
 | `unsubscribe {tags}` | unsubscribe to a previous subscription to `tags`, order of the tags does not matter | nil |
