@@ -52,7 +52,6 @@ To authenticate with the WebSocket endpoint, a valid token MUST be passed in as 
 | `{"command": "ping"}` | ping pong frame | `{"success": true, "command": "ping"}` |
 | nil | Frame forwarded as a result of matching a subscription | `{"keys": ["tag1", "tag2"], "data": "Opaque Data encoded as a JSON string"}` |
 
-
 ### Notes
 - publishing is not allowed over WebSockets.
 
@@ -76,3 +75,28 @@ All events passing through Mist have a list of tags associated with them. For ex
 | `["room:#nanobox", "user:nanobot"]` | subscribe only to messages from nanobot in the #nanobox channel |
 
 [![open source](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
+
+### Config
+- Config files must contain space separated keys/values
+```ini
+tcp_listen_address 127.0.0.1:1445
+http_listen_address 127.0.0.1:8080
+log_level INFO
+multicast_interface eth1
+pg_user postgres
+pg_database postgres
+pg_address 127.0.0.1:5432
+```
+- Config passed as args must have a leading '-' and be separated by an '='
+```
+-tcp_listen_address=127.0.0.1:1445 \
+-http_listen_address=127.0.0.1:8080 \
+-log_level=INFO \
+-multicast_interface=eth1 \
+-pg_user=postgres \
+-pg_database=postgres \
+-pg_address=127.0.0.1:5432
+```
+
+### Running
+- Run mist as follows `mist [CONFIG_FILE|-OPTION=VALUE]`
