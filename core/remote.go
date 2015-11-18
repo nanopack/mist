@@ -181,11 +181,10 @@ func (client *remoteSubscriber) Publish(tags []string, data string) error {
 func (client *remoteSubscriber) PublishDelay(tags []string, data string, delay time.Duration) error {
 	go func() {
 		time.Sleep(delay)
-	    client.Publish(tags, data)
+		client.Publish(tags, data)
 	}()
 	return nil
 }
-
 
 // Ping pong the server
 func (client *remoteSubscriber) Ping() error {

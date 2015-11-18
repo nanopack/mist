@@ -190,7 +190,7 @@ func (client *localSubscriber) PublishDelay(tags []string, data string, delay ti
 	}
 	go func() {
 		time.Sleep(delay)
-	    client.Publish(tags, data)
+		client.Publish(tags, data)
 	}()
 	return nil
 }
