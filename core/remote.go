@@ -133,6 +133,9 @@ func (client *remoteSubscriber) loop(address string) {
 // List requests a list of current mist subscriptions from the server
 func (client *remoteSubscriber) List() ([][]string, error) {
 	remoteReply := client.sync("list\n")
+	if remoteReply.value == nil {
+		return nil, remoteReply.err
+	}
 	return remoteReply.value.([][]string), remoteReply.err
 }
 
