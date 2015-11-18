@@ -17,6 +17,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"fmt"
 )
 
 func main() {
@@ -77,6 +78,8 @@ func main() {
 
 	// enable replication between mist nodes
 	replicate := handlers.EnableReplication(mist, discover)
+	fmt.Println(fmt.Sprintf("Starting Mist monitor... \nTCP address: %s\nHTTP address: %s", config.Config["tcp_listen_address"],
+		config.Config["http_listen_address"]))
 	go replicate.Monitor()
 
 	// start up the authenticated websocket connection
