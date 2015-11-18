@@ -16,11 +16,8 @@ import (
 	"github.com/nanopack/mist/handlers"
 	"os"
 	"time"
-<<<<<<< HEAD
 	"flag"
-=======
 	"fmt"
->>>>>>> upstream/master
 )
 
 func main() {
