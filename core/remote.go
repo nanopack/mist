@@ -176,6 +176,17 @@ func (client *remoteSubscriber) Publish(tags []string, data string) error {
 	return client.async("publish %v %v\n", strings.Join(tags, ","), data)
 }
 
+// PublishDelay sends a message to the mist server to be published to all subscribed clients
+// with delay
+func (client *remoteSubscriber) PublishDelay(tags []string, data string, delay time.Duration) error {
+	go func() {
+		time.Sleep(delay)
+	    client.Publish(tags, data)
+	}()
+	return nil
+}
+
+
 // Ping pong the server
 func (client *remoteSubscriber) Ping() error {
 	remoteReply := client.sync("ping\n")
