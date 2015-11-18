@@ -10,6 +10,7 @@ package mist
 import (
 	"sort"
 	"sync/atomic"
+	"time"
 )
 
 type (
@@ -20,6 +21,7 @@ type (
 		Subscribe(tags []string) error
 		Unsubscribe(tags []string) error
 		Publish(tags []string, data string) error
+		PublishDelay(tags []string, data string, delay time.Duration) error
 		Ping() error
 		Messages() <-chan Message
 		Close() error
