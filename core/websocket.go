@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"net/http"
+	"time"
 )
 
 var (
@@ -286,6 +287,10 @@ func (client *websocketClient) Unsubscribe(tags []string) error {
 }
 
 func (client *websocketClient) Publish(tags []string, data string) error {
+	return NotSupported
+}
+
+func (client *websocketClient) PublishDelay(tags []string, data string, delay time.Duration) error {
 	return NotSupported
 }
 

@@ -133,6 +133,9 @@ func (client *remoteSubscriber) loop(address string) {
 // List requests a list of current mist subscriptions from the server
 func (client *remoteSubscriber) List() ([][]string, error) {
 	remoteReply := client.sync("list\n")
+	if remoteReply.value == nil {
+		return nil, remoteReply.err
+	}
 	return remoteReply.value.([][]string), remoteReply.err
 }
 
@@ -174,6 +177,16 @@ func (client *remoteSubscriber) Publish(tags []string, data string) error {
 		return nil
 	}
 	return client.async("publish %v %v\n", strings.Join(tags, ","), data)
+}
+
+// PublishDelay sends a message to the mist server to be published to all subscribed clients
+// with delay
+func (client *remoteSubscriber) PublishDelay(tags []string, data string, delay time.Duration) error {
+	go func() {
+		time.Sleep(delay)
+		client.Publish(tags, data)
+	}()
+	return nil
 }
 
 // Ping pong the server

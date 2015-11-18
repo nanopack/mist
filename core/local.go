@@ -12,6 +12,7 @@ import (
 	"github.com/nanopack/mist/subscription"
 	"sort"
 	"sync"
+	"time"
 )
 
 type (
@@ -179,6 +180,18 @@ func (client *localSubscriber) Publish(tags []string, data string) error {
 	default:
 		client.mist.Publish(tags, data)
 	}
+	return nil
+}
+
+// Sends a message with delay
+func (client *localSubscriber) PublishDelay(tags []string, data string, delay time.Duration) error {
+	if client.internal {
+		return InternalErr
+	}
+	go func() {
+		time.Sleep(delay)
+		client.Publish(tags, data)
+	}()
 	return nil
 }
 
