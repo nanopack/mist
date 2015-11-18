@@ -124,6 +124,12 @@ func TestMistApi(test *testing.T) {
 	assert(test, ok, "got a nil message")
 	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
 
+	client.PublishDelay([]string{"tag"}, "message_delay", 10*time.Millisecond)
+	msg, ok = <-client.Messages()
+
+	assert(test, ok, "got a nil message")
+	assert(test, msg.Data == "message_delay", "got the wrong message %v", msg.Data)
+
 }
 
 func TestMistWebsocket(test *testing.T) {
