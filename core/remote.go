@@ -51,83 +51,89 @@ func NewRemoteClient(address string) (Client, error) {
 		open:          true,
 		conn:          nothing{},
 	}
-	go client.loop(address)
-	return client, nil
+	return client, client.loop(address)
 }
 
-func (client *remoteSubscriber) loop(address string) {
+func (client *remoteSubscriber) loop(address string) error {
 	// every time we disconnect, we want to reconnect
-	for client.open {
-		conn, err := net.Dial("tcp", address)
-		client.conn = conn
-		if err != nil || !client.open {
-			<-time.After(time.Second)
-			continue
-		}
-		// reenable replication
-		if client.replicated {
-			client.async("enable-replication\n")
-		}
+	conn, err := net.Dial("tcp", address)
+	client.conn = conn
 
-		// send all saved subscriptions across the channel
-		client.Lock()
-		for _, subscription := range client.subscriptions.ToSlice() {
-			client.async("subscribe %v\n", strings.Join(subscription, ","))
-		}
-		client.Unlock()
+	// background the loop so we can return any inital connection errors
+	go func() {
+		for client.open {
+			conn, err := net.Dial("tcp", address)
+			client.conn = conn
+			if err != nil || !client.open {
+				<-time.After(time.Second)
+				continue
+			}
+			// reenable replication
+			if client.replicated {
+				client.async("enable-replication\n")
+			}
 
-		reader := newMistReader(conn)
+			// send all saved subscriptions across the channel
+			client.Lock()
+			for _, subscription := range client.subscriptions.ToSlice() {
+				client.async("subscribe %v\n", strings.Join(subscription, ","))
+			}
+			client.Unlock()
 
-		for reader.Next() {
-			cmd := reader.Command()
-			switch cmd[0] {
-			case "publish":
-				msg := Message{
-					Tags: strings.Split(cmd[1], ","),
-					Data: cmd[2],
-				}
-				select {
-				case client.data <- msg:
-				case <-client.done:
-				}
-			case "pong":
-				client.Lock()
-				wait := client.waiting[0]
-				client.waiting = client.waiting[1:]
-				client.Unlock()
+			reader := newMistReader(conn)
 
-				wait <- remoteReply{"pong", nil}
-			case "list":
-				client.Lock()
-				wait := client.waiting[0]
-				client.waiting = client.waiting[1:]
-				client.Unlock()
-				list := [][]string{strings.Split(cmd[1], ",")}
-				if len(cmd) == 3 {
-					cmd := strings.Split(cmd[2], " ")
-					for _, subscription := range cmd {
-						list = append(list, strings.Split(subscription, ","))
+			for reader.Next() {
+				cmd := reader.Command()
+				switch cmd[0] {
+				case "publish":
+					msg := Message{
+						Tags: strings.Split(cmd[1], ","),
+						Data: cmd[2],
 					}
+					select {
+					case client.data <- msg:
+					case <-client.done:
+					}
+				case "pong":
+					client.Lock()
+					wait := client.waiting[0]
+					client.waiting = client.waiting[1:]
+					client.Unlock()
+
+					wait <- remoteReply{"pong", nil}
+				case "list":
+					client.Lock()
+					wait := client.waiting[0]
+					client.waiting = client.waiting[1:]
+					client.Unlock()
+					list := [][]string{strings.Split(cmd[1], ",")}
+					if len(cmd) == 3 {
+						cmd := strings.Split(cmd[2], " ")
+						for _, subscription := range cmd {
+							list = append(list, strings.Split(subscription, ","))
+						}
+					}
+					wait <- remoteReply{list, nil}
+				case "error":
+					// close the connection as something is seriously wrong,
+					// it will reconnect and and continue on
+					conn.Close()
+
+					waiting := make([]chan remoteReply, 0)
+
+					client.Lock()
+					waiting, client.waiting = client.waiting, waiting
+					client.Unlock()
+
+					for _, wait := range waiting {
+						wait <- remoteReply{"", fmt.Errorf("%v", cmd[0])}
+					}
+
 				}
-				wait <- remoteReply{list, nil}
-			case "error":
-				// close the connection as something is seriously wrong,
-				// it will reconnect and and continue on
-				conn.Close()
-
-				waiting := make([]chan remoteReply, 0)
-
-				client.Lock()
-				waiting, client.waiting = client.waiting, waiting
-				client.Unlock()
-
-				for _, wait := range waiting {
-					wait <- remoteReply{"", fmt.Errorf("%v", cmd[0])}
-				}
-
 			}
 		}
-	}
+	}()
+	return err
 }
 
 // List requests a list of current mist subscriptions from the server
