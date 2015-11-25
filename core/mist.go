@@ -33,6 +33,7 @@ type (
 		replicators map[uint32]*localSubscriber
 		internal    map[uint32]*localSubscriber
 		next        uint32
+		size_limit  uint32
 	}
 
 	// A Message contains the tags used when subscribing, and the data that is being
@@ -51,6 +52,7 @@ func New() *Mist {
 		subscribers: make(map[uint32]*localSubscriber),
 		replicators: make(map[uint32]*localSubscriber),
 		internal:    make(map[uint32]*localSubscriber),
+		size_limit:  0,
 	}
 }
 
@@ -60,6 +62,10 @@ func (mist *Mist) Publish(tags []string, data string) error {
 
 	// is this an error? or just something we need to ignore
 	if len(tags) == 0 {
+		return nil
+	}
+
+	if mist.size_limit != 0 && uint32(len(data)) > mist.size_limit {
 		return nil
 	}
 
