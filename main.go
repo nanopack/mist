@@ -15,16 +15,15 @@ import (
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/handlers"
 	"os"
-	"strings"
 	"time"
+	"flag"
 	"fmt"
 )
 
 func main() {
-	configFile := ""
-	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") {
-		configFile = os.Args[1]
-	}
+	var configFile string
+	flag.StringVar(&configFile, "config", "", "Path to config file")
+	flag.Parse()
 
 	defaults := map[string]string{
 		"tcp_listen_address":  "127.0.0.1:1445",
