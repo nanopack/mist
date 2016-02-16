@@ -1,17 +1,12 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
 package handlers
 
 import (
+	"io"
+	"time"
+
 	"github.com/nanobox-io/golang-discovery"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/subscription"
-	"io"
-	"time"
 )
 
 type (
@@ -28,6 +23,7 @@ type (
 	}
 )
 
+//
 func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicate {
 
 	replicate := &replicate{
@@ -42,6 +38,7 @@ func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicat
 	return replicate
 }
 
+//
 func (rep *replicate) Monitor() {
 	// we want to catch all subscription/unsubscription changes.
 	// this should at least give a good safety zone.
@@ -96,6 +93,7 @@ func (rep *replicate) Monitor() {
 	}
 }
 
+//
 func (rep replicate) forwardAll(fun string, subscription []string) {
 	perform := getFunc(fun)
 	for _, client := range rep.clients {
@@ -105,6 +103,7 @@ func (rep replicate) forwardAll(fun string, subscription []string) {
 	}
 }
 
+//
 func forward(client mist.Client, fun string, subscription []string) {
 	perform := getFunc(fun)
 	if err := perform(client, subscription); err != nil {
@@ -112,6 +111,7 @@ func forward(client mist.Client, fun string, subscription []string) {
 	}
 }
 
+//
 func getFunc(fun string) func(mist.Client, []string) error {
 	if fun == "subscribe" {
 		return mist.Client.Subscribe
@@ -119,6 +119,7 @@ func getFunc(fun string) func(mist.Client, []string) error {
 	return mist.Client.Unsubscribe
 }
 
+//
 func (rep *replicate) New(address string) io.Closer {
 	client, err := mist.NewRemoteClient(address)
 	if err != nil {

@@ -1,10 +1,4 @@
-// Copyright (c) 2015 Pagoda Box Inc
 //
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
-
 package mist
 
 import (
@@ -74,6 +68,7 @@ func (mist *Mist) Publish(tags []string, data string) error {
 	return nil
 }
 
+// 
 func (mist *Mist) Replicate(tags []string, data string) error {
 
 	// is this an error? or just something we need to ignore
@@ -107,9 +102,12 @@ func (mist *Mist) publish(tags []string, data string) error {
 	return nil
 }
 
+// forward
 func forward(msg Message, subscribers map[uint32]*localSubscriber) {
+
 	// we do this here so that the tags come pre sorted for the clients
 	sort.Sort(sort.StringSlice(msg.Tags))
+
 	// this should be more optimized, but it might not be an issue unless thousands of clients
 	// are using mist.
 	for _, localReplicator := range subscribers {

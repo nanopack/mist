@@ -1,16 +1,12 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
 //
 package handlers
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/nanobox-io/nanobox-api"
 	"github.com/nanopack/mist/core"
-	"net/http"
 )
 
 type (
@@ -23,11 +19,13 @@ type (
 	}
 )
 
+//
 func LoadWebsocketRoute(authenticator Auth) {
 	upgrade := authenticate(authenticator)
 	api.Router.Get("/subscribe/websocket", api.TraceRequest(upgrade))
 }
 
+//
 func authenticate(authenticator Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// if they have no tags registered for the token, then they are
@@ -49,6 +47,7 @@ func authenticate(authenticator Auth) http.HandlerFunc {
 	}
 }
 
+//
 func buildWebsocketSubscribe(token string, authenticator Auth) mist.WebsocketHandler {
 	return func(frame []byte, write chan<- string, client mist.Client) error {
 		authTags, err := authenticator.TagsForToken(token)
@@ -72,6 +71,7 @@ func buildWebsocketSubscribe(token string, authenticator Auth) mist.WebsocketHan
 
 }
 
+//
 func haveSameTags(a, b []string) bool {
 	for _, vala := range a {
 		for _, valb := range b {

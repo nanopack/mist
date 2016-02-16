@@ -1,14 +1,9 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
 package handlers
 
 import (
-	"github.com/nanopack/mist/core"
 	"strings"
+
+	"github.com/nanopack/mist/core"
 )
 
 type (
@@ -23,6 +18,7 @@ type (
 	handleFun func(mist.Client, []string) string
 )
 
+//
 func GenerateAdditionalCommands(auth Authenticator) map[string]mist.Handler {
 	return map[string]mist.Handler{
 		"register":   {2, handleRegister(auth)},
@@ -33,6 +29,7 @@ func GenerateAdditionalCommands(auth Authenticator) map[string]mist.Handler {
 	}
 }
 
+//
 func handleRegister(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
 		token := args[1]
@@ -49,6 +46,7 @@ func handleRegister(auth Authenticator) handleFun {
 	}
 }
 
+//
 func handleUnregister(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
 		err := auth.RemoveToken(args[0])
@@ -59,6 +57,7 @@ func handleUnregister(auth Authenticator) handleFun {
 	}
 }
 
+//
 func handleSet(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
 		tags := strings.Split(args[0], ",")
@@ -70,6 +69,7 @@ func handleSet(auth Authenticator) handleFun {
 	}
 }
 
+//
 func handleUnset(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
 		tags := strings.Split(args[0], ",")
@@ -81,6 +81,7 @@ func handleUnset(auth Authenticator) handleFun {
 	}
 }
 
+//
 func handleGetTags(auth Authenticator) handleFun {
 	return func(client mist.Client, args []string) string {
 		tags, err := auth.TagsForToken(args[0])

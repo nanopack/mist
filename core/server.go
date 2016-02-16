@@ -1,10 +1,3 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
-
 package mist
 
 import (
@@ -82,17 +75,21 @@ func handlePublish(client Client, args []string) string {
 	return ""
 }
 
+//
 func handleEnableReplication(client Client, args []string) string {
 	client.(EnableReplication).EnableReplication()
 	return ""
 }
 
-// start starts a tcp server listening on the specified address (default 127.0.0.1:1445),
+// Listen starts a tcp server listening on the specified address (default 127.0.0.1:1445),
 // it then continually reads from the server handling any incoming connections
 func (m *Mist) Listen(address string, additinal map[string]Handler) (net.Listener, error) {
+
 	if address == "" {
 		address = "127.0.0.1:1445"
 	}
+
+	//
 	serverSocket, err := net.Listen("tcp", address)
 	if err != nil {
 		return nil, err
@@ -109,8 +106,10 @@ func (m *Mist) Listen(address string, additinal map[string]Handler) (net.Listene
 		commands[key] = value
 	}
 
+	//
 	go func() {
 		defer serverSocket.Close()
+
 		// Continually listen for any incoming connections.
 		for {
 			conn, err := serverSocket.Accept()
@@ -123,6 +122,7 @@ func (m *Mist) Listen(address string, additinal map[string]Handler) (net.Listene
 			go m.handleConnection(conn, commands)
 		}
 	}()
+
 	return serverSocket, nil
 }
 
@@ -195,6 +195,7 @@ func (m *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
 	reader.Error()
 }
 
+//
 func newMistReader(conn net.Conn) *mistReader {
 	reader := &mistReader{
 		reader: bufio.NewReader(conn),
@@ -203,6 +204,7 @@ func newMistReader(conn net.Conn) *mistReader {
 	return reader
 }
 
+//
 func (r *mistReader) Next() bool {
 	line, err := r.reader.ReadString('\n')
 	if err != nil {
@@ -215,10 +217,12 @@ func (r *mistReader) Next() bool {
 	return true
 }
 
+//
 func (r *mistReader) Command() []string {
 	return r.cmd
 }
 
+//
 func (r *mistReader) Error() error {
 	return r.err
 }

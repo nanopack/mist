@@ -1,18 +1,13 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
 package handlers_test
 
 import (
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/handlers"
 	"github.com/nanopack/mist/handlers/mock"
-	"testing"
-	"time"
 )
 
 func TestReplication(test *testing.T) {
