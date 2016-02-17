@@ -61,6 +61,7 @@ type (
 	}
 )
 
+//
 func handleWebsocketList(frame []byte, write chan<- string, client Client) error {
 	list := list{}
 	var err error
@@ -78,6 +79,7 @@ func handleWebsocketList(frame []byte, write chan<- string, client Client) error
 	return nil
 }
 
+//
 func handleWebsocketSubscribe(frame []byte, write chan<- string, client Client) error {
 	tags := tagList{}
 	// error would already be caught by unmarshalling the command
@@ -87,6 +89,7 @@ func handleWebsocketSubscribe(frame []byte, write chan<- string, client Client) 
 	return nil
 }
 
+//
 func handleWebsocketUnubscribe(frame []byte, write chan<- string, client Client) error {
 	tags := tagList{}
 	// error would already be caught by unmarshalling the command
@@ -96,6 +99,7 @@ func handleWebsocketUnubscribe(frame []byte, write chan<- string, client Client)
 	return nil
 }
 
+//
 func handleWebsocketPing(frame []byte, write chan<- string, client Client) error {
 	write <- "{\"success\":true,\"command\":\"ping\"}"
 	return nil
@@ -121,7 +125,10 @@ func GenerateWebsocketUpgrade(mist *Mist, additinal map[string]WebsocketHandler)
 		}
 
 		// we don't want this to be buffered
-		client := NewLocalClient(mist, 0)
+		client, err := NewLocalClient(mist, 0)
+		if err != nil {
+			fmt.Println("BIONK!")
+		}
 
 		write := make(chan string)
 		done := make(chan bool)
@@ -177,6 +184,7 @@ func GenerateWebsocketUpgrade(mist *Mist, additinal map[string]WebsocketHandler)
 	}
 }
 
+//
 func NewWebsocketClient(address string, header http.Header) (Client, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(address, header)
 	if err != nil {
@@ -240,6 +248,7 @@ func NewWebsocketClient(address string, header http.Header) (Client, error) {
 	return client, nil
 }
 
+//
 func (client *websocketClient) List() ([][]string, error) {
 	listReq := command{
 		Command: "list",
@@ -254,6 +263,7 @@ func (client *websocketClient) List() ([][]string, error) {
 	return list.Subscriptions, nil
 }
 
+//
 func (client *websocketClient) Subscribe(tags []string) error {
 	unsubscribe := subscribe{
 		Command: "subscribe",
@@ -267,6 +277,7 @@ func (client *websocketClient) Subscribe(tags []string) error {
 	return isError(<-client.subscribe)
 }
 
+//
 func (client *websocketClient) Unsubscribe(tags []string) error {
 	unsubscribe := subscribe{
 		Command: "unsubscribe",
@@ -280,14 +291,17 @@ func (client *websocketClient) Unsubscribe(tags []string) error {
 	return isError(<-client.unsubscribe)
 }
 
+//
 func (client *websocketClient) Publish(tags []string, data string) error {
 	return NotSupported
 }
 
-func (client *websocketClient) PublishDelay(tags []string, data string, delay time.Duration) error {
+//
+func (client *websocketClient) PublishAfter(tags []string, data string, delay time.Duration) error {
 	return NotSupported
 }
 
+//
 func (client *websocketClient) Ping() error {
 	ping := command{
 		Command: "ping",
@@ -300,14 +314,17 @@ func (client *websocketClient) Ping() error {
 	return isError(<-client.ping)
 }
 
-func (client *websocketClient) Messages() <-chan Message {
-	return client.messages
-}
-
+//
 func (client *websocketClient) Close() error {
 	return client.conn.Close()
 }
 
+//
+func (client *websocketClient) Messages() <-chan Message {
+	return client.messages
+}
+
+//
 func isError(reply reply) error {
 	if !reply.Success {
 		return errors.New(reply.Error)

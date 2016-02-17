@@ -11,7 +11,7 @@ import (
 func Start() error {
 
 	// blocking...
-	return http.ListenAndServe(viper.GetString("TCPAddr"), routes())
+	return http.ListenAndServe(viper.GetString("HTTPAddr"), routes())
 }
 
 // routes registers all api routes with the router
@@ -27,6 +27,7 @@ func routes() *pat.Router {
 	})
 
 	// blobs
+	// router.Get("/list", handleRequest(list))
 	// router.Get("/subscribe", handleRequest(subscribe))
 	// router.Get("/unsubscribe", handleRequest(unsubscribe))
 

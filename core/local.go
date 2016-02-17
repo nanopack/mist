@@ -1,11 +1,13 @@
 package mist
 
 import (
+	"fmt"
 	"errors"
-	"github.com/nanopack/mist/subscription"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/nanopack/mist/subscription"
 )
 
 type (
@@ -24,7 +26,7 @@ type (
 		EnableInternal()
 	}
 
-	localSubscriber struct {
+	localClient struct {
 		sync.Mutex
 
 		check chan Message
@@ -44,32 +46,47 @@ var (
 )
 
 //
-func NewLocalClient(mist *Mist, buffer int) Client {
-	client := &localSubscriber{
-		check:         make(chan Message, buffer),
+func NewLocalClient(mist *Mist, buffer int) (Client, error) {
+	client := &localClient{
+		subscriptions: subscription.NewNode(),
 		done:          make(chan bool),
+		check:         make(chan Message, buffer),
 		pipe:          make(chan Message),
 		mist:          mist,
 		id:            mist.nextId(),
-		subscriptions: subscription.NewNode(),
 		internal:      false,
 	}
 
+	return client, client.connect()
+}
+
+// connect
+func (client *localClient) connect() error {
+
 	// this gofunc handles matching messages to subscriptions for the client
-	go func(client *localSubscriber) {
+	go func() {
 
 		defer func() {
 			close(client.check)
 			close(client.pipe)
 		}()
 
+		//
 		for {
 			select {
+
+			//
 			case msg := <-client.check:
 
+				fmt.Println("MSG!", msg)
+
 				switch {
+
+				//
 				case msg.internal && client.internal:
 					client.pipe <- msg
+
+				//
 				default:
 					client.Lock()
 					match := client.subscriptions.Match(msg.Tags)
@@ -79,19 +96,22 @@ func NewLocalClient(mist *Mist, buffer int) Client {
 						client.pipe <- msg
 					}
 				}
+
+			//
 			case <-client.done:
 				return
 			}
 		}
-	}(client)
+	}()
 
 	// add the local client to mists list of subscribers
-	mist.subscribers[client.id] = client
+	client.mist.subscribers[client.id] = client
 
-	return client
+	return nil
 }
 
-func (client *localSubscriber) EnableInternal() {
+//
+func (client *localClient) EnableInternal() {
 	// we don't want any already replicated messages to come across on this client
 	// this will stop that
 	delete(client.mist.subscribers, client.id)
@@ -99,7 +119,8 @@ func (client *localSubscriber) EnableInternal() {
 	client.mist.internal[client.id] = client
 }
 
-func (client *localSubscriber) EnableReplication() error {
+//
+func (client *localClient) EnableReplication() error {
 	// we need to flag that this client doesn't use publish any more.
 	client.replicated = true
 
@@ -109,19 +130,27 @@ func (client *localSubscriber) EnableReplication() error {
 	return nil
 }
 
-//
-func (client *localSubscriber) List() ([][]string, error) {
+// List
+func (client *localClient) List() ([][]string, error) {
+
+	//
 	if client.internal {
 		return nil, InternalErr
 	}
+
+	//
 	return client.subscriptions.ToSlice(), nil
 }
 
-//
-func (client *localSubscriber) Subscribe(tags []string) error {
+// Subscribe
+func (client *localClient) Subscribe(tags []string) error {
+
+	//
 	if client.internal {
 		return InternalErr
 	}
+
+	//
 	if len(tags) == 0 {
 		return nil
 	}
@@ -133,22 +162,25 @@ func (client *localSubscriber) Subscribe(tags []string) error {
 	// if this client is replicated, we don't need to inform other replicated
 	// clients of this subscription
 	if !client.replicated {
-		// notify anyone who is interested about the new subscription
 		client.mist.publish(tags, "subscribe")
 	}
 
 	return nil
 }
 
-// Unsubscribe iterates through each of mist clients subscriptions keeping all subscriptions
-// that aren't the specified subscription
-func (client *localSubscriber) Unsubscribe(tags []string) error {
+// Unsubscribe
+func (client *localClient) Unsubscribe(tags []string) error {
+
+	//
 	if client.internal {
 		return InternalErr
 	}
+
+	//
 	if len(tags) == 0 {
 		return nil
 	}
+
 	sort.Sort(sort.StringSlice(tags))
 	client.Lock()
 	client.subscriptions.Remove(tags)
@@ -159,48 +191,55 @@ func (client *localSubscriber) Unsubscribe(tags []string) error {
 	if !client.replicated {
 		client.mist.publish(tags, "unsubscribe")
 	}
+
 	return nil
 }
 
-// Sends a message across mist
-func (client *localSubscriber) Publish(tags []string, data string) error {
+// Publish
+func (client *localClient) Publish(tags []string, data string) error {
+
+	//
 	if client.internal {
 		return InternalErr
 	}
+
+	//
 	switch client.replicated {
 	case true:
 		client.mist.Replicate(tags, data)
 	default:
 		client.mist.Publish(tags, data)
 	}
+
 	return nil
 }
 
 // Sends a message with delay
-func (client *localSubscriber) PublishDelay(tags []string, data string, delay time.Duration) error {
+func (client *localClient) PublishAfter(tags []string, data string, delay time.Duration) error {
+
+	//
 	if client.internal {
 		return InternalErr
 	}
+
+	//
 	go func() {
-		time.Sleep(delay)
+		time.After(delay)
 		client.Publish(tags, data)
 	}()
+
+	//
 	return nil
 }
 
 //
-func (client *localSubscriber) Ping() error {
+func (client *localClient) Ping() error {
 	return nil
 }
 
-// Returns all messages that have sucessfully matched the list of subscriptions that this
-// client has subscribed to
-func (client *localSubscriber) Messages() <-chan Message {
-	return client.pipe
-}
-
 //
-func (client *localSubscriber) Close() error {
+func (client *localClient) Close() error {
+
 	// this closes the goroutine that is matching messages to subscriptions
 	close(client.done)
 
@@ -215,4 +254,10 @@ func (client *localSubscriber) Close() error {
 	}
 
 	return nil
+}
+
+// Returns all messages that have sucessfully matched the list of subscriptions that this
+// client has subscribed to
+func (client *localClient) Messages() <-chan Message {
+	return client.pipe
 }

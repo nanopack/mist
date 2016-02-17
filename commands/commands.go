@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	// "github.com/nanopack/mist/api"
+	"github.com/nanopack/mist/api"
 	"github.com/nanopack/mist/authenticate"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/handlers"
@@ -60,7 +60,6 @@ var (
 			// if --server is passed start the mist server; Assuming an http server for
 			// the time being. At some point this may be configurable
 			if server != false {
-				log.Info("Starting mist server at '%s'...\n", viper.GetString("TCPAddr"))
 
 				//
 				mist := mist.New()
@@ -95,7 +94,10 @@ var (
 				authenticator := authenticate.NewNoopAuthenticator()
 				handlers.LoadWebsocketRoute(authenticator)
 
-				// start a mist server... (Blocking)
+				// start a mist server listening over TCP; this is a non-blocking server
+				// because we also want to start a web server and will leave the blocking
+				// up to it.
+				log.Info("Starting mist server (TCP) at '%s'...\n", viper.GetString("TCPAddr"))
 				server, err := mist.Listen(viper.GetString("TCPAddr"), handlers.GenerateAdditionalCommands(pgAuth))
 				if err != nil {
 					log.Fatal("Unable to start mist tcp listener %v", err)
@@ -103,11 +105,12 @@ var (
 				}
 				defer server.Close()
 
-				// start the API
-				// if err := api.Start(); err != nil {
-				// 	log.Fatal("Failed to start - %s", err.Error())
-				// 	os.Exit(1)
-				// }
+				// start a mist server listening over HTTP... (blocking)
+				log.Info("Starting mist server (HTTP) at '%s'...\n", viper.GetString("HTTPAddr"))
+				if err := api.Start(); err != nil {
+					log.Fatal("Failed to start - %s", err.Error())
+					os.Exit(1)
+				}
 			}
 
 			// fall back on default help if no args/flags are passed
@@ -151,10 +154,12 @@ func init() {
 	viper.BindPFlag("db-addr", MistCmd.Flags().Lookup("db-addr"))
 
 	// commands
-	MistCmd.AddCommand(sendCmd)
+	MistCmd.AddCommand(listCmd)
+	MistCmd.AddCommand(publishCmd)
 	MistCmd.AddCommand(subscribeCmd)
 	MistCmd.AddCommand(unsubscribeCmd)
 
 	// hidden/aliased commands
 	MistCmd.AddCommand(messageCmd)
+	MistCmd.AddCommand(sendCmd)
 }

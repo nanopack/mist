@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"io"
 	"time"
 
@@ -42,7 +43,10 @@ func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicat
 func (rep *replicate) Monitor() {
 	// we want to catch all subscription/unsubscription changes.
 	// this should at least give a good safety zone.
-	client := mist.NewLocalClient(rep.mist, 100)
+	client, err := mist.NewLocalClient(rep.mist, 100)
+	if err != nil {
+		fmt.Println("BINKL!")
+	}
 	defer client.Close()
 
 	// set the client to be in internal mode
