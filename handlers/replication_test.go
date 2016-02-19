@@ -51,8 +51,8 @@ func TestReplication(test *testing.T) {
 	defer repc1.Close()
 
 	// now we test the clients out.
-	client1 := mist.NewLocalClient(mist1, 0)
-	client2 := mist.NewLocalClient(mist2, 0)
+	client1, _ := mist.NewLocalClient(mist1, 0)
+	client2, _ := mist.NewLocalClient(mist2, 0)
 
 	// subscribe and wait, because it could take a little bit of time
 	// for everything to propagate correctly

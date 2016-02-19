@@ -9,7 +9,7 @@ import (
 
 func TestMistCore(test *testing.T) {
 	mist := New()
-	client := NewLocalClient(mist, 0)
+	client, _ := NewLocalClient(mist, 0)
 	defer client.Close()
 
 	client.Subscribe([]string{"tag0"})
@@ -32,9 +32,9 @@ func TestMistCore(test *testing.T) {
 
 func TestMistReplication(test *testing.T) {
 	mist := New()
-	replication := NewLocalClient(mist, 0)
-	client := NewLocalClient(mist, 0)
-	replication1 := NewLocalClient(mist, 0)
+	replication, _ := NewLocalClient(mist, 0)
+	client, _ := NewLocalClient(mist, 0)
+	replication1, _ := NewLocalClient(mist, 0)
 
 	defer replication.Close()
 	defer client.Close()
@@ -76,8 +76,9 @@ func TestMistReplication(test *testing.T) {
 
 func BenchmarkMistCore(b *testing.B) {
 	mist := New()
-	client := NewLocalClient(mist, 0)
+	client, _ := NewLocalClient(mist, 0)
 	defer client.Close()
+
 	client.Subscribe([]string{"tag0"})
 
 	b.ResetTimer()
@@ -117,7 +118,7 @@ func TestMistApi(test *testing.T) {
 	assert(test, ok, "got a nil message")
 	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
 
-	client.PublishDelay([]string{"tag"}, "message_delay", 10*time.Millisecond)
+	client.PublishAfter([]string{"tag"}, "message_delay", 10*time.Millisecond)
 	msg, ok = <-client.Messages()
 
 	assert(test, ok, "got a nil message")
