@@ -18,12 +18,14 @@ type (
 	}
 )
 
+//
 func NewNode() *Node {
 	child := newNode()
 	child.leafs = map[uint64]*Node{}
 	return child
 }
 
+//
 func newNode() *Node {
 	return &Node{
 		id:       0,
@@ -32,10 +34,12 @@ func newNode() *Node {
 	}
 }
 
+//
 func (root *Node) Len() int {
 	return len(root.leafs)
 }
 
+//
 func (root *Node) Add(keys []string) {
 	if len(keys) == 0 {
 		return
@@ -49,6 +53,7 @@ func (root *Node) Add(keys []string) {
 	}
 }
 
+//
 func (root *Node) Remove(keys []string) {
 	if len(keys) == 0 {
 		return
@@ -62,11 +67,13 @@ func (root *Node) Remove(keys []string) {
 	}
 }
 
+//
 func (root *Node) Match(keys []string) bool {
 	last, count := root.traverse(keys, nothing)
 	return last != nil && count != -1
 }
 
+//
 func (root *Node) ToSlice() [][]string {
 	paths := make([][]string, len(root.leafs))
 	for idx, leaf := range root.leafs {
@@ -79,11 +86,13 @@ func (root *Node) ToSlice() [][]string {
 	return paths
 }
 
+//
 func (root *Node) Find(keys []string) *Node {
 	child, _ := root.traverse(keys, nothing)
 	return child
 }
 
+//
 func (root *Node) traverse(keys []string, action int) (*Node, int) {
 	if len(keys) == 0 {
 		if root.count == 0 {

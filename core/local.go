@@ -2,30 +2,15 @@ package mist
 
 import (
 	"fmt"
-	"errors"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/nanopack/mist/subscription"
 )
 
 type (
-	Subscriptions interface {
-		Add([]string)
-		Remove([]string)
-		Match([]string) bool
-		ToSlice() [][]string
-	}
-
-	EnableReplication interface {
-		EnableReplication() error
-	}
-
-	EnableInternal interface {
-		EnableInternal()
-	}
-
 	localClient struct {
 		sync.Mutex
 
@@ -41,19 +26,17 @@ type (
 	}
 )
 
-var (
-	InternalErr = errors.New("Unable to perform action, internal mode enabled")
-)
-
 //
 func NewLocalClient(mist *Mist, buffer int) (Client, error) {
+
+	// 
 	client := &localClient{
 		subscriptions: subscription.NewNode(),
 		done:          make(chan bool),
 		check:         make(chan Message, buffer),
 		pipe:          make(chan Message),
 		mist:          mist,
-		id:            mist.nextId(),
+		id:            atomic.AddUint32(&mist.next, 1),
 		internal:      false,
 	}
 
@@ -154,7 +137,10 @@ func (client *localClient) Subscribe(tags []string) error {
 	if len(tags) == 0 {
 		return nil
 	}
+
 	sort.Sort(sort.StringSlice(tags))
+
+	//
 	client.Lock()
 	client.subscriptions.Add(tags)
 	client.Unlock()
@@ -182,6 +168,8 @@ func (client *localClient) Unsubscribe(tags []string) error {
 	}
 
 	sort.Sort(sort.StringSlice(tags))
+
+	//
 	client.Lock()
 	client.subscriptions.Remove(tags)
 	client.Unlock()
@@ -256,8 +244,8 @@ func (client *localClient) Close() error {
 	return nil
 }
 
-// Returns all messages that have sucessfully matched the list of subscriptions that this
-// client has subscribed to
+// Returns all messages that have sucessfully matched the list of subscriptions
+// that this client has subscribed to
 func (client *localClient) Messages() <-chan Message {
 	return client.pipe
 }

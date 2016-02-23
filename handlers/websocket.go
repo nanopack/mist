@@ -28,17 +28,15 @@ func LoadWebsocketRoute(authenticator Auth) {
 //
 func authenticate(authenticator Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// if they have no tags registered for the token, then they are
-		// not authorized to connect to mist
+		// if they have no tags registered for the token, then they are not authorized
+		// to connect to mist
 		token := r.Header.Get("x-auth-token")
-		tags, err := authenticator.TagsForToken(token)
-		if err != nil || len(tags) == 0 {
+		if tags, err := authenticator.TagsForToken(token); err != nil || len(tags) == 0 {
 			w.WriteHeader(401)
 			return
 		}
 
-		// we overwrite the subscribe command so that we can add
-		// authentication to it.
+		// we overwrite the subscribe command so that we can add authentication to it.
 		additionalCommands := map[string]mist.WebsocketHandler{
 			"subscribe": buildWebsocketSubscribe(token, authenticator),
 		}

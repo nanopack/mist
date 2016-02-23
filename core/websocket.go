@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	NotSupported = errors.New("Command is not supported over websockets")
 
 	// we use a map to avoid a nasty switch/case statement
 	commandWebsocketMap = map[string]WebsocketHandler{

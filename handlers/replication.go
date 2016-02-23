@@ -49,9 +49,9 @@ func (rep *replicate) Monitor() {
 	}
 	defer client.Close()
 
-	// set the client to be in internal mode
-	// now only internal message will be received
-	client.(mist.EnableInternal).EnableInternal()
+	// set the client to be in internal mode now only internal message will be
+	// received
+	client.(mist.Internalizable).EnableInternal()
 
 	for {
 		select {
@@ -130,7 +130,7 @@ func (rep *replicate) New(address string) io.Closer {
 		return nil
 	}
 
-	client.(mist.EnableReplication).EnableReplication()
+	client.(mist.Replicatable).EnableReplication()
 
 	// add this client to the list of all clients
 	rep.newClient <- client

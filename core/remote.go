@@ -2,7 +2,7 @@ package mist
 
 import (
 	"fmt"
-	"io"
+	// "io"
 	"net"
 	"strings"
 	"sync"
@@ -19,20 +19,23 @@ type (
 	remoteClient struct {
 		sync.Mutex
 
+		address       string
 		subscriptions Subscriptions      // local copy of subscriptions
-		conn          io.ReadWriteCloser // the connection the mist server
+		conn          net.Conn           // the connection the mist server
 		done          chan error         // the channel to indicate that the connection is closed
 		waiting       []chan remoteReply // all client waiting for a response
 		data          chan Message       // the channel that mist server 'publishes' updates to
 		open          bool               // flag that indicates that the conenction should reestablish
-		replicated    bool               // is replication enabled on this connection
+		attempts      int
+		replicated    bool // is replication enabled on this connection
 	}
 
 	remoteReply struct {
 		value interface{}
 		err   error
 	}
-	nothing struct{}
+
+	// nothing struct{}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
@@ -43,8 +46,9 @@ func NewRemoteClient(address string) (Client, error) {
 		done:          make(chan error),
 		waiting:       make([]chan remoteReply, 0),
 		data:          make(chan Message),
-		open:          true,
-		conn:          nothing{},
+		open:          false,
+		attempts:      0,
+		address:       address,
 	}
 
 	return client, client.connect(address)
@@ -53,101 +57,137 @@ func NewRemoteClient(address string) (Client, error) {
 // connect
 func (client *remoteClient) connect(address string) error {
 
-	// every time we disconnect, we want to reconnect
-	conn, err := net.Dial("tcp", address)
-	client.conn = conn
+	// attempt an initial connection to the server
+	conn, err := net.Dial("tcp", client.address)
+	if err != nil {
+		return err
+	}
 
-	// background the loop so we can return any inital connection errors
-	go func() {
+	client.conn = conn
+	client.open = true
+
+	// keep the connection open
+	go client.loop()
+
+	return nil
+}
+
+//
+func (client *remoteClient) reconnect() {
+
+	// attempt to reconnect
+	conn, err := net.Dial("tcp", client.address)
+
+	//
+	switch {
+
+	//
+	case err != nil && client.attempts < 10:
+		fmt.Printf("connection failed... attempting to reconnect %v/10\r", client.attempts)
+		<-time.After(time.Second)
+		client.attempts += 1
+		client.reconnect()
+
+	//
+	case err != nil:
+		fmt.Printf("unable to connect to server...")
+
+	//
+	default:
+		client.conn = conn
+		client.open = true
 
 		//
-		for client.open {
+		go client.loop()
+	}
+}
 
-			// every time we disconnect, we want to reconnect
-			conn, err := net.Dial("tcp", address)
-			client.conn = conn
+//
+func (client *remoteClient) loop() {
 
-			if err != nil || !client.open {
-				<-time.After(time.Second)
-				continue
-			}
-			// reenable replication
-			if client.replicated {
-				client.async("enable-replication\n")
-			}
+	//
+	for client.open {
 
-			// send all saved subscriptions across the channel
-			client.Lock()
-			for _, subscription := range client.subscriptions.ToSlice() {
-				client.async("subscribe %v\n", strings.Join(subscription, ","))
-			}
-			client.Unlock()
+		// reenable replication
+		// if client.replicated {
+		// 	client.async("enable-replication\n")
+		// }
 
-			reader := util.NewReader(conn)
-			for reader.Next() {
+		// send all saved subscriptions across the channel
+		client.Lock()
+		for _, subscription := range client.subscriptions.ToSlice() {
+			client.async("subscribe %v\n", strings.Join(subscription, ","))
+		}
+		client.Unlock()
 
-				cmd := reader.Input
+		reader := util.NewReader(client.conn)
+		for reader.Next() {
 
-				//
-				switch cmd[0] {
+			cmd := reader.Input
 
-				//
-				case "publish":
-					msg := Message{
-						Tags: strings.Split(cmd[1], ","),
-						Data: cmd[2],
-					}
-					select {
-					case client.data <- msg:
-					case <-client.done:
-					}
+			//
+			switch cmd[0] {
 
-				//
-				case "pong":
-					client.Lock()
-					wait := client.waiting[0]
-					client.waiting = client.waiting[1:]
-					client.Unlock()
-
-					wait <- remoteReply{"pong", nil}
-
-				//
-				case "list":
-					client.Lock()
-					wait := client.waiting[0]
-					client.waiting = client.waiting[1:]
-					client.Unlock()
-					list := [][]string{strings.Split(cmd[1], ",")}
-					if len(cmd) == 3 {
-						cmd := strings.Split(cmd[2], " ")
-						for _, subscription := range cmd {
-							list = append(list, strings.Split(subscription, ","))
-						}
-					}
-					wait <- remoteReply{list, nil}
-
-				//
-				case "error":
-					// close the connection as something is seriously wrong,
-					// it will reconnect and and continue on
-					conn.Close()
-
-					waiting := make([]chan remoteReply, 0)
-
-					client.Lock()
-					waiting, client.waiting = client.waiting, waiting
-					client.Unlock()
-
-					for _, wait := range waiting {
-						wait <- remoteReply{"", fmt.Errorf("%v", cmd[0])}
-					}
-
+			//
+			case "publish":
+				msg := Message{
+					Tags: strings.Split(cmd[1], ","),
+					Data: cmd[2],
 				}
+				select {
+				case client.data <- msg:
+				case <-client.done:
+				}
+
+			//
+			case "pong":
+				client.Lock()
+				wait := client.waiting[0]
+				client.waiting = client.waiting[1:]
+				client.Unlock()
+
+				wait <- remoteReply{"pong", nil}
+
+			//
+			case "list":
+				client.Lock()
+				wait := client.waiting[0]
+				client.waiting = client.waiting[1:]
+				client.Unlock()
+				list := [][]string{strings.Split(cmd[1], ",")}
+				if len(cmd) == 3 {
+					cmd := strings.Split(cmd[2], " ")
+					for _, subscription := range cmd {
+						list = append(list, strings.Split(subscription, ","))
+					}
+				}
+				wait <- remoteReply{list, nil}
+
+			//
+			case "error":
+				// close the connection as something is seriously wrong,
+				// it will reconnect and and continue on
+				client.conn.Close()
+
+				waiting := make([]chan remoteReply, 0)
+
+				client.Lock()
+				waiting, client.waiting = client.waiting, waiting
+				client.Unlock()
+
+				for _, wait := range waiting {
+					wait <- remoteReply{"", fmt.Errorf("%v", cmd[0])}
+				}
+
 			}
 		}
-	}()
+	}
 
-	return err
+	// if the client ever disconnects, attempt to reconnect; may want to put in a
+	// limit here so that it doesn't try and connect forever...
+	if !client.open {
+		client.reconnect()
+	}
 }
 
 // List requests a list of current mist subscriptions from the server
@@ -256,10 +296,6 @@ func (client *remoteClient) async(format string, args ...interface{}) error {
 }
 
 //
-func (nothing) Read([]byte) (int, error)  { return 0, fmt.Errorf("closed") }
-
-//
-func (nothing) Write([]byte) (int, error) { return 0, fmt.Errorf("closed") }
-
-//
-func (nothing) Close() error              { return nil }
+// func (nothing) Read([]byte) (int, error) { return 0, fmt.Errorf("closed") }
+// func (nothing) Write([]byte) (int, error) { return 0, fmt.Errorf("closed") }
+// func (nothing) Close() error { return nil }

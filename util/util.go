@@ -39,7 +39,7 @@ func (r *reader) Next() bool {
   line = strings.TrimSuffix(line, "\n")
 
   //
-	r.Input = strings.Split(line, " ")
+	r.Input = strings.SplitN(line, " ", 3)
 
   //
 	return true

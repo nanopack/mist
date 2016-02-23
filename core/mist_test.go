@@ -41,8 +41,8 @@ func TestMistReplication(test *testing.T) {
 	defer replication1.Close()
 
 	// two clients will represent remote replicated nodes
-	replication.(EnableReplication).EnableReplication()
-	replication1.(EnableReplication).EnableReplication()
+	replication.(Replicatable).EnableReplication()
+	replication1.(Replicatable).EnableReplication()
 
 	client.Subscribe([]string{"foo"})
 	replication.Subscribe([]string{"foo"})

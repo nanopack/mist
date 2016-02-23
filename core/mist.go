@@ -2,14 +2,11 @@
 package mist
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"sort"
-	"strings"
-	"sync/atomic"
 	"time"
-
-	"github.com/nanopack/mist/util"
 )
 
 //
@@ -17,19 +14,39 @@ const (
 	DEFAULT_ADDR = "127.0.0.1:1445"
 )
 
+var (
+	NotSupported = errors.New("Unable to perform action: command not supported")
+	InternalErr  = errors.New("Unable to perform action: internal mode enabled")
+)
+
 // interfaces
 type (
 
 	//
 	Client interface {
+		Ping() error
 		List() ([][]string, error)
 		Subscribe(tags []string) error
 		Unsubscribe(tags []string) error
 		Publish(tags []string, data string) error
 		PublishAfter(tags []string, data string, delay time.Duration) error
-		Ping() error
 		Close() error
 		Messages() <-chan Message
+	}
+
+	Subscriptions interface {
+		Add([]string)
+		Remove([]string)
+		Match([]string) bool
+		ToSlice() [][]string
+	}
+
+	Replicatable interface {
+		EnableReplication() error
+	}
+
+	Internalizable interface {
+		EnableInternal()
 	}
 )
 
@@ -49,8 +66,8 @@ type (
 	Message struct {
 		internal bool
 
-		Tags     []string `json:"tags"`
-		Data     string   `json:"data"`
+		Tags []string `json:"tags"`
+		Data string   `json:"data"`
 	}
 )
 
@@ -104,96 +121,18 @@ func (mist *Mist) Listen(address string, additional map[string]Handler) (net.Lis
 				return // what should we do with the error?
 			}
 
+			// create a new client for this connection
+			client, err := NewLocalClient(mist, 0)
+			if err != nil {
+				fmt.Println("BONK!")
+			}
+
 			// handle each connection individually (non-blocking)
-			go mist.handleConnection(conn, commands)
+			go newConnection(client, conn, commands)
 		}
 	}()
 
 	return ln, nil
-}
-
-// handleConnection takes an incoming connection from a mist client (or other client)
-// and sets up a new subscription for that connection, and a 'publish Handler'
-// that is used to publish messages to the data channel of the subscription
-func (mist *Mist) handleConnection(conn net.Conn, commands map[string]Handler) {
-
-	// create a new client for this connection
-	client, err := NewLocalClient(mist, 0)
-	if err != nil {
-		fmt.Println("BONK!")
-	}
-
-	// make a done channel
-	done := make(chan bool)
-
-	// clean up everything that we have setup
-	defer func() {
-		conn.Close()
-		client.Close()
-		close(done)
-	}()
-
-	// create a 'publish handler' for this connection
-	go func() {
-		for {
-
-			// when a message is recieved on the subscriptions channel write the message
-			// to the connection
-			select {
-			case msg := <-client.Messages():
-
-				if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
-					break
-				}
-
-			// return if we are done
-			case <-done:
-				return
-			}
-		}
-	}()
-
-
-
-	//
-	r := util.NewReader(conn)
-	for r.Next() {
-
-		// what should we do with errors?
-		if r.Err != nil {
-			// r.Err
-		}
-
-		cmd := r.Input[0]
-		args := r.Input[1:]
-
-		//
-		handler, found := commands[cmd]
-
-		//
-		var response string
-		switch {
-
-		// no command found
-		case !found:
-			response = fmt.Sprintf("Error: Unknown Command '%s'", cmd)
-
-		// incorrect number of arguments for command
-		case handler.ArgCount != len(args):
-			response = fmt.Sprintf("Error: Wrong number of arguments for '%v'. Expected %v got %v.", cmd, handler.ArgCount, len(args))
-
-		// execute command
-		default:
-			response = handler.Handle(client, args)
-		}
-
-		// only send if a response is given
-		if response != "" {
-			if _, err := conn.Write([]byte(response + "\n")); err != nil {
-				break
-			}
-		}
-	}
 }
 
 // Publish publishes to both subscribers, and to replicators
@@ -268,9 +207,4 @@ func forward(msg Message, subscribers map[uint32]*localClient) {
 			// do we drop the message? enqueue it? pull one off the front and then add this one?
 		}
 	}
-}
-
-//
-func (mist *Mist) nextId() uint32 {
-	return atomic.AddUint32(&mist.next, 1)
 }

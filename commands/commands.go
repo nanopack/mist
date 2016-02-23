@@ -36,7 +36,7 @@ var (
 		PersistentPreRun: func(ccmd *cobra.Command, args []string) {
 
 			// create a new logger
-			log = lumber.NewConsoleLogger(lumber.LvlInt(viper.GetString("LogLevel")))
+			log = lumber.NewConsoleLogger(lumber.LvlInt(viper.GetString("log-level")))
 			log.Prefix("[mist]")
 
 			// if --config is passed, attempt to parse the config file
@@ -59,56 +59,52 @@ var (
 
 			// if --server is passed start the mist server; Assuming an http server for
 			// the time being. At some point this may be configurable
-			if server != false {
+			if server {
 
 				//
 				mist := mist.New()
 
 				//
-				if viper.GetString("MulticastInterface") != "single" {
+				if viper.GetString("multicast-interface") != "single" {
 
 					// start discovering other mist nodes on the network
-					discover, err := discovery.NewDiscovery(viper.GetString("MulticastInterface"), "mist", time.Second*2)
+					discover, err := discovery.NewDiscovery(viper.GetString("multicast-interface"), "mist", time.Second*2)
 					if err != nil {
 						panic(err)
 					}
 					defer discover.Close()
 
 					// advertise this nodes listen address
-					discover.Add("mist", viper.GetString("TCPAddr"))
+					discover.Add("mist", viper.GetString("tcp-addr"))
 
 					// enable replication between mist nodes
 					replicate := handlers.EnableReplication(mist, discover)
-					fmt.Println(fmt.Sprintf("Starting Mist monitor... \nTCP address: %s\nHTTP address: %s", viper.GetString("TCPAddr"), viper.GetString("HTTPAddr")))
+					fmt.Println(fmt.Sprintf("Starting Mist monitor... \nTCP address: %s\nHTTP address: %s", viper.GetString("tcp-addr"), viper.GetString("http-addr")))
 					go replicate.Monitor()
 				}
 
 				//
-				pgAuth, err := authenticate.NewPostgresqlAuthenticator(viper.GetString("DBUser"), viper.GetString("DBName"), viper.GetString("DBAddr"))
+				pgAuth, err := authenticate.NewPostgresqlAuthenticator(viper.GetString("db-user"), viper.GetString("db-name"), viper.GetString("db-addr"))
 				if err != nil {
-					log.Fatal("Unable to start postgresql authenticator %v", err)
+					log.Fatal("Unable to start postgresql authenticator ", err)
 					os.Exit(1)
 				}
-
-				// start up the authenticated websocket connection
-				authenticator := authenticate.NewNoopAuthenticator()
-				handlers.LoadWebsocketRoute(authenticator)
 
 				// start a mist server listening over TCP; this is a non-blocking server
 				// because we also want to start a web server and will leave the blocking
 				// up to it.
-				log.Info("Starting mist server (TCP) at '%s'...\n", viper.GetString("TCPAddr"))
-				server, err := mist.Listen(viper.GetString("TCPAddr"), handlers.GenerateAdditionalCommands(pgAuth))
+				log.Info("Starting mist server (TCP) at '%s'...\n", viper.GetString("tcp-addr"))
+				server, err := mist.Listen(viper.GetString("tcp-addr"), handlers.GenerateAdditionalCommands(pgAuth))
 				if err != nil {
-					log.Fatal("Unable to start mist tcp listener %v", err)
+					log.Fatal("Unable to start mist tcp listener ", err)
 					os.Exit(1)
 				}
 				defer server.Close()
 
-				// start a mist server listening over HTTP... (blocking)
-				log.Info("Starting mist server (HTTP) at '%s'...\n", viper.GetString("HTTPAddr"))
+				// start a mist server listening over HTTP (blocking)
+				log.Info("Starting mist server (HTTP) at '%s'...\n", viper.GetString("http-addr"))
 				if err := api.Start(); err != nil {
-					log.Fatal("Failed to start - %s", err.Error())
+					log.Fatal("Failed to start - ", err.Error())
 					os.Exit(1)
 				}
 			}
@@ -121,40 +117,32 @@ var (
 
 func init() {
 
-	//
-	viper.SetDefault("TCPAddr", "127.0.0.1:1445")
-	viper.SetDefault("HTTPAddr", "127.0.0.1:8080")
-	viper.SetDefault("LogLevel", "INFO")
-	viper.SetDefault("MulticastInterface", "single")
-	viper.SetDefault("DBUser", "postgres")
-	viper.SetDefault("DBName", "postgres")
-	viper.SetDefault("DBAddr", "127.0.0.1:5432")
-
-	// persistent flags
-	MistCmd.PersistentFlags().String("tcp-addr", viper.GetString("TCPAddr"), "desc.")
-	MistCmd.PersistentFlags().String("http-addr", viper.GetString("HTTPAddr"), "desc.")
-	MistCmd.PersistentFlags().String("log-level", viper.GetString("LogLevel"), "desc.")
-	MistCmd.PersistentFlags().String("multicast-interface", viper.GetString("MulticastInterface"), "desc.")
-	MistCmd.PersistentFlags().String("db-user", viper.GetString("DBUser"), "desc.")
-	MistCmd.PersistentFlags().String("db-name", viper.GetString("DBName"), "desc.")
-	MistCmd.PersistentFlags().String("db-addr", viper.GetString("DBAddr"), "desc.")
-
-	// local flags
+	// local flags;
 	MistCmd.Flags().StringVarP(&config, "config", "c", "", "Path to config options")
 	MistCmd.Flags().BoolVarP(&server, "server", "s", false, "Run mist as a server")
 	MistCmd.Flags().BoolVarP(&version, "version", "v", false, "Display the current version of this CLI")
 
-	//
-	viper.BindPFlag("tcp-addr", MistCmd.Flags().Lookup("tcp-addr"))
-	viper.BindPFlag("http-addr", MistCmd.Flags().Lookup("http-addr"))
-	viper.BindPFlag("log-level", MistCmd.Flags().Lookup("log-level"))
-	viper.BindPFlag("multicast-interface", MistCmd.Flags().Lookup("multicast-interface"))
-	viper.BindPFlag("db-user", MistCmd.Flags().Lookup("db-user"))
-	viper.BindPFlag("db-name", MistCmd.Flags().Lookup("db-name"))
-	viper.BindPFlag("db-addr", MistCmd.Flags().Lookup("db-addr"))
+	// set config defaults; these are overriden if a --config file is provided
+	// (see above)
+	viper.SetDefault("tcp-addr", "127.0.0.1:1445")
+	viper.SetDefault("http-addr", "127.0.0.1:8080")
+	viper.SetDefault("log-level", "INFO")
+	viper.SetDefault("multicast-interface", "single")
+	viper.SetDefault("db-user", "postgres")
+	viper.SetDefault("db-name", "postgres")
+	viper.SetDefault("db-addr", "127.0.0.1:5432")
+
+	// persistent flags; these are the only 2 options that we want overridable from
+	// the CLI, all others need to use a config file
+	MistCmd.PersistentFlags().String("tcp-addr", viper.GetString("tcp-addr"), "desc.")
+	viper.BindPFlag("tcp-addr", MistCmd.PersistentFlags().Lookup("tcp-addr"))
+
+	MistCmd.PersistentFlags().String("log-level", viper.GetString("log-level"), "desc.")
+	viper.BindPFlag("log-level", MistCmd.PersistentFlags().Lookup("log-level"))
 
 	// commands
 	MistCmd.AddCommand(listCmd)
+	MistCmd.AddCommand(pingCmd)
 	MistCmd.AddCommand(publishCmd)
 	MistCmd.AddCommand(subscribeCmd)
 	MistCmd.AddCommand(unsubscribeCmd)
