@@ -1,23 +1,27 @@
-package api
+package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/pat"
-	"github.com/spf13/viper"
 
-	"github.com/nanopack/mist/authenticate"
-	"github.com/nanopack/mist/handlers"
+	"github.com/nanopack/mist/auth"
 )
 
 //
-var Router = pat.New()
+var (
+	Router = pat.New()
+	Name   = "UNKOWN"
+	Auth auth.Authenticator
+)
 
-// Start the api
-func Start() error {
+//
+func ListenHTTP(address string) error {
+  fmt.Printf("HTTP server listening at '%s'...\n", address)
 
 	// blocking...
-	return http.ListenAndServe(viper.GetString("http-addr"), routes())
+	return http.ListenAndServe(address, routes())
 }
 
 // routes registers all api routes with the router
@@ -26,17 +30,15 @@ func routes() *pat.Router {
 
 	//
 	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
+		fmt.Println("HERE!!!")
 		rw.Write([]byte("pong\n"))
 	})
-
-	// start up the authenticated websocket connection
-	authenticator := authenticate.NewNoopAuthenticator()
-	handlers.LoadWebsocketRoute(authenticator)
-
-	// blobs
 	// Router.Get("/list", handleRequest(list))
 	// Router.Get("/subscribe", handleRequest(subscribe))
 	// Router.Get("/unsubscribe", handleRequest(unsubscribe))
+
+	// start up the authenticated websocket connection
+	Router.Get("/subscribe/websocket", AuthenticateWebsocket(Auth))
 
 	return Router
 }

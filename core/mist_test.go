@@ -1,163 +1,123 @@
 package mist
 
 import (
-	"net"
-	"net/http"
+	// "fmt"
 	"testing"
 	"time"
 )
 
-func TestMistCore(test *testing.T) {
-	mist := New()
-	client, _ := NewLocalClient(mist, 0)
-	defer client.Close()
+var (
+	testTag = "hello"
+	testMsg = "world"
+)
 
-	client.Subscribe([]string{"tag0"})
-	for count := 0; count < 2; count++ {
-		mist.Publish([]string{"tag0"}, "this is my data")
-		message := <-client.Messages()
-		assert(test, len(message.Tags) == 1, "wrong number of tags")
-		// assert(test, message.Data == []byte("this is my data"), "data was incorrect")
-	}
-
-	client.Unsubscribe([]string{"tag0"})
-	mist.Publish([]string{"tag0"}, "this is my data")
-	select {
-	case <-client.Messages():
-		assert(test, false, "the message should not have been received")
-	default:
-	}
-
+//
+func setup() (*Mist, Client) {
+	m := New()
+	p, _ := NewProxy(0)
+	return m, p
 }
 
-func TestMistReplication(test *testing.T) {
-	mist := New()
-	replication, _ := NewLocalClient(mist, 0)
-	client, _ := NewLocalClient(mist, 0)
-	replication1, _ := NewLocalClient(mist, 0)
+//
+func BenchmarkMist(b *testing.B) {
 
-	defer replication.Close()
-	defer client.Close()
-	defer replication1.Close()
+	//
+	mist, proxy := setup()
+	defer proxy.Close()
 
-	// two clients will represent remote replicated nodes
-	replication.(Replicatable).EnableReplication()
-	replication1.(Replicatable).EnableReplication()
-
-	client.Subscribe([]string{"foo"})
-	replication.Subscribe([]string{"foo"})
-	replication1.Subscribe([]string{"foo"})
-
-	// when a normal client publishes, both replicated clients receive the message
-	client.Publish([]string{"foo"}, "data")
-	<-replication.Messages()
-	<-replication1.Messages()
-	<-client.Messages()
-
-	replication.Publish([]string{"foo"}, "data")
-	<-client.Messages()
-	select {
-	case <-replication1.Messages():
-		test.Log("a replicated client should not get a message from another replicated client")
-		test.Fail()
-	default:
-	}
-
-	replication1.Publish([]string{"foo"}, "data")
-	<-client.Messages()
-	select {
-	case <-replication.Messages():
-		test.Log("a replicated client should not get a message from another replicated client")
-		test.Fail()
-	default:
-	}
-
-}
-
-func BenchmarkMistCore(b *testing.B) {
-	mist := New()
-	client, _ := NewLocalClient(mist, 0)
-	defer client.Close()
-
-	client.Subscribe([]string{"tag0"})
+	proxy.Subscribe([]string{testTag})
 
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		mist.Publish([]string{"tag0"}, "this is my data")
-		_ = <-client.Messages()
+		mist.Publish([]string{testTag}, testMsg)
+		_ = <-proxy.Messages()
 	}
 }
 
-func TestMistApi(test *testing.T) {
-	mist := New()
-	serverSocket, err := mist.Listen("127.0.0.1:1234", nil)
-	assert(test, err == nil, "listen errored: %v", err)
-	defer serverSocket.Close()
+//
+func TestMist(t *testing.T) {
 
-	client, err := NewRemoteClient("127.0.0.1:1234")
-	defer client.Close()
-	assert(test, err == nil, "connect errored: %v", err)
+	//
+	mist, proxy := setup()
+	defer proxy.Close()
 
-	<-time.After(time.Millisecond * 10)
+	//
+	proxy.Subscribe([]string{testTag})
 
-	assert(test, client.Ping() == nil, "ping failed")
+	//
+	for count := 0; count < 2; count++ {
 
-	client.Subscribe([]string{"tag"})
-	client.Subscribe([]string{"other", "what", "is", "going", "on"})
+		//
+		mist.Publish([]string{testTag}, testMsg)
+		message := <-proxy.Messages()
 
-	client.Publish([]string{"tag"}, "message")
+		if len(message.Tags) != 1 {
+			t.Errorf("wrong number of tags")
+		}
+		if message.Data != testMsg {
+			t.Errorf("incorrect data")
+		}
+	}
 
-	list, err := client.List()
-	assert(test, err == nil, "listing subsctiptions failed %v", err)
-	assert(test, len(list) == 2, "wrong number of subscriptions were returned %v", list)
-	assert(test, len(list[0]) == 1, "wrong number of tags %v", list[0])
-	assert(test, len(list[1]) == 5, "wrong number of tags %v", list[1])
+	//
+	proxy.Unsubscribe([]string{testTag})
 
-	msg, ok := <-client.Messages()
+	//
+	mist.Publish([]string{testTag}, testMsg)
 
-	assert(test, ok, "got a nil message")
-	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
+	select {
+	case <-proxy.Messages():
+		t.Errorf("the message should not have been received")
 
-	client.PublishAfter([]string{"tag"}, "message_delay", 10*time.Millisecond)
-	msg, ok = <-client.Messages()
-
-	assert(test, ok, "got a nil message")
-	assert(test, msg.Data == "message_delay", "got the wrong message %v", msg.Data)
-
-}
-
-func TestMistWebsocket(test *testing.T) {
-	mist := New()
-	httpListener, err := net.Listen("tcp", "127.0.0.1:2345")
-	assert(test, err == nil, "unable to listen to websockets %v", err)
-
-	defer httpListener.Close()
-
-	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist, nil))
-
-	header := make(http.Header, 0)
-	client, err := NewWebsocketClient("ws://127.0.0.1:2345/", header)
-	assert(test, err == nil, "unable to connect %v", err)
-	defer client.Close()
-	err = client.Subscribe([]string{"test"})
-	assert(test, err == nil, "subscription failed %v", err)
-	mist.Publish([]string{"test"}, "some data")
-	<-client.Messages()
-	list, err := client.List()
-	assert(test, err == nil, "unable to list %v", err)
-	assert(test, len(list) == 1, "list of subscriptions is wrong %v", list)
-	assert(test, len(list[0]) == 1, "wrong number of tags in subscription %v", list[0])
-	err = client.Unsubscribe([]string{"test"})
-	list, err = client.List()
-	assert(test, err == nil, "unable to list %v", err)
-	assert(test, len(list) == 0, "list of subscriptions is wrong %v", list)
-	mist.Publish([]string{"test"}, "more data")
-	client.Close()
-}
-
-func assert(test *testing.T, check bool, fmt string, args ...interface{}) {
-	if !check {
-		test.Logf(fmt, args...)
-		test.FailNow()
+	// wait 1 second before assuming that nothing is coming across the wire
+	case <-time.After(time.Second*1):
+		break
 	}
 }
+
+//
+// func TestMistReplication(t *testing.T) {
+//
+// 	//
+// 	_, proxy := setup()
+// 	defer proxy.Close()
+//
+// 	_, replication1 := setup()
+// 	defer replication1.Close()
+//
+// 	_, replication2 := setup()
+// 	defer replication2.Close()
+//
+// 	// two clients will represent remote replicated nodes
+// 	replication1.(Replicatable).EnableReplication()
+// 	replication2.(Replicatable).EnableReplication()
+//
+// 	proxy.Subscribe([]string{"foo"})
+// 	replication1.Subscribe([]string{"foo"})
+// 	replication2.Subscribe([]string{"foo"})
+//
+// 	// when a normal client publishes, both replicated clients receive the message
+// 	proxy.Publish([]string{"foo"}, "data")
+// 	<-replication1.Messages()
+// 	<-replication2.Messages()
+// 	<-proxy.Messages()
+//
+// 	//
+// 	replication1.Publish([]string{"foo"}, "data")
+// 	select {
+// 	case <-proxy.Messages():
+// 		// a proxy client should get messages from a replicated client
+// 	case <-replication2.Messages():
+// 		t.Error("a replicated client should not get a message from another replicated client")
+// 	}
+//
+// 	//
+// 	replication2.Publish([]string{"foo"}, "data")
+// 	select {
+// 	case <-proxy.Messages():
+// 		// a proxy client should get messages from a replicated client
+// 	case <-replication1.Messages():
+// 		t.Error("a replicated client should not get a message from another replicated client")
+// 	}
+// }

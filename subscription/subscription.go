@@ -8,6 +8,19 @@ const (
 )
 
 type (
+
+	//
+	Subscriptions interface {
+		Add([]string)
+		Remove([]string)
+		Match([]string) bool
+		ToSlice() [][]string
+	}
+)
+
+type (
+
+	//
 	Node struct {
 		id       uint64
 		key      string

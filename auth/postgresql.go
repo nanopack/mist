@@ -1,4 +1,4 @@
-package authenticate
+package auth
 
 import (
 	"fmt"
@@ -12,13 +12,15 @@ type (
 	postgresql string
 )
 
-func NewPostgresqlAuthenticator(user, database, address string) (postgresql, error) {
+func NewPostgresql(user, database, address string) (postgresql, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return postgresql(""), err
 	}
 
+	//
 	pg := postgresql(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%v", user, database, host, port))
+
 	// create the tables needed to support mist authentication
 	_, err = pg.exec(`
 CREATE TABLE IF NOT EXISTS tokens (
@@ -41,35 +43,19 @@ CREATE TABLE IF NOT EXISTS tags (
 	return pg, err
 }
 
-func (p postgresql) Clear() error {
-	_, err := p.exec("TRUNCATE tokens, tags")
+//
+func (p postgresql) AddToken(token string) error {
+	_, err := p.exec("INSERT INTO tokens (token) VALUES ($1)", token)
 	return err
 }
 
-func (p postgresql) TagsForToken(token string) ([]string, error) {
-	rows, err := p.query("SELECT tag FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1", token)
-	if err != nil {
-		return nil, err
-	}
-
-	// now to process the result
-	defer rows.Close()
-	tags := make([]string, 0)
-	for rows.Next() {
-		var tag string
-		if err := rows.Scan(&tag); err != nil {
-			return nil, err
-		}
-		tags = append(tags, tag)
-	}
-	err = rows.Err()
-	if len(tags) == 0 && err == nil {
-		return tags, NotFound
-	}
-	return tags, err
-
+//
+func (p postgresql) RemoveToken(token string) error {
+	_, err := p.exec("DELETE FROM tokens WHERE token = $1", token)
+	return err
 }
 
+//
 func (p postgresql) AddTags(token string, tags []string) error {
 	// This could be optimized a LOT
 	for _, tag := range tags {
@@ -79,6 +65,7 @@ func (p postgresql) AddTags(token string, tags []string) error {
 	return nil
 }
 
+//
 func (p postgresql) RemoveTags(token string, tags []string) error {
 	for _, tag := range tags {
 		p.exec("DELETE FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1 AND tag = $2", token, tag)
@@ -86,16 +73,45 @@ func (p postgresql) RemoveTags(token string, tags []string) error {
 	return nil
 }
 
-func (p postgresql) AddToken(token string) error {
-	_, err := p.exec("INSERT INTO tokens (token) VALUES ($1)", token)
+//
+func (p postgresql) GetTagsForToken(token string) ([]string, error) {
+
+	//
+	rows, err := p.query("SELECT tag FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1", token)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	//
+	tags := make([]string, 0)
+
+	//
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, err
+		}
+		tags = append(tags, tag)
+	}
+
+	err = rows.Err()
+
+	switch {
+	case len(tags) == 0:
+		return tags, ErrTokenNotFound
+	default:
+		return tags, err
+	}
+}
+
+//
+func (p postgresql) Clear() error {
+	_, err := p.exec("TRUNCATE tokens, tags")
 	return err
 }
 
-func (p postgresql) RemoveToken(token string) error {
-	_, err := p.exec("DELETE FROM tokens WHERE token = $1", token)
-	return err
-}
-
+//
 func (p postgresql) connect() (*sql.DB, error) {
 	return sql.Open("postgres", string(p))
 }

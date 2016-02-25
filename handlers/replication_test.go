@@ -10,6 +10,7 @@ import (
 	"github.com/nanopack/mist/handlers/mock"
 )
 
+//
 func TestReplication(test *testing.T) {
 	ctrl := gomock.NewController(test)
 	defer ctrl.Finish()
@@ -21,12 +22,15 @@ func TestReplication(test *testing.T) {
 	mist1 := mist.New()
 	mist2 := mist.New()
 
+	//
 	listen1, err := mist1.Listen("127.0.0.1:2223", nil)
 	if err != nil {
 		test.Log(err)
 		test.FailNow()
 	}
 	defer listen1.Close()
+
+	// 
 	listen2, err := mist2.Listen("127.0.0.1:2224", nil)
 	if err != nil {
 		test.Log(err)
@@ -51,8 +55,8 @@ func TestReplication(test *testing.T) {
 	defer repc1.Close()
 
 	// now we test the clients out.
-	client1, _ := mist.NewLocalClient(mist1, 0)
-	client2, _ := mist.NewLocalClient(mist2, 0)
+	client1, _ := mist.NewProxy(mist1, 0)
+	client2, _ := mist.NewProxy(mist2, 0)
 
 	// subscribe and wait, because it could take a little bit of time
 	// for everything to propagate correctly

@@ -3,18 +3,13 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/jcelliott/lumber"
-	"github.com/nanobox-io/golang-discovery"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/nanopack/mist/api"
-	"github.com/nanopack/mist/authenticate"
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/handlers"
+	"github.com/nanopack/mist/server"
 )
 
 var (
@@ -22,7 +17,7 @@ var (
 
 	//
 	config  string //
-	server  bool   //
+	daemon  bool   //
 	version bool   //
 
 	//
@@ -57,56 +52,20 @@ var (
 		// are provided
 		Run: func(ccmd *cobra.Command, args []string) {
 
-			// if --server is passed start the mist server; Assuming an http server for
+			// if --daemon is passed start the mist server; Assuming an http server for
 			// the time being. At some point this may be configurable
-			if server {
+			if daemon {
 
 				//
 				mist := mist.New()
 
 				//
 				if viper.GetString("multicast-interface") != "single" {
-
-					// start discovering other mist nodes on the network
-					discover, err := discovery.NewDiscovery(viper.GetString("multicast-interface"), "mist", time.Second*2)
-					if err != nil {
-						panic(err)
-					}
-					defer discover.Close()
-
-					// advertise this nodes listen address
-					discover.Add("mist", viper.GetString("tcp-addr"))
-
-					// enable replication between mist nodes
-					replicate := handlers.EnableReplication(mist, discover)
-					fmt.Println(fmt.Sprintf("Starting Mist monitor... \nTCP address: %s\nHTTP address: %s", viper.GetString("tcp-addr"), viper.GetString("http-addr")))
-					go replicate.Monitor()
+					server.ConfigureAsMultinode(mist)
 				}
 
 				//
-				pgAuth, err := authenticate.NewPostgresqlAuthenticator(viper.GetString("db-user"), viper.GetString("db-name"), viper.GetString("db-addr"))
-				if err != nil {
-					log.Fatal("Unable to start postgresql authenticator ", err)
-					os.Exit(1)
-				}
-
-				// start a mist server listening over TCP; this is a non-blocking server
-				// because we also want to start a web server and will leave the blocking
-				// up to it.
-				log.Info("Starting mist server (TCP) at '%s'...\n", viper.GetString("tcp-addr"))
-				server, err := mist.Listen(viper.GetString("tcp-addr"), handlers.GenerateAdditionalCommands(pgAuth))
-				if err != nil {
-					log.Fatal("Unable to start mist tcp listener ", err)
-					os.Exit(1)
-				}
-				defer server.Close()
-
-				// start a mist server listening over HTTP (blocking)
-				log.Info("Starting mist server (HTTP) at '%s'...\n", viper.GetString("http-addr"))
-				if err := api.Start(); err != nil {
-					log.Fatal("Failed to start - ", err.Error())
-					os.Exit(1)
-				}
+				server.Start()
 			}
 
 			// fall back on default help if no args/flags are passed
@@ -119,7 +78,7 @@ func init() {
 
 	// local flags;
 	MistCmd.Flags().StringVarP(&config, "config", "c", "", "Path to config options")
-	MistCmd.Flags().BoolVarP(&server, "server", "s", false, "Run mist as a server")
+	MistCmd.Flags().BoolVarP(&daemon, "daemon", "d", false, "Run mist as a server")
 	MistCmd.Flags().BoolVarP(&version, "version", "v", false, "Display the current version of this CLI")
 
 	// set config defaults; these are overriden if a --config file is provided

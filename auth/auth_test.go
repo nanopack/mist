@@ -1,23 +1,11 @@
-package authenticate_test
+package auth
 
 import (
 	"os/user"
 	"testing"
-
-	"github.com/nanopack/mist/authenticate"
 )
 
-type (
-	postgresql    string
-	Authenticator interface {
-		TagsForToken(token string) ([]string, error)
-		AddTags(token string, tags []string) error
-		RemoveTags(token string, tags []string) error
-		AddToken(token string) error
-		RemoveToken(token string) error
-	}
-)
-
+//
 func TestPostgresql(test *testing.T) {
 	usr, err := user.Current()
 	if err != nil {
@@ -25,7 +13,7 @@ func TestPostgresql(test *testing.T) {
 		test.FailNow()
 	}
 
-	pg, err := authenticate.NewPostgresqlAuthenticator(usr.Username, "postgres", "127.0.0.1:5432")
+	pg, err := NewPostgresql(usr.Username, "postgres", "127.0.0.1:5432")
 	if err != nil {
 		test.Log(err)
 		test.FailNow()
@@ -38,14 +26,16 @@ func TestPostgresql(test *testing.T) {
 	testDb(test, pg)
 }
 
+//
 func TestMemory(test *testing.T) {
-	memory := authenticate.NewMemoryAuthenticator()
+	memory := NewMemory()
 	testDb(test, memory)
 }
 
+//
 func testDb(test *testing.T, auth Authenticator) {
 
-	tags, err := auth.TagsForToken("token")
+	tags, err := auth.GetTagsForToken("token")
 	if err == nil {
 		test.Log("there should have been an error")
 		test.FailNow()
@@ -67,7 +57,7 @@ func testDb(test *testing.T, auth Authenticator) {
 		test.FailNow()
 	}
 
-	tags, err = auth.TagsForToken("token")
+	tags, err = auth.GetTagsForToken("token")
 	if err != nil {
 		test.Log(err)
 		test.FailNow()

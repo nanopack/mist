@@ -3,28 +3,31 @@ package handlers
 import (
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/nanobox-io/golang-discovery"
+	"github.com/nanopack/mist/clients"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/subscription"
 )
 
 type (
-	Looper interface {
-		Loop(time.Duration) error
-	}
 
+	//
+	// Looper interface {
+	// 	Loop(time.Duration) error
+	// }
+
+	//
 	replicate struct {
 		mist          *mist.Mist
 		clients       []mist.Client
 		newClient     chan mist.Client
 		doneClient    chan mist.Client
-		subscriptions mist.Subscriptions
+		subscriptions subscription.Subscriptions
 	}
 )
 
-//
+// EnableReplication
 func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicate {
 
 	replicate := &replicate{
@@ -39,23 +42,24 @@ func EnableReplication(server *mist.Mist, discover discovery.Discover) *replicat
 	return replicate
 }
 
-//
+// Monitor
 func (rep *replicate) Monitor() {
+
 	// we want to catch all subscription/unsubscription changes.
 	// this should at least give a good safety zone.
-	client, err := mist.NewLocalClient(rep.mist, 100)
+	proxy, err := mist.NewProxy(rep.mist, 100)
 	if err != nil {
 		fmt.Println("BINKL!")
 	}
-	defer client.Close()
+	defer proxy.Close()
 
 	// set the client to be in internal mode now only internal message will be
 	// received
-	client.(mist.Internalizable).EnableInternal()
+	proxy.(mist.Internalizable).EnableInternal()
 
 	for {
 		select {
-		case msg, ok := <-client.Messages():
+		case msg, ok := <-proxy.Messages():
 			if !ok {
 				return
 			}
@@ -97,7 +101,7 @@ func (rep *replicate) Monitor() {
 	}
 }
 
-//
+// forwardAll
 func (rep replicate) forwardAll(fun string, subscription []string) {
 	perform := getFunc(fun)
 	for _, client := range rep.clients {
@@ -107,7 +111,7 @@ func (rep replicate) forwardAll(fun string, subscription []string) {
 	}
 }
 
-//
+// forward
 func forward(client mist.Client, fun string, subscription []string) {
 	perform := getFunc(fun)
 	if err := perform(client, subscription); err != nil {
@@ -115,7 +119,7 @@ func forward(client mist.Client, fun string, subscription []string) {
 	}
 }
 
-//
+// getFunc
 func getFunc(fun string) func(mist.Client, []string) error {
 	if fun == "subscribe" {
 		return mist.Client.Subscribe
@@ -123,9 +127,9 @@ func getFunc(fun string) func(mist.Client, []string) error {
 	return mist.Client.Unsubscribe
 }
 
-//
+// New
 func (rep *replicate) New(address string) io.Closer {
-	client, err := mist.NewRemoteClient(address)
+	client, err := clients.NewTCP(address)
 	if err != nil {
 		return nil
 	}
