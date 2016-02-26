@@ -23,7 +23,7 @@ type (
 		subscriptions subscription.Subscriptions // local copy of subscriptions
 		conn          net.Conn                   // the connection the mist server
 		done          chan error                 // the channel to indicate that the connection is closed
-		waiting       []chan tcpReply         // all client waiting for a response
+		waiting       []chan tcpReply            // all client waiting for a response
 		data          chan mist.Message          // the channel that mist server 'publishes' updates to
 		open          bool                       // flag that indicates that the conenction should reestablish
 		attempts      int
@@ -123,8 +123,6 @@ func (client *tcpClient) loop() {
 		r := util.NewReader(client.conn)
 		for r.Next() {
 
-			fmt.Println("TCP NEXT!")
-
 			//
 			cmd := r.Input.Cmd
 
@@ -136,7 +134,6 @@ func (client *tcpClient) loop() {
 
 			//
 			case "pong":
-				fmt.Println("TCP pong!")
 				client.Lock()
 				wait := client.waiting[0]
 				client.waiting = client.waiting[1:]
@@ -147,9 +144,7 @@ func (client *tcpClient) loop() {
 
 			//
 			case "publish":
-				fmt.Println("TCP publish!", len(args), args)
 				if len(args) != 2 {
-					fmt.Println("TOO FEW!!", args)
 					// too few args; unable to publish
 				}
 
@@ -158,8 +153,6 @@ func (client *tcpClient) loop() {
 					Data: args[1],
 				}
 
-				fmt.Println("MSG??", msg)
-
 				select {
 				case client.data <- msg:
 				case <-client.done:
@@ -167,7 +160,6 @@ func (client *tcpClient) loop() {
 
 			//
 			case "list":
-				fmt.Println("TCP list!")
 				client.Lock()
 				wait := client.waiting[0]
 				client.waiting = client.waiting[1:]
@@ -186,7 +178,6 @@ func (client *tcpClient) loop() {
 
 			//
 			case "error":
-				fmt.Println("TCP error!")
 
 				// close the connection as something is seriously wrong, it will reconnect
 				// and and continue on
@@ -202,8 +193,8 @@ func (client *tcpClient) loop() {
 					wait <- tcpReply{"", fmt.Errorf("%v", cmd[0])}
 				}
 
-				//
-				default:
+			//
+			default:
 
 			}
 		}
@@ -218,14 +209,12 @@ func (client *tcpClient) loop() {
 
 // Ping pong the server
 func (client *tcpClient) Ping() error {
-	fmt.Println("TCP PING!")
 	return client.sync("ping\n").err
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
 func (client *tcpClient) Subscribe(tags []string) error {
-	fmt.Println("TCP SUBSCRIBE!")
 	client.Lock()
 	active := client.subscriptions.Match(tags)
 	client.subscriptions.Add(tags)
@@ -242,7 +231,6 @@ func (client *tcpClient) Subscribe(tags []string) error {
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
 func (client *tcpClient) Unsubscribe(tags []string) error {
-	fmt.Println("TCP UNSUB!")
 	client.Lock()
 	client.subscriptions.Remove(tags)
 	active := client.subscriptions.Match(tags)
@@ -258,7 +246,6 @@ func (client *tcpClient) Unsubscribe(tags []string) error {
 
 // Publish sends a message to the mist server to be published to all subscribed clients
 func (client *tcpClient) Publish(tags []string, data string) error {
-	fmt.Println("TCP PUBLISH!")
 	if len(tags) == 0 {
 		return nil
 	}
@@ -277,7 +264,6 @@ func (client *tcpClient) PublishAfter(tags []string, data string, delay time.Dur
 
 // List requests a list of current mist subscriptions from the server
 func (client *tcpClient) List() ([][]string, error) {
-	fmt.Println("TCP LIST!")
 
 	//
 	reply := client.sync("list\n")
@@ -291,7 +277,7 @@ func (client *tcpClient) List() ([][]string, error) {
 
 // Close closes the client data channel and the connection to the server
 func (client *tcpClient) Close() error {
-	fmt.Println("TCP CLOSE!")
+
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
 	client.open = false
@@ -303,7 +289,6 @@ func (client *tcpClient) Close() error {
 
 //
 func (client *tcpClient) Messages() <-chan mist.Message {
-	fmt.Println("TCP MESSAGES!")
 	return client.data
 }
 
@@ -314,7 +299,6 @@ func (client *tcpClient) EnableReplication() error {
 
 //
 func (client *tcpClient) sync(command string) tcpReply {
-	fmt.Println("SYNC!!!")
 	wait := make(chan tcpReply, 1)
 
 	client.Lock()

@@ -64,13 +64,13 @@ type (
 	// tcp handler
 	TCPHandler struct {
 		NumArgs int
-		Handle func(Client, []string) string
+		Handle  func(Client, []string) string
 	}
 
 	// websocket handler
 	WSHandler struct {
 		NumArgs int
-		Handle func(Client, []byte, chan<- string) error
+		Handle  func(Client, []byte, chan<- string) error
 	}
 )
 
@@ -131,7 +131,7 @@ func (mist *Mist) publish(tags []string, data string) error {
 		return nil
 	}
 
-	message := Message {
+	message := Message{
 		Tags:     tags,
 		internal: true,
 		Data:     data,

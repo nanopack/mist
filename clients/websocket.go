@@ -63,7 +63,7 @@ func NewWS(address string, header http.Header) (mist.Client, error) {
 			close(client.subscribe)
 			close(client.unsubscribe)
 		}()
-		
+
 		for {
 			messageType, frame, err := conn.ReadMessage()
 			if err != nil {

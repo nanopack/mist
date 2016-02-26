@@ -9,14 +9,14 @@ import (
 
 //
 func GenerateTCPCommands() map[string]mist.TCPHandler {
-  return map[string]mist.TCPHandler{
-    "ping":               {0, handleTCPPing},
-    "list":               {0, handleTCPList},
-    "subscribe":          {1, handleTCPSubscribe},
-    "unsubscribe":        {1, handleTCPUnsubscribe},
-    "publish":            {2, handleTCPPublish},
-    "enable-replication": {0, handleTCPReplicate},
-  }
+	return map[string]mist.TCPHandler{
+		"ping":               {0, handleTCPPing},
+		"list":               {0, handleTCPList},
+		"subscribe":          {1, handleTCPSubscribe},
+		"unsubscribe":        {1, handleTCPUnsubscribe},
+		"publish":            {2, handleTCPPublish},
+		"enable-replication": {0, handleTCPReplicate},
+	}
 }
 
 //

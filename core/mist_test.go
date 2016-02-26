@@ -71,7 +71,7 @@ func TestMist(t *testing.T) {
 		t.Errorf("the message should not have been received")
 
 	// wait 1 second before assuming that nothing is coming across the wire
-	case <-time.After(time.Second*1):
+	case <-time.After(time.Second * 1):
 		break
 	}
 }

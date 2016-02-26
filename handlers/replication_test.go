@@ -30,7 +30,7 @@ func TestReplication(test *testing.T) {
 	}
 	defer listen1.Close()
 
-	// 
+	//
 	listen2, err := mist2.Listen("127.0.0.1:2224", nil)
 	if err != nil {
 		test.Log(err)

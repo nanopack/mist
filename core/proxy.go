@@ -1,7 +1,7 @@
 package mist
 
 import (
-	"fmt"
+	// "fmt"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -46,8 +46,6 @@ func NewProxy(buffer int) (Client, error) {
 // connect
 func (p *proxy) connect() error {
 
-	fmt.Println("PROXY CONNECT!", p.id)
-
 	// this gofunc handles matching messages to subscriptions for the p
 	go func() {
 
@@ -63,18 +61,14 @@ func (p *proxy) connect() error {
 			//
 			case msg := <-p.check:
 
-				fmt.Println("PROXY MSG!", msg)
-
 				switch {
 
 				//
 				case msg.internal && p.internal:
-					fmt.Println("PROXY INTERNAL?!")
 					p.pipe <- msg
 
 				//
 				default:
-					fmt.Println("PROXY DEFAULT!")
 					p.Lock()
 					match := p.subscriptions.Match(msg.Tags)
 					p.Unlock()
@@ -86,7 +80,6 @@ func (p *proxy) connect() error {
 
 				//
 			case <-p.done:
-				fmt.Println("PROXY DONE!")
 				return
 			}
 		}
@@ -100,14 +93,11 @@ func (p *proxy) connect() error {
 
 //
 func (p *proxy) Ping() error {
-	fmt.Println("PROXY PING!")
 	return nil
 }
 
 // Subscribe
 func (p *proxy) Subscribe(tags []string) error {
-
-	fmt.Println("PROXY SUBSCRIBE!")
 
 	//
 	if p.internal {
@@ -138,8 +128,6 @@ func (p *proxy) Subscribe(tags []string) error {
 // Unsubscribe
 func (p *proxy) Unsubscribe(tags []string) error {
 
-	fmt.Println("PROXY UNSUBSCRIBE!")
-
 	//
 	if p.internal {
 		return InternalErr
@@ -168,8 +156,6 @@ func (p *proxy) Unsubscribe(tags []string) error {
 
 // Publish
 func (p *proxy) Publish(tags []string, data string) error {
-
-	fmt.Println("PROXY PUBLISH!")
 
 	//
 	if p.internal {
@@ -208,8 +194,6 @@ func (p *proxy) PublishAfter(tags []string, data string, delay time.Duration) er
 // List
 func (p *proxy) List() ([][]string, error) {
 
-	fmt.Println("PROXY LIST!")
-
 	//
 	if p.internal {
 		return nil, InternalErr
@@ -221,8 +205,6 @@ func (p *proxy) List() ([][]string, error) {
 
 //
 func (p *proxy) Close() error {
-
-	fmt.Println("PROXY CLOSE!")
 
 	// this closes the goroutine that is matching messages to subscriptions
 	close(p.done)
@@ -243,7 +225,6 @@ func (p *proxy) Close() error {
 // Returns all messages that have sucessfully matched the list of subscriptions
 // that this p has subscribed to
 func (p *proxy) Messages() <-chan Message {
-	fmt.Println("PROXY MESSAGES!")
 	return p.pipe
 }
 

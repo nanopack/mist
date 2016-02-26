@@ -13,12 +13,12 @@ import (
 var (
 	Router = pat.New()
 	Name   = "UNKOWN"
-	Auth auth.Authenticator
+	Auth   auth.Authenticator
 )
 
 //
 func ListenHTTP(address string) error {
-  fmt.Printf("HTTP server listening at '%s'...\n", address)
+	fmt.Printf("HTTP server listening at '%s'...\n", address)
 
 	// blocking...
 	return http.ListenAndServe(address, routes())

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-  "encoding/json"
+	"encoding/json"
 	"fmt"
 
 	"github.com/nanopack/mist/core"
@@ -9,12 +9,12 @@ import (
 
 //
 func GenerateWSCommands() map[string]mist.WSHandler {
-  return map[string]mist.WSHandler{
-  	"ping":        {0, handleWSPing},
-  	"subscribe":   {0, handleWSSubscribe},
-  	"unsubscribe": {0, handleWSUnubscribe},
-    "list":        {0, handleWSList},
-  }
+	return map[string]mist.WSHandler{
+		"ping":        {0, handleWSPing},
+		"subscribe":   {0, handleWSSubscribe},
+		"unsubscribe": {0, handleWSUnubscribe},
+		"list":        {0, handleWSList},
+	}
 }
 
 //
@@ -64,8 +64,8 @@ func handleWSUnubscribe(client mist.Client, frame []byte, write chan<- string) e
 //
 func handleWSList(client mist.Client, frame []byte, write chan<- string) (err error) {
 
-  //
-  list := struct {
+	//
+	list := struct {
 		Subscriptions [][]string `json:"subscriptions"`
 		Command       string     `json:"command"`
 		Success       bool       `json:"success"`
@@ -78,13 +78,13 @@ func handleWSList(client mist.Client, frame []byte, write chan<- string) (err er
 	list.Command = "list"
 	list.Success = true
 
-  bytes, err := json.Marshal(list)
+	bytes, err := json.Marshal(list)
 	if err != nil {
 		return err
 	}
 
-  //
+	//
 	write <- string(bytes)
 
-  return
+	return
 }

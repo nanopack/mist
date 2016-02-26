@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/nanobox-io/golang-discovery"
+	"github.com/spf13/viper"
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
@@ -34,16 +34,13 @@ func Start() {
 		fmt.Println("Unable to start mist tcp listener ", err)
 		os.Exit(1)
 	}
-	fmt.Println("SERVER!", server)
-	// defer server.Close()
+	defer server.Close()
 
 	// start a mist server listening over HTTP (blocking)
 	if err := ListenHTTP(viper.GetString("http-addr")); err != nil {
 		fmt.Println("Unable to start mist http listener ", err)
 		os.Exit(1)
 	}
-
-	fmt.Println("STARTED!")
 }
 
 //

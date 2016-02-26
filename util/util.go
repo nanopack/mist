@@ -15,7 +15,7 @@ type (
 
 		Err   error
 		Input struct {
-			Cmd string
+			Cmd  string
 			Args []string
 		}
 	}

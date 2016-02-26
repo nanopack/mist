@@ -1,17 +1,17 @@
 package util
 
 import (
-  "testing"
+	"testing"
 )
 
 //
 func TestNext(t *testing.T) {
-  
+
 }
 
 //
 func TestHaveSameTags(t *testing.T) {
-	tags := []struct{
+	tags := []struct {
 		a      []string
 		b      []string
 		result bool

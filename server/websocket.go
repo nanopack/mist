@@ -19,7 +19,7 @@ var wsCommands map[string]mist.WSHandler
 //
 func init() {
 
-  // add WS handlers
+	// add WS handlers
 	wsCommands = handlers.GenerateWSCommands()
 }
 
@@ -33,18 +33,18 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 
 		fmt.Println("HERE????!?!?!?!")
 
-    //
-    upgrader := websocket.Upgrader{
-  		ReadBufferSize:  1024,
-  		WriteBufferSize: 1024,
+		//
+		upgrader := websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
 			CheckOrigin: func(r *http.Request) bool {
-        return true
-    	},
-  	}
+				return true
+			},
+		}
 
 		fmt.Println("UPGRADER??", upgrader)
 
-    //
+		//
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			fmt.Println("ERR???", err)
@@ -54,9 +54,9 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 		fmt.Println("UPGRDAE!", conn)
 
 		// add any additional handlers
-    for k, v := range mixins {
-  		wsCommands[k] = v
-  	}
+		for k, v := range mixins {
+			wsCommands[k] = v
+		}
 
 		fmt.Println("COMMANDS?", wsCommands)
 
@@ -116,7 +116,7 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 				continue
 			}
 
-      //
+			//
 			handler, found := wsCommands[input.Cmd]
 
 			//
@@ -125,7 +125,7 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 				continue
 			}
 
-      // something needs to happen with this error..
+			// something needs to happen with this error..
 			if err := handler.Handle(client, frame, write); err != nil {
 				fmt.Println("BROZONK!", err)
 				return
@@ -146,12 +146,12 @@ func AuthenticateWebsocket(a auth.Authenticator) http.HandlerFunc {
 		//
 		var token string
 		switch {
-			case r.Header.Get("x-auth-token") != "":
-				token = r.Header.Get("x-auth-token")
-			case r.FormValue("x-auth-token") != "":
-				token = r.FormValue("x-auth-token")
-			default:
-				token = "unauthorized"
+		case r.Header.Get("x-auth-token") != "":
+			token = r.Header.Get("x-auth-token")
+		case r.FormValue("x-auth-token") != "":
+			token = r.FormValue("x-auth-token")
+		default:
+			token = "unauthorized"
 		}
 
 		fmt.Println("TOKEN??", token)

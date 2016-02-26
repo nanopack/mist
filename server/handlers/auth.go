@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-  "github.com/nanopack/mist/auth"
 )
 
 //
@@ -37,7 +37,7 @@ func handleRegister(a auth.Authenticator) func(mist.Client, []string) string {
 			return fmt.Sprintf("Error: %s", err.Error())
 		}
 
-    //
+		//
 		return fmt.Sprintf("registered [%v] to '%v'", tags, token)
 	}
 }
@@ -51,7 +51,7 @@ func handleUnregister(a auth.Authenticator) func(mist.Client, []string) string {
 			return fmt.Sprintf("Error: %s", err.Error())
 		}
 
-    //
+		//
 		return fmt.Sprintf("unregistered '%v'", args[0])
 	}
 }
