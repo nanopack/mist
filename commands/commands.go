@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/server"
 )
 
@@ -52,16 +51,14 @@ var (
 		// are provided
 		Run: func(ccmd *cobra.Command, args []string) {
 
-			// if --daemon is passed start the mist server; Assuming an http server for
+			// if --server is passed start the mist server; Assuming an http server for
 			// the time being. At some point this may be configurable
 			if daemon {
 
 				//
-				mist := mist.New()
-
-				//
 				if viper.GetString("multicast-interface") != "single" {
-					server.ConfigureAsMultinode(mist)
+					server.EnableDiscovery()
+					server.EnableReplication()
 				}
 
 				//
@@ -77,8 +74,8 @@ var (
 func init() {
 
 	// local flags;
-	MistCmd.Flags().StringVarP(&config, "config", "c", "", "Path to config options")
-	MistCmd.Flags().BoolVarP(&daemon, "daemon", "d", false, "Run mist as a server")
+	MistCmd.Flags().StringVarP(&config, "config", "", "", "Path to config options")
+	MistCmd.Flags().BoolVarP(&daemon, "server", "", false, "Run mist as a server")
 	MistCmd.Flags().BoolVarP(&version, "version", "v", false, "Display the current version of this CLI")
 
 	// set config defaults; these are overriden if a --config file is provided

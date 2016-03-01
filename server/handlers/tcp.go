@@ -8,7 +8,7 @@ import (
 )
 
 //
-func GenerateTCPCommands() map[string]mist.TCPHandler {
+func GenerateTCPHandlers() map[string]mist.TCPHandler {
 	return map[string]mist.TCPHandler{
 		"ping":               {0, handleTCPPing},
 		"list":               {0, handleTCPList},
@@ -21,13 +21,13 @@ func GenerateTCPCommands() map[string]mist.TCPHandler {
 
 //
 func handleTCPPing(client mist.Client, args []string) string {
-	fmt.Println("PING?")
+	fmt.Println("HANDLE TCP PING")
 	return "pong"
 }
 
 //
 func handleTCPSubscribe(client mist.Client, args []string) string {
-	fmt.Println("SUB?")
+	fmt.Println("HANDLE TCP SUB")
 	tags := strings.Split(args[0], ",")
 	client.Subscribe(tags)
 
@@ -36,7 +36,7 @@ func handleTCPSubscribe(client mist.Client, args []string) string {
 
 //
 func handleTCPUnsubscribe(client mist.Client, args []string) string {
-	fmt.Println("UNSUB?")
+	fmt.Println("HANDLE TCP UNSUB")
 	tags := strings.Split(args[0], ",")
 	client.Unsubscribe(tags)
 
@@ -45,7 +45,7 @@ func handleTCPUnsubscribe(client mist.Client, args []string) string {
 
 //
 func handleTCPPublish(client mist.Client, args []string) string {
-	fmt.Println("PUB?", args)
+	fmt.Println("HANDLE TCP PUB", args)
 	tags := strings.Split(args[0], ",")
 	msg := args[1]
 	client.Publish(tags, msg)
@@ -55,7 +55,7 @@ func handleTCPPublish(client mist.Client, args []string) string {
 
 //
 func handleTCPList(client mist.Client, args []string) string {
-	fmt.Println("LIST?")
+	fmt.Println("HANDLE TCP LIST")
 	subscriptions, err := client.List()
 	if err != nil {
 		return err.Error()

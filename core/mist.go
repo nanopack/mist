@@ -3,6 +3,7 @@ package mist
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 )
@@ -75,19 +76,18 @@ type (
 )
 
 // creates a new mist
-func New() *Mist {
-
+func init() {
 	Self = &Mist{
 		subscribers: make(map[uint32]*proxy),
 		replicators: make(map[uint32]*proxy),
 		internal:    make(map[uint32]*proxy),
 	}
-
-	return Self
 }
 
 // Publish publishes to both subscribers, and to replicators
-func (mist *Mist) Publish(tags []string, data string) error {
+func (m *Mist) Publish(tags []string, data string) error {
+
+	fmt.Println("MIST PUBLISH!")
 
 	// is this an error? or just something we need to ignore
 	if len(tags) == 0 {
@@ -99,14 +99,16 @@ func (mist *Mist) Publish(tags []string, data string) error {
 		Data: data,
 	}
 
-	forward(message, mist.subscribers)
-	forward(message, mist.replicators)
+	forward(message, m.subscribers)
+	forward(message, m.replicators)
 
 	return nil
 }
 
 // Replicate publishes to subscribers only
-func (mist *Mist) Replicate(tags []string, data string) error {
+func (m *Mist) Replicate(tags []string, data string) error {
+
+	fmt.Println("MIST REPLICATE!")
 
 	// is this an error? or just something we need to ignore
 	if len(tags) == 0 {
@@ -118,13 +120,15 @@ func (mist *Mist) Replicate(tags []string, data string) error {
 		Data: data,
 	}
 
-	forward(message, mist.subscribers)
+	forward(message, m.subscribers)
 
 	return nil
 }
 
 // publish
-func (mist *Mist) publish(tags []string, data string) error {
+func (m *Mist) publish(tags []string, data string) error {
+
+	fmt.Println("MIST publish")
 
 	// is this an error? or just something we need to ignore
 	if len(tags) == 0 {
@@ -137,7 +141,7 @@ func (mist *Mist) publish(tags []string, data string) error {
 		Data:     data,
 	}
 
-	forward(message, mist.internal)
+	forward(message, m.internal)
 
 	return nil
 }

@@ -55,7 +55,18 @@ func NewWS(address string, header http.Header) (mist.Client, error) {
 		unsubscribe: make(chan wsReply, 0),
 	}
 
-	go func(client *wsClient) {
+	return client, client.connect(address)
+}
+
+//
+func (client *wsClient) connect(address string) error {
+
+	fmt.Println("WS CONNECT!")
+
+	//
+	go func() {
+
+		//
 		defer func() {
 			close(client.messages)
 			close(client.list)
@@ -65,22 +76,24 @@ func NewWS(address string, header http.Header) (mist.Client, error) {
 		}()
 
 		for {
-			messageType, frame, err := conn.ReadMessage()
+			messageType, frame, err := client.conn.ReadMessage()
 			if err != nil {
 				return
 			}
 
+			// how/should these be reported?
 			if messageType != websocket.TextMessage {
-				// how do i report these?
 				continue
 			}
 
+			//
 			cmd := wsReply{}
 			if err := json.Unmarshal(frame, &cmd); err != nil {
 				// how do i report these?
 				continue
 			}
-			fmt.Println(cmd, string(frame))
+
+			//
 			switch {
 			case cmd.Command == "list":
 				// TODO: what do we do if list failed?
@@ -100,9 +113,9 @@ func NewWS(address string, header http.Header) (mist.Client, error) {
 				client.messages <- message
 			}
 		}
+	}()
 
-	}(client)
-	return client, nil
+	return nil
 }
 
 //

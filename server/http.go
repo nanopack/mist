@@ -5,15 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/pat"
-
-	"github.com/nanopack/mist/auth"
 )
 
-//
 var (
 	Router = pat.New()
-	Name   = "UNKOWN"
-	Auth   auth.Authenticator
 )
 
 //
@@ -30,7 +25,6 @@ func routes() *pat.Router {
 
 	//
 	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
-		fmt.Println("HERE!!!")
 		rw.Write([]byte("pong\n"))
 	})
 	// Router.Get("/list", handleRequest(list))

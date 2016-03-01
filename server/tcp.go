@@ -11,19 +11,19 @@ import (
 )
 
 //
-var tcpCommands map[string]mist.TCPHandler
+var tcpHandlers map[string]mist.TCPHandler
 
 //
 func init() {
 
-	// add TCP handlers
-	tcpCommands = handlers.GenerateTCPCommands()
+	// add TCP command handlers
+	tcpHandlers = handlers.GenerateTCPHandlers()
 }
 
-// ListenTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
+// NewTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
 // and then continually reads from the server handling any incoming connections;
 // this is intentionally non-blocking.
-func ListenTCP(address string, mixins map[string]mist.TCPHandler) (net.Listener, error) {
+func NewTCP(address string, additionalHandlers map[string]mist.TCPHandler) (net.Listener, error) {
 
 	//
 	if address == "" {
@@ -37,24 +37,19 @@ func ListenTCP(address string, mixins map[string]mist.TCPHandler) (net.Listener,
 	}
 	fmt.Printf("TCP server listening at '%s'...\n", address)
 
-	// non-blocking
+	// add any additional commands to existing tcp commands
+	for k, v := range additionalHandlers {
+		tcpHandlers[k] = v
+	}
+
+	// start continually listening for any incomeing tcp connections (non-blocking)
 	go func() {
-
-		// add any additional handlers
-		for k, v := range mixins {
-			tcpCommands[k] = v
-		}
-
-		//
-		// defer client.Close()
-
-		// Continually listen for any incoming connections.
 		for {
 
 			// accept connections
 			conn, err := ln.Accept()
 			if err != nil {
-				fmt.Println("BONK!", err) // what should we do with the error?
+				fmt.Println("TCPS BONK!", err) // what should we do with the error?
 			}
 
 			// handle each connection individually (non-blocking)
@@ -70,32 +65,33 @@ func ListenTCP(address string, mixins map[string]mist.TCPHandler) (net.Listener,
 // that is used to publish messages to the data channel of the subscription
 func handleConnection(conn net.Conn) {
 
-	fmt.Printf("NEW CONNECTION! %q\n", conn)
+	fmt.Printf("TCPS HANDLE CONNECTION! %q\n", conn)
 
 	// create a new client for each connection
 	proxy, err := mist.NewProxy(0)
 	if err != nil {
-		fmt.Println("BONK!", err) // what should we do with the error?
+		fmt.Println("TCPS BONK!", err) // what should we do with the error?
 	}
 
 	// clean up everything that we have setup
 	defer func() {
-		fmt.Println("CALLED?????????")
 		conn.Close()
 		proxy.Close()
 	}()
 
-	// add a "publisher" for this connection (non-blocking)
-	go publisher(proxy, conn)
+	// add a publisher that will publish across the connection (non-blocking)
+	go publishHandler(proxy, conn)
 
-	// add a "reader" for the connection (blocking)
-	reader(proxy, conn)
+	// add a reader that reads off the connection (blocking)
+	readHandler(proxy, conn)
 
-	fmt.Println("DONE???")
+	fmt.Println("TCPS DONE!")
 }
 
-//
-func publisher(proxy mist.Client, conn net.Conn) {
+// publishHandler is used to...
+func publishHandler(proxy mist.Client, conn net.Conn) {
+
+	fmt.Println("TCPS PUBLISHING!")
 
 	// make a done channel
 	done := make(chan bool)
@@ -106,32 +102,35 @@ func publisher(proxy mist.Client, conn net.Conn) {
 		//
 		select {
 
+		// return if we are done
+		case <-done:
+			fmt.Println("TCPS DONE!")
+			return
+
 		// when a message is recieved on the subscriptions channel write the message
 		// to the connection
 		case msg := <-proxy.Messages():
-			fmt.Printf("TCP MESSAGE! %#v\n", msg)
+			fmt.Printf("TCPS MESSAGE! %#v\n", msg)
 			if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
 				break
 			}
-
-		// return if we are done
-		case <-done:
-			fmt.Println("TCP DONE!")
-			return
 		}
 	}
 }
 
-//
-func reader(proxy mist.Client, conn net.Conn) {
+// readHandler is used to read off the open connection and execute any recongnized
+// commands that come across
+func readHandler(proxy mist.Client, conn net.Conn) {
 
-	//
+	fmt.Println("TCPS READING!")
+
+	// continually read off the connection; once something is read, check to see
+	// if it is a message the client understands to be one of its commands. If so
+	// execute the command.
 	r := util.NewReader(conn)
-
-	//
 	for r.Next() {
 
-		fmt.Printf("TCP NEXT! %#v\n", r)
+		fmt.Printf("TCPS NEXT! %#v\n", r)
 
 		// what should we do with this error?
 		if r.Err != nil {
@@ -139,7 +138,7 @@ func reader(proxy mist.Client, conn net.Conn) {
 		}
 
 		//
-		handler, found := tcpCommands[r.Input.Cmd]
+		handler, found := tcpHandlers[r.Input.Cmd]
 
 		//
 		var response string
@@ -155,14 +154,16 @@ func reader(proxy mist.Client, conn net.Conn) {
 
 		// execute command
 		default:
-			fmt.Println("EXECUTE CLIENT! ", r.Input.Cmd)
+			fmt.Println("TCPS EXECUTE! ", r.Input.Cmd)
 			response = handler.Handle(proxy, r.Input.Args)
 		}
 
 		// write the response from the command back to the connection
-		fmt.Println("TCP WRITING RESPONSE! ", response)
+		fmt.Println("TCPS WRITING RESPONSE! ", response)
 		if _, err := conn.Write([]byte(response + "\n")); err != nil {
 			break
 		}
 	}
+
+	fmt.Println("READING DONE!")
 }

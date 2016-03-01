@@ -24,7 +24,7 @@ type (
 		conn          net.Conn                   // the connection the mist server
 		done          chan error                 // the channel to indicate that the connection is closed
 		waiting       []chan tcpReply            // all client waiting for a response
-		data          chan mist.Message          // the channel that mist server 'publishes' updates to
+		messages      chan mist.Message          // the channel that mist server 'publishes' updates to
 		open          bool                       // flag that indicates that the conenction should reestablish
 		attempts      int
 		replicated    bool // is replication enabled on this connection
@@ -34,28 +34,30 @@ type (
 		value interface{}
 		err   error
 	}
-
-	// nothing struct{}
 )
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
 func NewTCP(address string) (mist.Client, error) {
+	fmt.Println("NEW TCPC!")
+
 	client := &tcpClient{
 		subscriptions: subscription.NewNode(),
 		done:          make(chan error),
 		waiting:       make([]chan tcpReply, 0),
-		data:          make(chan mist.Message),
+		messages:      make(chan mist.Message),
 		open:          false,
 		attempts:      0,
 		address:       address,
 	}
 
-	return client, client.connect(address)
+	return client, client.connect()
 }
 
 // connect
-func (client *tcpClient) connect(address string) error {
+func (client *tcpClient) connect() error {
+
+	fmt.Println("TCPC CONNECT!")
 
 	// attempt an initial connection to the server
 	conn, err := net.Dial("tcp", client.address)
@@ -67,13 +69,16 @@ func (client *tcpClient) connect(address string) error {
 	client.open = true
 
 	// keep the connection open
-	go client.loop()
+	fmt.Println("START LISTEN!")
+	go client.listen()
 
 	return nil
 }
 
 //
 func (client *tcpClient) reconnect() {
+
+	fmt.Println("TCPC RECONNECT!")
 
 	// attempt to reconnect
 	conn, err := net.Dial("tcp", client.address)
@@ -94,16 +99,19 @@ func (client *tcpClient) reconnect() {
 
 	//
 	default:
+		fmt.Println("DEFAULT??")
 		client.conn = conn
 		client.open = true
 
 		//
-		go client.loop()
+		go client.listen()
 	}
 }
 
 //
-func (client *tcpClient) loop() {
+func (client *tcpClient) listen() {
+
+	fmt.Println("TCPC listen!", client.open)
 
 	//
 	for client.open {
@@ -114,11 +122,11 @@ func (client *tcpClient) loop() {
 		// }
 
 		// send all saved subscriptions across the channel
-		client.Lock()
-		for _, subscription := range client.subscriptions.ToSlice() {
-			client.async("subscribe %v\n", strings.Join(subscription, ","))
-		}
-		client.Unlock()
+		// client.Lock()
+		// for _, subscription := range client.subscriptions.ToSlice() {
+		// 	client.async("subscribe %v\n", strings.Join(subscription, ","))
+		// }
+		// client.Unlock()
 
 		r := util.NewReader(client.conn)
 		for r.Next() {
@@ -134,6 +142,7 @@ func (client *tcpClient) loop() {
 
 			//
 			case "pong":
+				fmt.Println("TCPC listen pong")
 				client.Lock()
 				wait := client.waiting[0]
 				client.waiting = client.waiting[1:]
@@ -144,22 +153,21 @@ func (client *tcpClient) loop() {
 
 			//
 			case "publish":
+				fmt.Println("TCPC listen publish?")
 				if len(args) != 2 {
 					// too few args; unable to publish
 				}
 
-				msg := mist.Message{
-					Tags: strings.Split(args[0], ","),
-					Data: args[1],
-				}
-
+				//
 				select {
-				case client.data <- msg:
+				case client.messages <- mist.Message{Tags: strings.Split(args[0], ","), Data: args[1]}:
 				case <-client.done:
+					fmt.Println("DONE?")
 				}
 
 			//
 			case "list":
+				fmt.Println("TCPC listen list")
 				client.Lock()
 				wait := client.waiting[0]
 				client.waiting = client.waiting[1:]
@@ -167,17 +175,18 @@ func (client *tcpClient) loop() {
 
 				list := [][]string{strings.Split(args[1], ",")}
 
-				if len(cmd) == 3 {
-					for _, subscription := range strings.Split(args[2], " ") {
-						list = append(list, strings.Split(subscription, ","))
-					}
-				}
+				// if len(cmd) == 3 {
+				// 	for _, subscription := range strings.Split(args[2], " ") {
+				// 		list = append(list, strings.Split(subscription, ","))
+				// 	}
+				// }
 
 				//
 				wait <- tcpReply{list, nil}
 
 			//
 			case "error":
+				fmt.Println("TCPC listen error")
 
 				// close the connection as something is seriously wrong, it will reconnect
 				// and and continue on
@@ -203,18 +212,24 @@ func (client *tcpClient) loop() {
 	// if the client ever disconnects, attempt to reconnect; may want to put in a
 	// limit here so that it doesn't try and connect forever...
 	if !client.open {
+		fmt.Println("RECONNECTING??", client.open)
 		client.reconnect()
 	}
 }
 
 // Ping pong the server
 func (client *tcpClient) Ping() error {
+	fmt.Println("TCPC PING!")
+
 	return client.sync("ping\n").err
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
 func (client *tcpClient) Subscribe(tags []string) error {
+
+	fmt.Println("TCPC SUBSCRIBE!", tags)
+
 	client.Lock()
 	active := client.subscriptions.Match(tags)
 	client.subscriptions.Add(tags)
@@ -231,6 +246,9 @@ func (client *tcpClient) Subscribe(tags []string) error {
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
 func (client *tcpClient) Unsubscribe(tags []string) error {
+
+	fmt.Println("TCPC UNSUBSCRIBE!", tags)
+
 	client.Lock()
 	client.subscriptions.Remove(tags)
 	active := client.subscriptions.Match(tags)
@@ -246,6 +264,7 @@ func (client *tcpClient) Unsubscribe(tags []string) error {
 
 // Publish sends a message to the mist server to be published to all subscribed clients
 func (client *tcpClient) Publish(tags []string, data string) error {
+	fmt.Println("TCPC PUBLISH!", tags)
 	if len(tags) == 0 {
 		return nil
 	}
@@ -255,6 +274,7 @@ func (client *tcpClient) Publish(tags []string, data string) error {
 // PublishAfter sends a message to the mist server to be published to all subscribed clients
 // with delay
 func (client *tcpClient) PublishAfter(tags []string, data string, delay time.Duration) error {
+	fmt.Println("TCPC PUBLISH AFTER!", tags)
 	go func() {
 		<-time.After(delay)
 		client.Publish(tags, data)
@@ -264,6 +284,8 @@ func (client *tcpClient) PublishAfter(tags []string, data string, delay time.Dur
 
 // List requests a list of current mist subscriptions from the server
 func (client *tcpClient) List() ([][]string, error) {
+
+	fmt.Println("TCPC LIST!")
 
 	//
 	reply := client.sync("list\n")
@@ -278,18 +300,21 @@ func (client *tcpClient) List() ([][]string, error) {
 // Close closes the client data channel and the connection to the server
 func (client *tcpClient) Close() error {
 
+	fmt.Println("TCPC CLOSE!")
+
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
-	client.open = false
 	client.conn.Close()
 	close(client.done)
+	client.open = false
 
 	return nil
 }
 
 //
 func (client *tcpClient) Messages() <-chan mist.Message {
-	return client.data
+	fmt.Println("TCPC MESSAGE?")
+	return client.messages
 }
 
 func (client *tcpClient) EnableReplication() error {
