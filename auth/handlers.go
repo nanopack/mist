@@ -1,16 +1,22 @@
-package handlers
+package auth
 
 import (
 	"fmt"
 	"strings"
+)
 
-	"github.com/nanopack/mist/auth"
-	"github.com/nanopack/mist/core"
+type (
+
+  // 
+	Handler struct {
+		NumArgs int
+		Handle  func([]string) string
+	}
 )
 
 //
-func GenerateAuthCommands(auth auth.Authenticator) map[string]mist.TCPHandler {
-	return map[string]mist.TCPHandler{
+func GenerateAuthCommands(auth Authenticator) map[string]Handler {
+	return map[string]Handler{
 		"register":   {2, handleRegister(auth)},
 		"unregister": {1, handleUnregister(auth)},
 		"set":        {2, handleSet(auth)},
@@ -20,8 +26,8 @@ func GenerateAuthCommands(auth auth.Authenticator) map[string]mist.TCPHandler {
 }
 
 // handleRegister
-func handleRegister(a auth.Authenticator) func(mist.Client, []string) string {
-	return func(client mist.Client, args []string) string {
+func handleRegister(a Authenticator) func([]string) string {
+	return func(args []string) string {
 		var err error
 
 		token := args[0]
@@ -43,8 +49,8 @@ func handleRegister(a auth.Authenticator) func(mist.Client, []string) string {
 }
 
 // handleUnregister
-func handleUnregister(a auth.Authenticator) func(mist.Client, []string) string {
-	return func(client mist.Client, args []string) string {
+func handleUnregister(a Authenticator) func([]string) string {
+	return func(args []string) string {
 
 		//
 		if err := a.RemoveToken(args[0]); err != nil {
@@ -57,8 +63,8 @@ func handleUnregister(a auth.Authenticator) func(mist.Client, []string) string {
 }
 
 // handleSet
-func handleSet(a auth.Authenticator) func(mist.Client, []string) string {
-	return func(client mist.Client, args []string) string {
+func handleSet(a Authenticator) func([]string) string {
+	return func(args []string) string {
 
 		token := args[0]
 		tags := strings.Split(args[1], ",")
@@ -73,8 +79,8 @@ func handleSet(a auth.Authenticator) func(mist.Client, []string) string {
 }
 
 // handleUnset
-func handleUnset(a auth.Authenticator) func(mist.Client, []string) string {
-	return func(client mist.Client, args []string) string {
+func handleUnset(a Authenticator) func([]string) string {
+	return func(args []string) string {
 
 		token := args[0]
 		tags := strings.Split(args[1], ",")
@@ -89,8 +95,8 @@ func handleUnset(a auth.Authenticator) func(mist.Client, []string) string {
 }
 
 // handleTags
-func handleTags(a auth.Authenticator) func(mist.Client, []string) string {
-	return func(client mist.Client, args []string) string {
+func handleTags(a Authenticator) func([]string) string {
+	return func(args []string) string {
 
 		tags, err := a.GetTagsForToken(args[0])
 		if err != nil {

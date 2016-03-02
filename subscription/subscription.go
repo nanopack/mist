@@ -116,10 +116,7 @@ func (root *Node) traverse(keys []string, action int) (*Node, int) {
 	}
 
 	key := keys[0]
-
-	var ok bool
-	var child *Node
-	child, ok = root.children[key]
+	child, ok := root.children[key]
 
 	switch action {
 	case remove:

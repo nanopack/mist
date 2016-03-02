@@ -9,22 +9,28 @@ import (
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/server/handlers"
 	"github.com/nanopack/mist/util"
 )
 
 //
-var wsCommands map[string]mist.WSHandler
+var wsCommands map[string]Handler
 
 //
 func init() {
 
 	// add WS handlers
-	wsCommands = handlers.GenerateWSCommands()
+	wsCommands = GenerateHandlers()
 }
 
+// start a mist server listening over HTTP
+// func startWS(uri string, errChan chan<- error)  {
+// 	if err := ListenWS(uri); err != nil {
+// 		errChan<- fmt.Errorf("Unable to start mist http listener %v", err)
+// 	}
+// }
+
 //
-func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
+func ListenWS(mixins map[string]Handler) http.HandlerFunc {
 
 	fmt.Println("LISTEN WS!")
 
@@ -61,15 +67,12 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 		fmt.Println("COMMANDS?", wsCommands)
 
 		// we don't want this to be buffered
-		client, err := mist.NewProxy(0)
-		if err != nil {
-			fmt.Println("BIONK!", err)
-		}
+		proxy := mist.NewProxy(0)
 
 		write := make(chan string)
 		done := make(chan bool)
 		defer func() {
-			client.Close()
+			proxy.Close()
 			close(done)
 		}()
 
@@ -81,7 +84,7 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 
 			for {
 				select {
-				case event := <-client.Messages():
+				case event := <-proxy.Messages():
 					if msg, err := json.Marshal(event); err == nil {
 						conn.WriteMessage(websocket.TextMessage, msg)
 					}
@@ -108,6 +111,7 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 
 			input := struct {
 				Cmd string `json:"command"`
+				Args []string `json:"args"`
 			}{}
 
 			//
@@ -120,66 +124,106 @@ func ListenWS(mixins map[string]mist.WSHandler) http.HandlerFunc {
 			handler, found := wsCommands[input.Cmd]
 
 			//
-			if !found {
-				write <- "{\"success\":false,\"error\":\"unknown command\"}"
-				continue
+			var response string
+			switch {
+
+			// no command found
+			case !found:
+				write <- fmt.Sprintf("{\"success\":false,\"error\":\"Unknown command '%s'\"}", input.Cmd)
+				// continue
+
+			//
+		case handler.NumArgs != len(input.Args):
+				write <- fmt.Sprintf("{\"success\":false,\"error\":\"Wrong number of args for '%s'. Expected %v got %v\"}", input.Cmd, handler.NumArgs, len(input.Args))
+
+			// execute command
+			default:
+				fmt.Println("WSS EXECUTE! ", input.Cmd)
+				response = handler.Handle(proxy, input.Args)
 			}
 
-			// something needs to happen with this error..
-			if err := handler.Handle(client, frame, write); err != nil {
-				fmt.Println("BROZONK!", err)
-				return
-			}
+			// write the response from the command back to the connection
+			fmt.Println("WSS WRITING RESPONSE! ", response)
+			write <- response
 		}
 	}
 }
 
 //
-func AuthenticateWebsocket(a auth.Authenticator) http.HandlerFunc {
-
-	fmt.Println("AUTH WEBSOCKET???", a)
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Println("HERE!!?!?!", r.FormValue("x-auth-token"), r.Header.Get("x-auth-token"))
-
-		//
-		var token string
-		switch {
-		case r.Header.Get("x-auth-token") != "":
-			token = r.Header.Get("x-auth-token")
-		case r.FormValue("x-auth-token") != "":
-			token = r.FormValue("x-auth-token")
-		default:
-			token = "unauthorized"
-		}
-
-		fmt.Println("TOKEN??", token)
-
-		// if they have no tags registered for the token, then they are not authorized
-		// to connect to mist
-		if tags, err := a.GetTagsForToken(token); err != nil || len(tags) == 0 {
-			fmt.Println("BRONK??", err)
-			w.WriteHeader(401)
-			return
-		}
-
-		fmt.Println("HERE!")
-
-		// overwrite the subscribe command so that we can add authentication to it.
-		mixins := map[string]mist.WSHandler{
-			"subscribe": {0, handleWSAuthSubscribe(token, a)},
-		}
-
-		//
-		wsUpgrade := ListenWS(mixins)
-		wsUpgrade(w, r)
-	}
-}
+// func handleWSPing(client mist.Proxy, frame []byte, write chan<- string) error {
+// 	write <- "{\"success\":true,\"command\":\"ping\"}"
+// 	return nil
+// }
+//
+// //
+// func handleWSSubscribe(client mist.Proxy, frame []byte, write chan<- string) error {
+// 	tags := struct {
+// 		Tags []string `json:"tags"`
+// 	}{}
+//
+// 	// error would already be caught by unmarshalling the command
+// 	if err := json.Unmarshal(frame, &tags); err != nil {
+// 		fmt.Println("BUNK!", err)
+// 	}
+//
+// 	//
+// 	client.Subscribe(tags.Tags)
+//
+// 	write <- "{\"success\":true,\"command\":\"subscribe\"}"
+//
+// 	return nil
+// }
+//
+// //
+// func handleWSUnubscribe(client mist.Proxy, frame []byte, write chan<- string) error {
+// 	tags := struct {
+// 		Tags []string `json:"tags"`
+// 	}{}
+//
+// 	// error would already be caught by unmarshalling the command
+// 	if err := json.Unmarshal(frame, &tags); err != nil {
+// 		fmt.Println("BUNK!", err)
+// 	}
+//
+// 	//
+// 	client.Unsubscribe(tags.Tags)
+//
+// 	write <- "{\"success\":true,\"command\":\"unsubscribe\"}"
+//
+// 	return nil
+// }
+//
+// //
+// func handleWSList(client mist.Proxy, frame []byte, write chan<- string) (err error) {
+//
+// 	//
+// 	list := struct {
+// 		Subscriptions [][]string `json:"subscriptions"`
+// 		Command       string     `json:"command"`
+// 		Success       bool       `json:"success"`
+// 	}{}
+//
+// 	if list.Subscriptions, err = client.List(); err != nil {
+// 		return err
+// 	}
+//
+// 	list.Command = "list"
+// 	list.Success = true
+//
+// 	bytes, err := json.Marshal(list)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	//
+// 	write <- string(bytes)
+//
+// 	return
+// }
 
 //
-func handleWSAuthSubscribe(token string, a auth.Authenticator) func(client mist.Client, frame []byte, write chan<- string) error {
-	return func(client mist.Client, frame []byte, write chan<- string) error {
+func handleWSAuthSubscribe(token string, a auth.Authenticator) func(proxy mist.Proxy, frame []byte, write chan<- string) error {
+	return func(proxy mist.Proxy, frame []byte, write chan<- string) error {
 
 		authTags, err := a.GetTagsForToken(token)
 		if err != nil || len(authTags) == 0 {
@@ -201,7 +245,7 @@ func handleWSAuthSubscribe(token string, a auth.Authenticator) func(client mist.
 			write <- "{\"success\":false,\"command\":\"subscribe\"}"
 			return nil
 		}
-		client.Subscribe(tags.Tags)
+		proxy.Subscribe(tags.Tags)
 		write <- "{\"success\":true,\"command\":\"subscribe\"}"
 		return nil
 	}

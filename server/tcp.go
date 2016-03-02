@@ -5,25 +5,41 @@ import (
 	"net"
 	"strings"
 
+	// "github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/server/handlers"
 	"github.com/nanopack/mist/util"
 )
 
-//
-var tcpHandlers map[string]mist.TCPHandler
+// QUESTION! how/where will other custom handlers be passed???
 
-//
-func init() {
+var handlers map[string]Handler
 
-	// add TCP command handlers
-	tcpHandlers = handlers.GenerateTCPHandlers()
+// start a mist server listening over TCP
+func startTCP(uri string, errChan chan<- error) {
+
+	// get basic TCP command handlers
+	handlers = GenerateHandlers()
+
+	// add any additional commands to existing tcp commands
+	// for k, v := range additionalHandlers {
+	// 	handlers[k] = v
+	// }
+
+	// if authenticator.DefaultAuth != nil {
+	// 	// get auth handlers and merge with exsiting
+	// }
+
+	// don't close this because it's go routined and the error is handled from the
+	// errChan
+	if err := newTCP(uri, handlers); err != nil {
+		errChan<- fmt.Errorf("Unable to start mist tcp listener %v", err)
+	}
 }
 
-// NewTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
+// newTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
 // and then continually reads from the server handling any incoming connections;
 // this is intentionally non-blocking.
-func NewTCP(address string, additionalHandlers map[string]mist.TCPHandler) (net.Listener, error) {
+func newTCP(address string, additionalHandlers map[string]Handler) error {
 
 	//
 	if address == "" {
@@ -33,14 +49,9 @@ func NewTCP(address string, additionalHandlers map[string]mist.TCPHandler) (net.
 	// start a TCP listener
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	fmt.Printf("TCP server listening at '%s'...\n", address)
-
-	// add any additional commands to existing tcp commands
-	for k, v := range additionalHandlers {
-		tcpHandlers[k] = v
-	}
 
 	// start continually listening for any incomeing tcp connections (non-blocking)
 	go func() {
@@ -57,7 +68,7 @@ func NewTCP(address string, additionalHandlers map[string]mist.TCPHandler) (net.
 		}
 	}()
 
-	return ln, nil
+	return nil
 }
 
 // handleConnection takes an incoming connection from a mist client (or other client)
@@ -68,10 +79,7 @@ func handleConnection(conn net.Conn) {
 	fmt.Printf("TCPS HANDLE CONNECTION! %q\n", conn)
 
 	// create a new client for each connection
-	proxy, err := mist.NewProxy(0)
-	if err != nil {
-		fmt.Println("TCPS BONK!", err) // what should we do with the error?
-	}
+	proxy := mist.NewProxy(0)
 
 	// clean up everything that we have setup
 	defer func() {
@@ -85,11 +93,11 @@ func handleConnection(conn net.Conn) {
 	// add a reader that reads off the connection (blocking)
 	readHandler(proxy, conn)
 
-	fmt.Println("TCPS DONE!")
+	fmt.Println("TCPS END!")
 }
 
 // publishHandler is used to...
-func publishHandler(proxy mist.Client, conn net.Conn) {
+func publishHandler(proxy mist.Proxy, conn net.Conn) {
 
 	fmt.Println("TCPS PUBLISHING!")
 
@@ -120,7 +128,7 @@ func publishHandler(proxy mist.Client, conn net.Conn) {
 
 // readHandler is used to read off the open connection and execute any recongnized
 // commands that come across
-func readHandler(proxy mist.Client, conn net.Conn) {
+func readHandler(proxy mist.Proxy, conn net.Conn) {
 
 	fmt.Println("TCPS READING!")
 
@@ -138,7 +146,7 @@ func readHandler(proxy mist.Client, conn net.Conn) {
 		}
 
 		//
-		handler, found := tcpHandlers[r.Input.Cmd]
+		handler, found := handlers[r.Input.Cmd]
 
 		//
 		var response string
@@ -147,6 +155,7 @@ func readHandler(proxy mist.Client, conn net.Conn) {
 		// no command found
 		case !found:
 			response = fmt.Sprintf("Error: Unknown Command '%s'", r.Input.Cmd)
+			// continue
 
 		//
 		case handler.NumArgs != len(r.Input.Args):

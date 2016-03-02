@@ -11,105 +11,88 @@ import (
 )
 
 type (
-	proxy struct {
+
+	//
+	Proxy struct {
 		sync.Mutex
 
-		check chan Message
-		done  chan bool
-		pipe  chan Message
-
 		subscriptions subscription.Subscriptions
-		mist          *Mist
+		done  chan bool
+		check chan Message
+		pipe  chan Message
 		id            uint32
-		internal      bool
-		replicated    bool
 	}
 )
 
 //
-func NewProxy(buffer int) (Client, error) {
+func NewProxy(buffer int) (p Proxy) {
 
 	fmt.Println("NEW PROXY!")
 
 	//
-	p := &proxy{
+	p = Proxy{
 		subscriptions: subscription.NewNode(),
 		done:          make(chan bool),
 		check:         make(chan Message, buffer),
 		pipe:          make(chan Message),
-		mist:          Self,
-		id:            atomic.AddUint32(&Self.next, 1),
-		internal:      false,
+		id:            atomic.AddUint32(&uid, 1),
 	}
 
-	return p, p.connect()
+	p.connect()
+
+	return
 }
 
 // connect
-func (p *proxy) connect() error {
+func (p *Proxy) connect() {
 
 	fmt.Println("PROXY CONNECT!")
 
 	// this gofunc handles matching messages to subscriptions for the proxy
-	go func() {
-
-		defer func() {
-			close(p.check)
-			close(p.pipe)
-		}()
-
-		//
-		for {
-			select {
-
-			//
-			case msg := <-p.check:
-
-				switch {
-
-				//
-				case msg.internal && p.internal:
-					p.pipe <- msg
-
-				//
-				default:
-					p.Lock()
-					match := p.subscriptions.Match(msg.Tags)
-					p.Unlock()
-
-					if match {
-						p.pipe <- msg
-					}
-				}
-
-				//
-			case <-p.done:
-				return
-			}
-		}
-	}()
+	go p.handleMessages()
 
 	// add the proxy to mists list of subscribers
-	p.mist.subscribers[p.id] = p
-
-	return nil
+	subscribers[p.id] = p
 }
 
 //
-func (p *proxy) Ping() error {
+func (p *Proxy) handleMessages() {
+
+	defer func() {
+		close(p.check)
+		close(p.pipe)
+	}()
+
+	//
+	for {
+		select {
+
+		//
+		case msg := <-p.check:
+
+			p.Lock()
+			match := p.subscriptions.Match(msg.Tags)
+			p.Unlock()
+
+			if match {
+				p.pipe <- msg
+			}
+
+			//
+		case <-p.done:
+			return
+		}
+	}
+}
+
+//
+func (p *Proxy) Ping() {
 	fmt.Println("PROXY PING!")
-	return nil
 }
 
 // Subscribe
-func (p *proxy) Subscribe(tags []string) error {
-
+func (p *Proxy) Subscribe(tags []string) error {
 	fmt.Println("PROXY SUBSCRIBE!")
-
-	//
-	if p.internal {
-		return InternalErr
-	}
 
 	//
 	if len(tags) == 0 {
@@ -123,24 +106,13 @@ func (p *proxy) Subscribe(tags []string) error {
 	p.subscriptions.Add(tags)
 	p.Unlock()
 
-	// if this proxy is replicated, we don't need to inform other replicated
-	// proxies of this subscription
-	if !p.replicated {
-		p.mist.publish(tags, "subscribe")
-	}
-
-	return nil
+	//
+	return publish(p.id, tags, "subscribe")
 }
 
 // Unsubscribe
-func (p *proxy) Unsubscribe(tags []string) error {
-
+func (p *Proxy) Unsubscribe(tags []string) error {
 	fmt.Println("PROXY UNSUBSCRIBE!")
-
-	//
-	if p.internal {
-		return InternalErr
-	}
 
 	//
 	if len(tags) == 0 {
@@ -154,70 +126,40 @@ func (p *proxy) Unsubscribe(tags []string) error {
 	p.subscriptions.Remove(tags)
 	p.Unlock()
 
-	// if this proxy is replicated, we don't need to inform other replicated
-	// ps of this unsubscription
-	if !p.replicated {
-		p.mist.publish(tags, "unsubscribe")
-	}
-
-	return nil
+	//
+	return publish(p.id, tags, "unsubscribe")
 }
 
 // Publish
-func (p *proxy) Publish(tags []string, data string) error {
-
+func (p *Proxy) Publish(tags []string, data string) error {
 	fmt.Println("PROXY PUBLISH!")
 
 	//
-	if p.internal {
-		return InternalErr
-	}
-
-	//
-	switch p.replicated {
-	case true:
-		p.mist.Replicate(tags, data)
-	default:
-		p.mist.Publish(tags, data)
-	}
-
-	return nil
+	return publish(p.id, tags, data)
 }
 
 // Sends a message with delay
-func (p *proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
-
-	//
-	if p.internal {
-		return InternalErr
-	}
+func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 
 	//
 	go func() {
 		<-time.After(delay)
-		p.Publish(tags, data)
+		if err := publish(p.id, tags, data); err != nil {
+			// write this to a log?
+		}
 	}()
-
-	//
-	return nil
 }
 
 // List
-func (p *proxy) List() ([][]string, error) {
-
+func (p *Proxy) List() [][]string {
 	fmt.Println("PROXY LIST!")
 
 	//
-	if p.internal {
-		return nil, InternalErr
-	}
-
-	//
-	return p.subscriptions.ToSlice(), nil
+	return p.subscriptions.ToSlice()
 }
 
 //
-func (p *proxy) Close() error {
+func (p *Proxy) Close() {
 
 	fmt.Println("PROXY CLOSE!")
 
@@ -225,41 +167,17 @@ func (p *proxy) Close() error {
 	close(p.done)
 
 	// remove the local p from mists list of subscribers/replicators/internal
-	delete(p.mist.subscribers, p.id)
-	delete(p.mist.replicators, p.id)
-	delete(p.mist.internal, p.id)
+	delete(subscribers, p.id)
 
 	// send out the unsubscribe message to anyone listening
 	for _, subscription := range p.subscriptions.ToSlice() {
-		p.mist.publish(subscription, "unsubscribe")
+		publish(p.id, subscription, "unsubscribe")
 	}
-
-	return nil
 }
 
 // Returns all messages that have sucessfully matched the list of subscriptions
 // that this proxy has subscribed to
-func (p *proxy) Messages() <-chan Message {
+func (p *Proxy) Messages() <-chan Message {
 	fmt.Println("PROXY MESSAGES!")
 	return p.pipe
-}
-
-//
-func (p *proxy) EnableInternal() {
-	// we don't want any already replicated messages to come across on this proxy
-	// this will stop that
-	delete(p.mist.subscribers, p.id)
-	p.internal = true
-	p.mist.internal[p.id] = p
-}
-
-//
-func (p *proxy) EnableReplication() error {
-	// we need to flag that this proxy doesn't use publish any more.
-	p.replicated = true
-
-	// this proxy is no longer a subscriber.
-	delete(p.mist.subscribers, p.id)
-	p.mist.replicators[p.id] = p
-	return nil
 }

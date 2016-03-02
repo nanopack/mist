@@ -5,11 +5,20 @@ import (
 	"net/http"
 
 	"github.com/gorilla/pat"
+
+	"github.com/nanopack/mist/auth"
 )
 
 var (
 	Router = pat.New()
 )
+
+// start a mist server listening over HTTP
+func startHTTP(uri string, errChan chan<- error)  {
+	if err := ListenHTTP(uri); err != nil {
+		errChan<- fmt.Errorf("Unable to start mist http listener %v", err)
+	}
+}
 
 //
 func ListenHTTP(address string) error {
@@ -32,7 +41,7 @@ func routes() *pat.Router {
 	// Router.Get("/unsubscribe", handleRequest(unsubscribe))
 
 	// start up the authenticated websocket connection
-	Router.Get("/subscribe/websocket", AuthenticateWebsocket(Auth))
+	Router.Get("/subscribe/websocket", auth.AuthenticateWebsocket())
 
 	return Router
 }

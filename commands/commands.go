@@ -3,6 +3,8 @@ package commands
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/jcelliott/lumber"
 	"github.com/spf13/cobra"
@@ -56,13 +58,28 @@ var (
 			if daemon {
 
 				//
-				if viper.GetString("multicast-interface") != "single" {
-					server.EnableDiscovery()
-					server.EnableReplication()
+				// if viper.GetString("multicast-interface") != "single" {
+				// 	if err := server.EnableDiscovery(); err != nil {
+				// 		panic(err)
+				// 	}
+				// 	server.EnableReplication()
+				// }
+
+				//
+				// if err := authenticator.Start(); err != nil {
+				// 	os.Exit(1)
+				// }
+
+				//
+				if err := server.Start(strings.Split(viper.GetString("listeners"), ",")); err != nil {
+					fmt.Println("FAILED TO START!", err)
+					os.Exit(1)
 				}
 
 				//
-				server.Start()
+				// if err := replicator.Start(); err != nil {
+				// 	?
+				// }
 			}
 
 			// fall back on default help if no args/flags are passed
@@ -80,21 +97,23 @@ func init() {
 
 	// set config defaults; these are overriden if a --config file is provided
 	// (see above)
-	viper.SetDefault("tcp-addr", "127.0.0.1:1445")
-	viper.SetDefault("http-addr", "127.0.0.1:8080")
+	viper.SetDefault("authenticator", "postgres://postgres:postgres@127.0.0.1:5432?db=postgres")
 	viper.SetDefault("log-level", "INFO")
-	viper.SetDefault("multicast-interface", "single")
-	viper.SetDefault("db-user", "postgres")
-	viper.SetDefault("db-name", "postgres")
-	viper.SetDefault("db-addr", "127.0.0.1:5432")
+	viper.SetDefault("listeners", "tcp://127.0.0.1:1445,http://127.0.0.1:8080")
+	viper.SetDefault("replicator", "single")
 
 	// persistent flags; these are the only 2 options that we want overridable from
 	// the CLI, all others need to use a config file
-	MistCmd.PersistentFlags().String("tcp-addr", viper.GetString("tcp-addr"), "desc.")
-	viper.BindPFlag("tcp-addr", MistCmd.PersistentFlags().Lookup("tcp-addr"))
-
+	MistCmd.PersistentFlags().String("authenticator", viper.GetString("authenticator"), "desc.")
+	MistCmd.PersistentFlags().String("listeners", viper.GetString("listeners"), "desc.")
 	MistCmd.PersistentFlags().String("log-level", viper.GetString("log-level"), "desc.")
+	MistCmd.PersistentFlags().String("replicator", viper.GetString("replicator"), "desc.")
+
+	//
+	viper.BindPFlag("listeners", MistCmd.PersistentFlags().Lookup("listeners"))
+	viper.BindPFlag("authenticator", MistCmd.PersistentFlags().Lookup("authenticator"))
 	viper.BindPFlag("log-level", MistCmd.PersistentFlags().Lookup("log-level"))
+	viper.BindPFlag("replicator", MistCmd.PersistentFlags().Lookup("replicator"))
 
 	// commands
 	MistCmd.AddCommand(listCmd)

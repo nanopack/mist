@@ -8,6 +8,11 @@ type (
 	memory map[string]mapset.Set
 )
 
+//
+func newMemory(uri string, errChan chan<- error) {
+}
+
+//
 func NewMemory() memory {
 	return memory{}
 }

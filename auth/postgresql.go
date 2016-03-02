@@ -12,7 +12,12 @@ type (
 	postgresql string
 )
 
-func NewPostgresql(user, database, address string) (postgresql, error) {
+//
+func newPostgres(uri string, errChan chan<- error) {
+}
+
+//
+func NewPostgres(user, database, address string) (postgresql, error) {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return postgresql(""), err
