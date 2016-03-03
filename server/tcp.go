@@ -120,10 +120,12 @@ func publishHandler(proxy mist.Proxy, conn net.Conn) {
 		case msg := <-proxy.Messages():
 			fmt.Printf("TCPS MESSAGE! %#v\n", msg)
 			if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
+				goto stopcrying
 				break
 			}
 		}
 	}
+stopcrying:
 }
 
 // readHandler is used to read off the open connection and execute any recongnized

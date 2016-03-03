@@ -80,6 +80,7 @@ func (p *Proxy) handleMessages() {
 
 			//
 		case <-p.done:
+			fmt.Println("PROXY SHOULD STOP!")
 			return
 		}
 	}

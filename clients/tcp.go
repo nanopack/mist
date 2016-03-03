@@ -38,7 +38,7 @@ type (
 
 // Connect attempts to connect to a running mist server at the clients specified
 // host and port.
-func NewTCP(address string) (mist.Client, error) {
+func NewTCP(address string) (*tcpClient, error) {
 	fmt.Println("NEW TCPC!")
 
 	client := &tcpClient{

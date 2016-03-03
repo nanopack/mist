@@ -40,7 +40,7 @@ type (
 )
 
 //
-func NewWS(address string, header http.Header) (mist.Client, error) {
+func NewWS(address string, header http.Header) (*wsClient, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(address, header)
 	if err != nil {
 		return nil, err
