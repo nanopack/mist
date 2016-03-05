@@ -5,23 +5,34 @@ import (
 	"net/http"
 
 	"github.com/gorilla/pat"
-
-	"github.com/nanopack/mist/auth"
 )
 
 var (
 	Router = pat.New()
 )
 
-// start a mist server listening over HTTP
-func startHTTP(uri string, errChan chan<- error)  {
-	if err := ListenHTTP(uri); err != nil {
-		errChan<- fmt.Errorf("Unable to start mist http listener %v", err)
+// init
+func init() {
+
+	// add http as an available server type
+	listeners["http"] = startHTTP
+	listeners["https"] = startHTTPS
+}
+
+// startHTTP starts a mist server listening over HTTP
+func startHTTP(uri string, errChan chan<- error) {
+	if err := newHTTP(uri); err != nil {
+		errChan <- fmt.Errorf("Unable to start mist http listener %v", err)
 	}
 }
 
+// startHTTPS starts a mist server listening over HTTPS
+func startHTTPS(uri string, errChan chan<- error) {
+	errChan <- ErrNotImplemented
+}
+
 //
-func ListenHTTP(address string) error {
+func newHTTP(address string) error {
 	fmt.Printf("HTTP server listening at '%s'...\n", address)
 
 	// blocking...
@@ -30,7 +41,6 @@ func ListenHTTP(address string) error {
 
 // routes registers all api routes with the router
 func routes() *pat.Router {
-	// config.Log.Debug("Registering routes...\n")
 
 	//
 	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
@@ -39,9 +49,6 @@ func routes() *pat.Router {
 	// Router.Get("/list", handleRequest(list))
 	// Router.Get("/subscribe", handleRequest(subscribe))
 	// Router.Get("/unsubscribe", handleRequest(unsubscribe))
-
-	// start up the authenticated websocket connection
-	Router.Get("/subscribe/websocket", auth.AuthenticateWebsocket())
 
 	return Router
 }

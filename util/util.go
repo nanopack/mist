@@ -39,7 +39,7 @@ func (r *reader) Next() bool {
 	// (the command, tags, and remaining args):
 	// "ping" => ["ping"]
 	// "subscribe tag,tag" => ["subscribe", "tag,tag"]
-	// "publish tag,tag publish message" = ["publish", "tag,tag", "publish message"]
+	// "publish tag,tag message" = ["publish", "tag,tag", "message"]
 	split := strings.SplitN(strings.TrimSuffix(line, "\n"), " ", 3)
 
 	//

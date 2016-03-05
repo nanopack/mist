@@ -2,7 +2,6 @@
 package mist
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 )
@@ -13,9 +12,12 @@ const (
 )
 
 var (
-	NotSupported = errors.New("Unable to perform action: command not supported")
+
+	//
+	ErrUnauthorized = fmt.Errorf("Error: Unauthorized action\n")
+
 	subscribers = make(map[uint32]*Proxy)
-	uid        uint32
+	uid         uint32
 )
 
 //
@@ -27,15 +29,20 @@ type (
 		Tags []string `json:"tags"`
 		Data string   `json:"data"`
 	}
+
+	//
+	Handler struct {
+		NumArgs int
+		Handle  func(*Proxy, []string) error
+	}
 )
 
 // Publish publishes to both subscribers, and to replicators
 func publish(pid uint32, tags []string, data string) error {
-	fmt.Println("MIST publish!")
 
-	// is this an error? or just something we need to ignore
+	//
 	if len(tags) == 0 {
-		return nil
+		return fmt.Errorf("Failed to publish. Missing tags...")
 	}
 
 	//
@@ -50,15 +57,15 @@ func publish(pid uint32, tags []string, data string) error {
 		for _, subscriber := range subscribers {
 			select {
 			case <-subscriber.done:
+				fmt.Println("DONE???")
+
 			default:
 
 				// dont sent this message to the publisher who just sent it
 				if subscriber.id == pid {
-					fmt.Println("SAME GUY!")
 					continue
 				}
 
-				fmt.Println("publish")
 				subscriber.check <- message
 			}
 		}

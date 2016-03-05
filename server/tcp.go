@@ -5,53 +5,34 @@ import (
 	"net"
 	"strings"
 
-	// "github.com/nanopack/mist/auth"
+	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
 	"github.com/nanopack/mist/util"
 )
 
-// QUESTION! how/where will other custom handlers be passed???
+// init
+func init() {
 
-var handlers map[string]Handler
-
-// start a mist server listening over TCP
-func startTCP(uri string, errChan chan<- error) {
-
-	// get basic TCP command handlers
-	handlers = GenerateHandlers()
-
-	// add any additional commands to existing tcp commands
-	// for k, v := range additionalHandlers {
-	// 	handlers[k] = v
-	// }
-
-	// if authenticator.DefaultAuth != nil {
-	// 	// get auth handlers and merge with exsiting
-	// }
-
-	// don't close this because it's go routined and the error is handled from the
-	// errChan
-	if err := newTCP(uri, handlers); err != nil {
-		errChan<- fmt.Errorf("Unable to start mist tcp listener %v", err)
-	}
+	// add tcp as an available server type
+	listeners["tcp"] = startTCP
 }
 
-// newTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
-// and then continually reads from the server handling any incoming connections;
-// this is intentionally non-blocking.
-func newTCP(address string, additionalHandlers map[string]Handler) error {
+// startTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
+// and then continually reads from the server handling any incoming connections
+func startTCP(uri string, errChan chan<- error) {
 
 	//
-	if address == "" {
-		address = mist.DEFAULT_ADDR
+	if uri == "" {
+		uri = mist.DEFAULT_ADDR
 	}
 
 	// start a TCP listener
-	ln, err := net.Listen("tcp", address)
+	ln, err := net.Listen("tcp", uri)
 	if err != nil {
-		return err
+		errChan <- fmt.Errorf("Failed to start tcp listener %v", err.Error())
+		return
 	}
-	fmt.Printf("TCP server listening at '%s'...\n", address)
+	fmt.Printf("TCP server listening at '%s'...\n", uri)
 
 	// start continually listening for any incomeing tcp connections (non-blocking)
 	go func() {
@@ -60,121 +41,128 @@ func newTCP(address string, additionalHandlers map[string]Handler) error {
 			// accept connections
 			conn, err := ln.Accept()
 			if err != nil {
-				fmt.Println("TCPS BONK!", err) // what should we do with the error?
+				errChan <- fmt.Errorf("Failed to accept connection %v", err.Error())
+				return
 			}
 
 			// handle each connection individually (non-blocking)
-			go handleConnection(conn)
+			go handleConnection(conn, errChan)
 		}
 	}()
-
-	return nil
 }
 
 // handleConnection takes an incoming connection from a mist client (or other client)
 // and sets up a new subscription for that connection, and a 'publish Handler'
 // that is used to publish messages to the data channel of the subscription
-func handleConnection(conn net.Conn) {
+func handleConnection(conn net.Conn, errChan chan<- error) {
 
-	fmt.Printf("TCPS HANDLE CONNECTION! %q\n", conn)
+	// close the connection when we're done here
+	defer conn.Close()
 
 	// create a new client for each connection
-	proxy := mist.NewProxy(0)
+	proxy := mist.NewProxy()
+	defer proxy.Close()
 
-	// clean up everything that we have setup
-	defer func() {
-		conn.Close()
-		proxy.Close()
-	}()
-
-	// add a publisher that will publish across the connection (non-blocking)
-	go publishHandler(proxy, conn)
-
-	// add a reader that reads off the connection (blocking)
-	readHandler(proxy, conn)
-
-	fmt.Println("TCPS END!")
-}
-
-// publishHandler is used to...
-func publishHandler(proxy mist.Proxy, conn net.Conn) {
-
-	fmt.Println("TCPS PUBLISHING!")
-
-	// make a done channel
-	done := make(chan bool)
-	defer close(done)
-
-	for {
-
-		//
-		select {
-
-		// return if we are done
-		case <-done:
-			fmt.Println("TCPS DONE!")
-			return
-
-		// when a message is recieved on the subscriptions channel write the message
-		// to the connection
-		case msg := <-proxy.Messages():
-			fmt.Printf("TCPS MESSAGE! %#v\n", msg)
+	// publish mist messages to connected tcp clients (non-blocking)
+	go func() {
+		for msg := range proxy.Messages() {
 			if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
-				goto stopcrying
-				break
+				errChan <- fmt.Errorf("Failed to write to connection %v", err)
 			}
 		}
-	}
-stopcrying:
-}
+	}()
 
-// readHandler is used to read off the open connection and execute any recongnized
-// commands that come across
-func readHandler(proxy mist.Proxy, conn net.Conn) {
+	// add basic TCP command handlers for this connection
+	handlers = GenerateHandlers()
 
-	fmt.Println("TCPS READING!")
-
-	// continually read off the connection; once something is read, check to see
-	// if it is a message the client understands to be one of its commands. If so
-	// execute the command.
+	//
 	r := util.NewReader(conn)
-	for r.Next() {
 
-		fmt.Printf("TCPS NEXT! %#v\n", r)
+	// check for authentication
+	switch {
+
+	// authentication wanted...
+	case auth.DefaultAuth != nil:
+
+		// prompt for auth
+		if _, err := conn.Write([]byte("auth: ")); err != nil {
+			break
+		}
+
+		// read from the connection looking for an auth token; if anything that comes
+		// across the connection at this point and it's not the auth token, nothing
+		// proceeds
+		for r.Next() {
+
+			// if the next input does not match the token then promt again
+			if r.Input.Cmd != auth.Token {
+				if _, err := conn.Write([]byte("auth: ")); err != nil {
+					break
+				}
+				continue
+			}
+
+			// successful auth; allow auth command handlers on this connection
+			for k, v := range auth.GenerateHandlers() {
+				handlers[k] = v
+			}
+
+			//
+			break
+		}
+
+	// no authentication wanted; authorize the proxy
+	default:
+		proxy.Authorized = true
+	}
+
+	// connection loop (blocking); continually read off the connection. Once something
+	// is read, check to see if it is a message the client understands to be one of
+	// its commands. If so attempt to execute the command.
+	for r.Next() {
 
 		// what should we do with this error?
 		if r.Err != nil {
-			fmt.Println("ERROR!", r.Err)
+			errChan <- fmt.Errorf("Read error %v", r.Err)
 		}
+
+		fmt.Printf("READ!!! %#v\n", r.Input)
 
 		//
 		handler, found := handlers[r.Input.Cmd]
 
 		//
-		var response string
+		var err error
 		switch {
 
-		// no command found
+		// command not found
 		case !found:
-			response = fmt.Sprintf("Error: Unknown Command '%s'", r.Input.Cmd)
-			// continue
+			err = fmt.Errorf("Unknown Command '%s'\n", r.Input.Cmd)
 
-		//
+		// wrong number of args
 		case handler.NumArgs != len(r.Input.Args):
-			response = fmt.Sprintf("Error: Wrong number of arguments for '%s'. Expected %v got %v", r.Input.Cmd, handler.NumArgs, len(r.Input.Args))
+			err = fmt.Errorf("Wrong number of arguments for '%s'. Expected %v got %v\n", r.Input.Cmd, handler.NumArgs, len(r.Input.Args))
 
-		// execute command
+		// execute the command
 		default:
-			fmt.Println("TCPS EXECUTE! ", r.Input.Cmd)
-			response = handler.Handle(proxy, r.Input.Args)
+			err = handler.Handle(proxy, r.Input.Args)
 		}
 
-		// write the response from the command back to the connection
-		fmt.Println("TCPS WRITING RESPONSE! ", response)
-		if _, err := conn.Write([]byte(response + "\n")); err != nil {
+		// if something failed along the way, respond accordingly...
+		if err != nil {
+			if _, err := conn.Write([]byte(err.Error())); err != nil {
+				errChan <- fmt.Errorf("Failed to write to connection %v", err.Error())
+				break
+			}
+
+			//
+			continue
+		}
+
+		// ...otherwise write a successful response
+		if _, err := conn.Write([]byte(fmt.Sprintf("%v success\n", r.Input.Cmd))); err != nil {
+			errChan <- fmt.Errorf("Failed to write to connection %v", err.Error())
 			break
 		}
 	}
-
-	fmt.Println("READING DONE!")
 }

@@ -177,12 +177,12 @@ func (client *wsClient) Unsubscribe(tags []string) error {
 
 //
 func (client *wsClient) Publish(tags []string, data string) error {
-	return mist.NotSupported
+	return ErrNotSupported
 }
 
 //
 func (client *wsClient) PublishAfter(tags []string, data string, delay time.Duration) error {
-	return mist.NotSupported
+	return ErrNotSupported
 }
 
 //

@@ -2,8 +2,6 @@ package replicators
 
 var (
 
-  //
-	replicators = map[string]func(uri string) (chan error){
-
-	}
+	//
+	replicators = map[string]func(uri string) chan error{}
 )

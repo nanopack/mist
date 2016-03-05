@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"net"
+	"net/url"
 
 	"database/sql"
 	_ "github.com/lib/pq"
@@ -13,39 +14,45 @@ type (
 )
 
 //
-func newPostgres(uri string, errChan chan<- error) {
+func init() {
+	authenticators["postgres"] = newPostgres
 }
 
 //
-func NewPostgres(user, database, address string) (postgresql, error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return postgresql(""), err
-	}
+func newPostgres(url *url.URL) error {
 
 	//
-	pg := postgresql(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%v", user, database, host, port))
+	host, port, err := net.SplitHostPort(url.Host)
+	db := url.Query().Get("db")
+	user := url.User.Username()
+	// pass, _ := url.User.Password()
+
+	//
+	pg := postgresql(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%v", user, db, host, port))
 
 	// create the tables needed to support mist authentication
-	_, err = pg.exec(`
+	if _, err := pg.exec(`
 CREATE TABLE IF NOT EXISTS tokens (
 	token text NOT NULL,
 	token_id SERIAL UNIQUE NOT NULL,
 	PRIMARY KEY (token)
-)`)
-
-	if err != nil {
-		return pg, err
+)`); err != nil {
+		return err
 	}
 
-	_, err = pg.exec(`
+	if _, err = pg.exec(`
 CREATE TABLE IF NOT EXISTS tags (
   token_id integer NOT NULL REFERENCES tokens (token_id) ON DELETE CASCADE,
   tag text NOT NULL,
   PRIMARY KEY (token_id, tag)
-)`)
+)`); err != nil {
+		return err
+	}
 
-	return pg, err
+	//
+	DefaultAuth = pg
+
+	return nil
 }
 
 //
@@ -62,6 +69,7 @@ func (p postgresql) RemoveToken(token string) error {
 
 //
 func (p postgresql) AddTags(token string, tags []string) error {
+
 	// This could be optimized a LOT
 	for _, tag := range tags {
 		// errors are ignored, this may not be the best idea.

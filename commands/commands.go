@@ -4,12 +4,12 @@ package commands
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/jcelliott/lumber"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/server"
 )
 
@@ -66,13 +66,14 @@ var (
 				// }
 
 				//
-				// if err := authenticator.Start(); err != nil {
-				// 	os.Exit(1)
-				// }
+				if err := auth.Start(viper.GetString("authenticator"), viper.GetString("token")); err != nil {
+					fmt.Println("Failed to start authenticator!", err)
+					os.Exit(1)
+				}
 
 				//
-				if err := server.Start(strings.Split(viper.GetString("listeners"), ",")); err != nil {
-					fmt.Println("FAILED TO START!", err)
+				if err := server.Start(viper.GetStringSlice("listeners")); err != nil {
+					fmt.Println("One or more servers failed to start!", err)
 					os.Exit(1)
 				}
 
@@ -97,23 +98,25 @@ func init() {
 
 	// set config defaults; these are overriden if a --config file is provided
 	// (see above)
-	viper.SetDefault("authenticator", "postgres://postgres:postgres@127.0.0.1:5432?db=postgres")
 	viper.SetDefault("log-level", "INFO")
-	viper.SetDefault("listeners", "tcp://127.0.0.1:1445,http://127.0.0.1:8080")
-	viper.SetDefault("replicator", "single")
+	viper.SetDefault("listeners", []string{"tcp://127.0.0.1:1445", "http://127.0.0.1:8080", "ws://127.0.0.1:8888"})
+	viper.SetDefault("replicator", "")
+	viper.SetDefault("token", "")
 
 	// persistent flags; these are the only 2 options that we want overridable from
 	// the CLI, all others need to use a config file
 	MistCmd.PersistentFlags().String("authenticator", viper.GetString("authenticator"), "desc.")
-	MistCmd.PersistentFlags().String("listeners", viper.GetString("listeners"), "desc.")
+	MistCmd.PersistentFlags().StringSlice("listeners", viper.GetStringSlice("listeners"), "desc.")
 	MistCmd.PersistentFlags().String("log-level", viper.GetString("log-level"), "desc.")
 	MistCmd.PersistentFlags().String("replicator", viper.GetString("replicator"), "desc.")
+	MistCmd.PersistentFlags().String("token", viper.GetString("token"), "desc.")
 
 	//
 	viper.BindPFlag("listeners", MistCmd.PersistentFlags().Lookup("listeners"))
 	viper.BindPFlag("authenticator", MistCmd.PersistentFlags().Lookup("authenticator"))
 	viper.BindPFlag("log-level", MistCmd.PersistentFlags().Lookup("log-level"))
 	viper.BindPFlag("replicator", MistCmd.PersistentFlags().Lookup("replicator"))
+	viper.BindPFlag("token", MistCmd.PersistentFlags().Lookup("token"))
 
 	// commands
 	MistCmd.AddCommand(listCmd)

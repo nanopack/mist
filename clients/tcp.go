@@ -317,10 +317,10 @@ func (client *tcpClient) Messages() <-chan mist.Message {
 	return client.messages
 }
 
-func (client *tcpClient) EnableReplication() error {
-	client.replicated = true
-	return client.async("enable-replication\n")
-}
+// func (client *tcpClient) EnableReplication() error {
+// 	client.replicated = true
+// 	return client.async("enable-replication\n")
+// }
 
 //
 func (client *tcpClient) sync(command string) tcpReply {

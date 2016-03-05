@@ -5,102 +5,113 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/pat"
 	"github.com/gorilla/websocket"
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/util"
 )
 
-//
-var wsCommands map[string]Handler
-
-//
+// init
 func init() {
 
-	// add WS handlers
-	wsCommands = GenerateHandlers()
+	// add websockets as an available server type
+	listeners["ws"] = startWS
+	listeners["wss"] = startWSS
 }
 
-// start a mist server listening over HTTP
-// func startWS(uri string, errChan chan<- error)  {
-// 	if err := ListenWS(uri); err != nil {
-// 		errChan<- fmt.Errorf("Unable to start mist http listener %v", err)
-// 	}
-// }
+// startWS starts a mist server listening over a websocket
+func startWS(uri string, errChan chan<- error) {
+	fmt.Printf("WS server listening at '%s'...\n", uri)
 
-//
-func ListenWS(mixins map[string]Handler) http.HandlerFunc {
-
-	fmt.Println("LISTEN WS!")
-
-	//
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		fmt.Println("HERE????!?!?!?!")
+	router := pat.New()
+	router.Get("/subscribe/websocket", func(w http.ResponseWriter, r *http.Request) {
 
 		//
 		upgrader := websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				return true
-			},
+			// CheckOrigin: func(r *http.Request) bool {
+			// 	return true
+			// },
 		}
-
-		fmt.Println("UPGRADER??", upgrader)
 
 		//
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			fmt.Println("ERR???", err)
+			errChan <- fmt.Errorf("Failed to upgrade connection %v", err.Error())
 			return
 		}
+		defer conn.Close()
 
-		fmt.Println("UPGRDAE!", conn)
+		//
+		proxy := mist.NewProxy()
+		defer proxy.Close()
 
-		// add any additional handlers
-		for k, v := range mixins {
-			wsCommands[k] = v
-		}
-
-		fmt.Println("COMMANDS?", wsCommands)
-
-		// we don't want this to be buffered
-		proxy := mist.NewProxy(0)
-
-		write := make(chan string)
-		done := make(chan bool)
-		defer func() {
-			proxy.Close()
-			close(done)
-		}()
-
-		// the gorilla websocket package must have all writes come from the
-		// same process.
+		// read and publish mist messages to connected clients (non-blocking)
 		go func() {
 
-			fmt.Println("HERE????")
-
-			for {
-				select {
-				case event := <-proxy.Messages():
-					if msg, err := json.Marshal(event); err == nil {
-						conn.WriteMessage(websocket.TextMessage, msg)
-					}
-				case msg := <-write:
-					conn.WriteMessage(websocket.TextMessage, []byte(msg))
-				case <-done:
-					close(write)
-					return
+			// convert mist messages to text messages
+			for msg := range proxy.Messages() {
+				b, err := json.Marshal(msg)
+				if err != nil {
+					// log this error and continue?
 				}
+
+				//
+				conn.WriteMessage(websocket.TextMessage, b)
 			}
 		}()
 
+		//
+		write := make(chan string)
+		defer close(write)
+
+		// read and publish websocket messages to connected clients (non-blocking)
+		go func() {
+			for msg := range write {
+				conn.WriteMessage(websocket.TextMessage, []byte(msg))
+			}
+		}()
+
+		// add basic WS handlers for this socket
+		handlers = GenerateHandlers()
+
+		// check for authentication
+		switch {
+
+		// authentication wanted...
+		case auth.DefaultAuth != nil:
+			//
+			var token string
+			switch {
+			case r.Header.Get("x-auth-token") != "":
+				token = r.Header.Get("x-auth-token")
+			case r.FormValue("x-auth-token") != "":
+				token = r.FormValue("x-auth-token")
+			}
+
+			// if the websocket is connected with the required token, add auth command
+			// handlers
+			if token == auth.Token {
+				for k, v := range auth.GenerateHandlers() {
+					handlers[k] = v
+				}
+			}
+
+		// no authentication wanted; authorize the proxy
+		default:
+			proxy.Authorized = true
+		}
+
+		// add a reader that reads off the connection (blocking)
 		for {
+
+			//
 			msgType, frame, err := conn.ReadMessage()
 			if err != nil {
-				fmt.Println("BZONK!", err)
+				write <- fmt.Sprintf("{\"success\":false,\"error\":\"%v\"}", err.Error())
+				// maybe log this also?
 			}
 
 			//
@@ -109,144 +120,64 @@ func ListenWS(mixins map[string]Handler) http.HandlerFunc {
 				continue
 			}
 
+			fmt.Printf("FRAME! %#v\n", string(frame))
+
+			//
 			input := struct {
-				Cmd string `json:"command"`
-				Args []string `json:"args"`
+				Cmd  string   `json:"command"`
+				Args []string `json:"tags"`
 			}{}
 
 			//
 			if err := json.Unmarshal(frame, &input); err != nil {
-				write <- "{\"success\":false,\"error\":\"Invalid json\"}"
+				write <- fmt.Sprintf("{\"success\":false,\"error\":\"%v\"}", err.Error())
 				continue
 			}
 
-			//
-			handler, found := wsCommands[input.Cmd]
+			fmt.Printf("INPUT! %#v\n", input)
 
 			//
-			var response string
+			handler, found := handlers[input.Cmd]
+
+			//
+			// var err error
 			switch {
 
-			// no command found
+			// command not found
 			case !found:
-				write <- fmt.Sprintf("{\"success\":false,\"error\":\"Unknown command '%s'\"}", input.Cmd)
-				// continue
+				err = fmt.Errorf("Unknown command")
 
-			//
-		case handler.NumArgs != len(input.Args):
-				write <- fmt.Sprintf("{\"success\":false,\"error\":\"Wrong number of args for '%s'. Expected %v got %v\"}", input.Cmd, handler.NumArgs, len(input.Args))
+			// wrong number of arguments
+			case handler.NumArgs != len(input.Args):
+				err = fmt.Errorf("Wrong number of args. Expected %v got %v\"", handler.NumArgs, len(input.Args))
 
 			// execute command
 			default:
 				fmt.Println("WSS EXECUTE! ", input.Cmd)
-				response = handler.Handle(proxy, input.Args)
+				err = handler.Handle(proxy, input.Args)
+
 			}
 
-			// write the response from the command back to the connection
-			fmt.Println("WSS WRITING RESPONSE! ", response)
-			write <- response
+			// if something failed along the way, respond accordingly...
+			if err != nil {
+				fmt.Println("FAIL!")
+				write <- fmt.Sprintf("{\"success\":false, \"command\":\"%v\", \"error\":\"%v\"}", input.Cmd, err.Error())
+
+				// break
+				continue
+			}
+
+			// ...otherwise write a successful response
+			fmt.Println("WSS WRITING RESPONSE! ")
+			write <- fmt.Sprintf("{\"success\":true, \"command\":\"%v\", \"tags\":\"%v\"}", input.Cmd, input.Args)
 		}
-	}
+	})
+
+	//
+	go http.ListenAndServe(uri, router)
 }
 
-//
-// func handleWSPing(client mist.Proxy, frame []byte, write chan<- string) error {
-// 	write <- "{\"success\":true,\"command\":\"ping\"}"
-// 	return nil
-// }
-//
-// //
-// func handleWSSubscribe(client mist.Proxy, frame []byte, write chan<- string) error {
-// 	tags := struct {
-// 		Tags []string `json:"tags"`
-// 	}{}
-//
-// 	// error would already be caught by unmarshalling the command
-// 	if err := json.Unmarshal(frame, &tags); err != nil {
-// 		fmt.Println("BUNK!", err)
-// 	}
-//
-// 	//
-// 	client.Subscribe(tags.Tags)
-//
-// 	write <- "{\"success\":true,\"command\":\"subscribe\"}"
-//
-// 	return nil
-// }
-//
-// //
-// func handleWSUnubscribe(client mist.Proxy, frame []byte, write chan<- string) error {
-// 	tags := struct {
-// 		Tags []string `json:"tags"`
-// 	}{}
-//
-// 	// error would already be caught by unmarshalling the command
-// 	if err := json.Unmarshal(frame, &tags); err != nil {
-// 		fmt.Println("BUNK!", err)
-// 	}
-//
-// 	//
-// 	client.Unsubscribe(tags.Tags)
-//
-// 	write <- "{\"success\":true,\"command\":\"unsubscribe\"}"
-//
-// 	return nil
-// }
-//
-// //
-// func handleWSList(client mist.Proxy, frame []byte, write chan<- string) (err error) {
-//
-// 	//
-// 	list := struct {
-// 		Subscriptions [][]string `json:"subscriptions"`
-// 		Command       string     `json:"command"`
-// 		Success       bool       `json:"success"`
-// 	}{}
-//
-// 	if list.Subscriptions, err = client.List(); err != nil {
-// 		return err
-// 	}
-//
-// 	list.Command = "list"
-// 	list.Success = true
-//
-// 	bytes, err := json.Marshal(list)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	//
-// 	write <- string(bytes)
-//
-// 	return
-// }
-
-//
-func handleWSAuthSubscribe(token string, a auth.Authenticator) func(proxy mist.Proxy, frame []byte, write chan<- string) error {
-	return func(proxy mist.Proxy, frame []byte, write chan<- string) error {
-
-		authTags, err := a.GetTagsForToken(token)
-		if err != nil || len(authTags) == 0 {
-			write <- "{\"success\":false,\"command\":\"subscribe\"}"
-			return nil
-		}
-
-		//
-		tags := struct {
-			Tags []string `json:"tags"`
-		}{}
-
-		// error would already be caught by unmarshalling the command
-		if err := json.Unmarshal(frame, &tags); err != nil {
-			fmt.Println("BUNGK!")
-		}
-
-		if !util.HaveSameTags(authTags, tags.Tags) {
-			write <- "{\"success\":false,\"command\":\"subscribe\"}"
-			return nil
-		}
-		proxy.Subscribe(tags.Tags)
-		write <- "{\"success\":true,\"command\":\"subscribe\"}"
-		return nil
-	}
+// startWSS starts a mist server listening over a secure websocket
+func startWSS(uri string, errChan chan<- error) {
+	errChan <- ErrNotImplemented
 }

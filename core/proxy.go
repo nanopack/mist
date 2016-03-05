@@ -17,25 +17,27 @@ type (
 		sync.Mutex
 
 		subscriptions subscription.Subscriptions
-		done  chan bool
-		check chan Message
-		pipe  chan Message
+		check         chan Message
+		done          chan bool
 		id            uint32
+		pipe          chan Message
+
+		Authorized bool
 	}
 )
 
 //
-func NewProxy(buffer int) (p Proxy) {
-
-	fmt.Println("NEW PROXY!")
+func NewProxy() (p *Proxy) {
 
 	//
-	p = Proxy{
+	p = &Proxy{
 		subscriptions: subscription.NewNode(),
+		check:         make(chan Message),
 		done:          make(chan bool),
-		check:         make(chan Message, buffer),
-		pipe:          make(chan Message),
 		id:            atomic.AddUint32(&uid, 1),
+		pipe:          make(chan Message),
+
+		Authorized: false,
 	}
 
 	p.connect()
@@ -46,13 +48,11 @@ func NewProxy(buffer int) (p Proxy) {
 // connect
 func (p *Proxy) connect() {
 
-	fmt.Println("PROXY CONNECT!")
+	// add the proxy to mists list of subscribers
+	subscribers[p.id] = p
 
 	// this gofunc handles matching messages to subscriptions for the proxy
 	go p.handleMessages()
-
-	// add the proxy to mists list of subscribers
-	subscribers[p.id] = p
 }
 
 //
@@ -88,14 +88,18 @@ func (p *Proxy) handleMessages() {
 
 //
 func (p *Proxy) Ping() {
-	fmt.Println("PROXY PING!")
+	fmt.Println("PROXY PING!", p.id)
 }
 
 // Subscribe
 func (p *Proxy) Subscribe(tags []string) error {
-	fmt.Println("PROXY SUBSCRIBE!")
 
 	//
+	if !p.Authorized {
+		return ErrUnauthorized
+	}
+
+	// is this an error?
 	if len(tags) == 0 {
 		return nil
 	}
@@ -108,14 +112,18 @@ func (p *Proxy) Subscribe(tags []string) error {
 	p.Unlock()
 
 	//
-	return publish(p.id, tags, "subscribe")
+	return nil
 }
 
 // Unsubscribe
 func (p *Proxy) Unsubscribe(tags []string) error {
-	fmt.Println("PROXY UNSUBSCRIBE!")
 
 	//
+	if !p.Authorized {
+		return ErrUnauthorized
+	}
+
+	// is this an error?
 	if len(tags) == 0 {
 		return nil
 	}
@@ -128,57 +136,71 @@ func (p *Proxy) Unsubscribe(tags []string) error {
 	p.Unlock()
 
 	//
-	return publish(p.id, tags, "unsubscribe")
+	return nil
 }
 
 // Publish
 func (p *Proxy) Publish(tags []string, data string) error {
-	fmt.Println("PROXY PUBLISH!")
+
+	//
+	if !p.Authorized {
+		return ErrUnauthorized
+	}
 
 	//
 	return publish(p.id, tags, data)
 }
 
 // Sends a message with delay
-func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
+func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
+
+	//
+	if !p.Authorized {
+		return ErrUnauthorized
+	}
 
 	//
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
-			// write this to a log?
+			// log this error and continue?
 		}
 	}()
+
+	return nil
 }
 
 // List
-func (p *Proxy) List() [][]string {
-	fmt.Println("PROXY LIST!")
+func (p *Proxy) List() error {
 
 	//
-	return p.subscriptions.ToSlice()
+	if !p.Authorized {
+		return ErrUnauthorized
+	}
+
+	msg := Message{
+		Tags: []string{},
+		Data: fmt.Sprint(p.subscriptions.ToSlice()),
+	}
+
+	p.pipe <- msg
+
+	//
+	return nil
+}
+
+// Returns all messages that have sucessfully matched the list of subscriptions
+// that this proxy has subscribed to
+func (p *Proxy) Messages() <-chan Message {
+	return p.pipe
 }
 
 //
 func (p *Proxy) Close() {
-
-	fmt.Println("PROXY CLOSE!")
 
 	// this closes the goroutine that is matching messages to subscriptions
 	close(p.done)
 
 	// remove the local p from mists list of subscribers/replicators/internal
 	delete(subscribers, p.id)
-
-	// send out the unsubscribe message to anyone listening
-	for _, subscription := range p.subscriptions.ToSlice() {
-		publish(p.id, subscription, "unsubscribe")
-	}
-}
-
-// Returns all messages that have sucessfully matched the list of subscriptions
-// that this proxy has subscribed to
-func (p *Proxy) Messages() <-chan Message {
-	fmt.Println("PROXY MESSAGES!")
-	return p.pipe
 }

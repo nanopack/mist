@@ -1,68 +1,43 @@
 package server
 
 import (
-  "fmt"
-  "strings"
+	"strings"
 
-  "github.com/nanopack/mist/core"
-)
-
-type (
-	Handler struct {
-		NumArgs int
-		Handle  func(mist.Proxy, []string) string
-	}
+	"github.com/nanopack/mist/core"
 )
 
 //
-func GenerateHandlers() map[string]Handler {
-	return map[string]Handler{
-		"ping":               {0, handlePing},
-		"list":               {0, handleList},
-		"subscribe":          {1, handleSubscribe},
-		"unsubscribe":        {1, handleUnsubscribe},
-		"publish":            {2, handlePublish},
+func GenerateHandlers() map[string]mist.Handler {
+	return map[string]mist.Handler{
+		"ping":        {0, handlePing},
+		"list":        {0, handleList},
+		"subscribe":   {1, handleSubscribe},
+		"unsubscribe": {1, handleUnsubscribe},
+		"publish":     {2, handlePublish},
 	}
 }
 
-//
-func handlePing(client mist.Proxy, args []string) string {
-	fmt.Println("HANDLE  PING")
-	return "pong"
+// handlePing
+func handlePing(proxy *mist.Proxy, args []string) error {
+	return nil
 }
 
-//
-func handleSubscribe(client mist.Proxy, args []string) string {
-	fmt.Println("HANDLE  SUB")
-	tags := strings.Split(args[0], ",")
-	client.Subscribe(tags)
-
-	return fmt.Sprintf("subscribed %v", tags)
+// handleSubscribe
+func handleSubscribe(proxy *mist.Proxy, args []string) error {
+	return proxy.Subscribe(strings.Split(args[0], ","))
 }
 
-//
-func handleUnsubscribe(client mist.Proxy, args []string) string {
-	fmt.Println("HANDLE  UNSUB")
-	tags := strings.Split(args[0], ",")
-	client.Unsubscribe(tags)
-
-	return fmt.Sprintf("unsubscribed %v", tags)
+// handleUnsubscribe
+func handleUnsubscribe(proxy *mist.Proxy, args []string) error {
+	return proxy.Unsubscribe(strings.Split(args[0], ","))
 }
 
-//
-func handlePublish(client mist.Proxy, args []string) string {
-	fmt.Println("HANDLE  PUB", args)
-	tags := strings.Split(args[0], ",")
-	msg := args[1]
-	client.Publish(tags, msg)
-
-	return fmt.Sprintf("published '%v' to %v", msg, tags)
+// handlePublish
+func handlePublish(proxy *mist.Proxy, args []string) error {
+	return proxy.Publish(strings.Split(args[0], ","), args[1])
 }
 
-//
-func handleList(client mist.Proxy, args []string) string {
-	fmt.Println("HANDLE  LIST")
-
-  //
-	return fmt.Sprintf("subscribed to %v", client.List())
+// handleList
+func handleList(proxy *mist.Proxy, args []string) error {
+	return proxy.List()
 }
