@@ -254,62 +254,6 @@ func TestManyTCPClients(t *testing.T) {
 	}
 }
 
-//
-// func TestWebsocketClient(t *testing.T) {
-//
-// 	fmt.Println("TEST STARTING!")
-//
-// 	//
-// 	ln, err := net.Listen("tcp", "127.0.0.1:2345/")
-// 	if err != nil {
-// 		t.Errorf("unable to listen to websockets %v", err)
-// 	}
-// 	defer ln.Close()
-//
-// 	//
-// 	go http.Serve(ln, server.ListenWS(nil))
-//
-// 	//
-// 	ws, err := NewWS("ws://127.0.0.1:2345/", nil)
-// 	if err != nil {
-// 		t.Errorf("unable to connect %v", err)
-// 	}
-// 	defer ws.Close()
-//
-// 	//
-// 	if err := ws.Subscribe([]string{testTag}); err != nil {
-// 		t.Errorf("subscription failed %v", err)
-// 	}
-//
-// 	//
-// 	mist.Self.Publish([]string{testTag}, testMsg)
-// 	<-ws.Messages()
-//
-// 	//
-// 	list, err := ws.List()
-// 	if err != nil {
-// 		t.Errorf("unable to list %v", err)
-// 	}
-// 	if len(list) != 1 {
-// 		t.Errorf("list of subscriptions is wrong %v", list)
-// 	}
-// 	if len(list[0]) != 1 {
-// 		t.Errorf("wrong number of tags in subscription %v", list[0])
-// 	}
-//
-// 	//
-// 	err = ws.Unsubscribe([]string{testTag})
-//
-// 	//
-// 	list, err = ws.List()
-// 	if err != nil {
-// 		t.Errorf("unable to list %v", err)
-// 	}
-// 	if len(list) != 0 {
-// 		t.Errorf("list of subscriptions is wrong %v", list)
-// 	}
-// }
-
 // waitMessage waits for a message to come to a proxy then tests to see if it is
 // the expected message
 func waitMessage(messages <-chan mist.Message, t *testing.T) {
