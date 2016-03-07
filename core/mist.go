@@ -3,7 +3,7 @@ package mist
 
 import (
 	"fmt"
-	"sort"
+	// "sort"
 )
 
 //
@@ -26,6 +26,7 @@ type (
 	// A Message contains the tags used when subscribing, and the data that is being
 	// published through mist
 	Message struct {
+		Cmd  string   `json:"command"`
 		Tags []string `json:"tags"`
 		Data string   `json:"data"`
 	}
@@ -45,12 +46,6 @@ func publish(pid uint32, tags []string, data string) error {
 		return fmt.Errorf("Failed to publish. Missing tags...")
 	}
 
-	//
-	message := Message{Tags: tags, Data: data}
-
-	// we do this here so that the tags come pre sorted for the clients
-	sort.Sort(sort.StringSlice(message.Tags))
-
 	// this should be more optimized, but it might not be an issue unless thousands
 	// of clients are using mist.
 	go func() {
@@ -66,7 +61,7 @@ func publish(pid uint32, tags []string, data string) error {
 					continue
 				}
 
-				subscriber.check <- message
+				subscriber.check <- Message{Cmd: "publish", Tags: tags, Data: data}
 			}
 		}
 	}()

@@ -14,12 +14,12 @@ import (
 func init() {
 
 	// add tcp as an available server type
-	listeners["tcp"] = startTCP
+	listeners["tcp"] = StartTCP
 }
 
-// startTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
+// StartTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
 // and then continually reads from the server handling any incoming connections
-func startTCP(uri string, errChan chan<- error) {
+func StartTCP(uri string, errChan chan<- error) {
 
 	//
 	if uri == "" {
@@ -29,6 +29,7 @@ func startTCP(uri string, errChan chan<- error) {
 	// start a TCP listener
 	ln, err := net.Listen("tcp", uri)
 	if err != nil {
+		fmt.Println("ERR!!!", err)
 		errChan <- fmt.Errorf("Failed to start tcp listener %v", err.Error())
 		return
 	}
@@ -65,8 +66,8 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 	// publish mist messages to connected tcp clients (non-blocking)
 	go func() {
-		for msg := range proxy.Messages() {
-			if _, err := conn.Write([]byte(fmt.Sprintf("publish %v %v\n", strings.Join(msg.Tags, ","), msg.Data))); err != nil {
+		for msg := range proxy.Pipe {
+			if _, err := conn.Write([]byte(fmt.Sprintf("%v %v %v\n", msg.Cmd, strings.Join(msg.Tags, ","), msg.Data))); err != nil {
 				errChan <- fmt.Errorf("Failed to write to connection %v", err)
 			}
 		}
@@ -113,7 +114,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 	// no authentication wanted; authorize the proxy
 	default:
-		proxy.Authorized = true
+		// proxy.Authorized = true
 	}
 
 	// connection loop (blocking); continually read off the connection. Once something
@@ -125,8 +126,6 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		if r.Err != nil {
 			errChan <- fmt.Errorf("Read error %v", r.Err)
 		}
-
-		fmt.Printf("READ!!! %#v\n", r.Input)
 
 		//
 		handler, found := handlers[r.Input.Cmd]
@@ -160,7 +159,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		}
 
 		// ...otherwise write a successful response
-		if _, err := conn.Write([]byte(fmt.Sprintf("%v success\n", r.Input.Cmd))); err != nil {
+		if _, err := conn.Write([]byte("success\n")); err != nil {
 			errChan <- fmt.Errorf("Failed to write to connection %v", err.Error())
 			break
 		}

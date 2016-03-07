@@ -16,12 +16,12 @@ import (
 func init() {
 
 	// add websockets as an available server type
-	listeners["ws"] = startWS
-	listeners["wss"] = startWSS
+	listeners["ws"] = StartWS
+	listeners["wss"] = StartWSS
 }
 
-// startWS starts a mist server listening over a websocket
-func startWS(uri string, errChan chan<- error) {
+// StartWS starts a mist server listening over a websocket
+func StartWS(uri string, errChan chan<- error) {
 	fmt.Printf("WS server listening at '%s'...\n", uri)
 
 	router := pat.New()
@@ -52,7 +52,7 @@ func startWS(uri string, errChan chan<- error) {
 		go func() {
 
 			// convert mist messages to text messages
-			for msg := range proxy.Messages() {
+			for msg := range proxy.Pipe {
 				b, err := json.Marshal(msg)
 				if err != nil {
 					// log this error and continue?
@@ -101,7 +101,7 @@ func startWS(uri string, errChan chan<- error) {
 
 		// no authentication wanted; authorize the proxy
 		default:
-			proxy.Authorized = true
+			// proxy.Authorized = true
 		}
 
 		// add a reader that reads off the connection (blocking)
@@ -177,7 +177,7 @@ func startWS(uri string, errChan chan<- error) {
 	go http.ListenAndServe(uri, router)
 }
 
-// startWSS starts a mist server listening over a secure websocket
-func startWSS(uri string, errChan chan<- error) {
+// StartWSS starts a mist server listening over a secure websocket
+func StartWSS(uri string, errChan chan<- error) {
 	errChan <- ErrNotImplemented
 }

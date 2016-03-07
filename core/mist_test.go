@@ -26,7 +26,7 @@ func BenchmarkMist(b *testing.B) {
 	//
 	for i := 0; i < b.N; i++ {
 		p.Publish([]string{testTag}, testMsg)
-		_ = <-p.Messages()
+		_ = <-p.Pipe
 	}
 }
 
@@ -48,8 +48,8 @@ func TestSameSubscriber(t *testing.T) {
 	select {
 
 	// wait for a message...
-	case <-sender.Messages():
-		t.Fatalf("Received a message from sender!")
+	case <-sender.Pipe:
+		t.Fatalf("Received own message!")
 
 	// after 1 second assume no message is coming
 	case <-time.After(time.Second * 1):
@@ -85,7 +85,7 @@ func TestDifferentSubscriber(t *testing.T) {
 	select {
 
 	// wait for a message...
-	case msg := <-receiver.Messages():
+	case msg := <-receiver.Pipe:
 		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
 
 	// after 1 second assume no message is coming
@@ -136,13 +136,13 @@ func TestManySubscribers(t *testing.T) {
 	select {
 
 	// wait for a messages...
-	case msg := <-r1.Messages():
+	case msg := <-r1.Pipe:
 		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
 
-	case msg := <-r2.Messages():
+	case msg := <-r2.Pipe:
 		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
 
-	case msg := <-r3.Messages():
+	case msg := <-r3.Pipe:
 		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
 
 	// after 1 second assume no message is coming
@@ -159,7 +159,7 @@ func waitMessage(p *Proxy, t *testing.T) {
 	select {
 
 	// wait for a message then test to make sure it's the expected message...
-	case msg := <-p.Messages():
+	case msg := <-p.Pipe:
 		if len(msg.Tags) != 1 {
 			t.Fatalf("Wrong number of tags: Expected '%v' received '%v'\n", 1, len(msg.Tags))
 		}
@@ -197,27 +197,27 @@ func waitMessage(p *Proxy, t *testing.T) {
 //
 // 	// when a normal client publishes, both replicated clients receive the message
 // 	p.Publish([]string{"foo"}, "data")
-// 	<-r1.Messages()
-// 	<-r2.Messages()
-// 	<-p.Messages()
+// 	<-r1.Pipe
+// 	<-r2.Pipe
+// 	<-p.Pipe
 //
 // 	//
 // 	r1.Publish([]string{"foo"}, "data")
 // 	select {
-// 	case <-p.Messages():
+// 	case <-p.Pipe:
 //
 // 	// a p client should get messages from a replicated client
-// 	case <-r2.Messages():
+// 	case <-r2.Pipe:
 // 		t.Error("a replicated client should not get a message from another replicated client")
 // 	}
 //
 // 	//
 // 	r2.Publish([]string{"foo"}, "data")
 // 	select {
-// 	case <-p.Messages():
+// 	case <-p.Pipe:
 //
 // 	// a p client should get messages from a replicated client
-// 	case <-r1.Messages():
+// 	case <-r1.Pipe:
 // 		t.Error("a replicated client should not get a message from another replicated client")
 // 	}
 // }

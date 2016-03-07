@@ -15,19 +15,19 @@ var (
 func init() {
 
 	// add http as an available server type
-	listeners["http"] = startHTTP
-	listeners["https"] = startHTTPS
+	listeners["http"] = StartHTTP
+	listeners["https"] = StartHTTPS
 }
 
-// startHTTP starts a mist server listening over HTTP
-func startHTTP(uri string, errChan chan<- error) {
+// StartHTTP starts a mist server listening over HTTP
+func StartHTTP(uri string, errChan chan<- error) {
 	if err := newHTTP(uri); err != nil {
 		errChan <- fmt.Errorf("Unable to start mist http listener %v", err)
 	}
 }
 
-// startHTTPS starts a mist server listening over HTTPS
-func startHTTPS(uri string, errChan chan<- error) {
+// StartHTTPS starts a mist server listening over HTTPS
+func StartHTTPS(uri string, errChan chan<- error) {
 	errChan <- ErrNotImplemented
 }
 

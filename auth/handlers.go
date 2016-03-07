@@ -28,7 +28,7 @@ func handleAuth(proxy *mist.Proxy, args []string) error {
 	}
 
 	// authorize the proxy
-	proxy.Authorized = true
+	// proxy.Authorized = true
 
 	return nil
 }
