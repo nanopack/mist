@@ -3,7 +3,7 @@ package mist
 
 import (
 	"fmt"
-	// "sort"
+	"sync"
 )
 
 //
@@ -16,6 +16,7 @@ var (
 	//
 	ErrUnauthorized = fmt.Errorf("Error: Unauthorized action\n")
 
+	mutex       = &sync.Mutex{}
 	subscribers = make(map[uint32]*Proxy)
 	uid         uint32
 )
@@ -38,7 +39,7 @@ type (
 	}
 )
 
-// Publish publishes to both subscribers, and to replicators
+// publish publishes to both subscribers, and to replicators
 func publish(pid uint32, tags []string, data string) error {
 
 	//
@@ -49,6 +50,7 @@ func publish(pid uint32, tags []string, data string) error {
 	// this should be more optimized, but it might not be an issue unless thousands
 	// of clients are using mist.
 	go func() {
+		mutex.Lock()
 		for _, subscriber := range subscribers {
 			select {
 			case <-subscriber.done:
@@ -64,7 +66,17 @@ func publish(pid uint32, tags []string, data string) error {
 				subscriber.check <- Message{Cmd: "publish", Tags: tags, Data: data}
 			}
 		}
+		mutex.Unlock()
 	}()
 
 	return nil
+}
+
+// unsubscribe removes a proxy from the list of mist subscribers; we need this
+// so that we can lock this process incase multiple proxies are closing at the
+// same time
+func unsubscribe(pid uint32) {
+	mutex.Lock()
+	delete(subscribers, pid)
+	mutex.Unlock()
 }

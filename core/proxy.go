@@ -204,8 +204,6 @@ func (p *Proxy) Close() {
 	// this closes the goroutine that is matching messages to subscriptions
 	close(p.done)
 
-	// remove the local p from mists list of subscribers/replicators/internal
-	p.Lock()
-	delete(subscribers, p.id)
-	p.Unlock()
+	// remove the local p from mists list of subscribers
+	unsubscribe(p.id)
 }
