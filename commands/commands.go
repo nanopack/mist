@@ -58,14 +58,6 @@ var (
 			if daemon {
 
 				//
-				// if viper.GetString("multicast-interface") != "single" {
-				// 	if err := server.EnableDiscovery(); err != nil {
-				// 		panic(err)
-				// 	}
-				// 	server.EnableReplication()
-				// }
-
-				//
 				if err := auth.Start(viper.GetString("authenticator"), viper.GetString("token")); err != nil {
 					fmt.Println("Failed to start authenticator!", err)
 					os.Exit(1)
@@ -79,7 +71,7 @@ var (
 
 				//
 				// if err := replicator.Start(); err != nil {
-				// 	?
+				// 	os.Exit(1)
 				// }
 			}
 

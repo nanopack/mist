@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 func TestTCPClientSubscriptions(t *testing.T) {
 
 	//
-	client, err := NewTCP(mist.DEFAULT_ADDR)
+	client, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
@@ -81,7 +81,7 @@ func TestTCPClientSubscriptions(t *testing.T) {
 func TestSameTCPClient(t *testing.T) {
 
 	//
-	sender, err := NewTCP(mist.DEFAULT_ADDR)
+	sender, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
@@ -118,14 +118,14 @@ func TestSameTCPClient(t *testing.T) {
 func TestDifferentTCPClient(t *testing.T) {
 
 	//
-	sender, err := NewTCP(mist.DEFAULT_ADDR)
+	sender, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
 	defer sender.Close()
 
 	//
-	receiver, err := NewTCP(mist.DEFAULT_ADDR)
+	receiver, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
@@ -176,28 +176,28 @@ func TestDifferentTCPClient(t *testing.T) {
 func TestManyTCPClients(t *testing.T) {
 
 	//
-	sender, err := NewTCP(mist.DEFAULT_ADDR)
+	sender, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
 	defer sender.Close()
 
 	//
-	r1, err := NewTCP(mist.DEFAULT_ADDR)
+	r1, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
 	defer r1.Close()
 
 	//
-	r2, err := NewTCP(mist.DEFAULT_ADDR)
+	r2, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
 	defer r2.Close()
 
 	//
-	r3, err := NewTCP(mist.DEFAULT_ADDR)
+	r3, err := New(mist.DEFAULT_ADDR)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}

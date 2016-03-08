@@ -80,27 +80,3 @@ func Start(uris []string) error {
 
 	return nil
 }
-
-// EnableDiscovery starts discovering other mist nodes on the network
-// func EnableDiscovery() error {
-//
-// 	discover, err := discovery.NewDiscovery(viper.GetString("multicast-interface"), "mist", time.Second*2)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer discover.Close()
-//
-// 	// advertise this nodes listen address
-// 	discover.Add("mist", viper.GetString("tcp-addr"))
-// }
-
-// EnableReplication enables replication between mist nodes
-// func EnableReplication() {
-//
-// 	mist := mist.New()
-//
-// 	replicate := handlers.EnableReplication(mist, discover)
-// 	fmt.Println(fmt.Sprintf("Starting Mist monitor... \nTCP address: %s\nHTTP address: %s", viper.GetString("tcp-addr"), viper.GetString("http-addr")))
-//
-// 	go replicate.Monitor()
-// }

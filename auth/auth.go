@@ -16,7 +16,7 @@ var (
 	ErrTokenExist    = fmt.Errorf("Token already exists\n")
 
 	//
-	authenticators = map[string]func(url *url.URL) error{}
+	authenticators = map[string]func(url *url.URL) (Authenticator, error){}
 )
 
 //
@@ -48,22 +48,27 @@ func Start(uri, token string) error {
 		return fmt.Errorf("An authenticator has been specified but no token provided!\n")
 	}
 
+	//
+	Token = token
+
 	// parse the uri string into a url object
 	url, err := url.Parse(uri)
 	if err != nil {
 		return err
 	}
 
-	// check to see if the scheme is supported; if not, indicate as such and
-	// continue
+	// check to see if the scheme is supported; if not, indicate as such and continue
 	auth, ok := authenticators[url.Scheme]
 	if !ok {
 		return fmt.Errorf("Unsupported scheme '%v'", url.Scheme)
 	}
 
-	//
-	Token = token
+	// set DefaultAuth by attempting to start the authenticator
+	DefaultAuth, err = auth(url)
+	if err != nil {
+		return err
+	}
 
-	// attempt to start the authenticator
-	return auth(url)
+	//
+	return nil
 }

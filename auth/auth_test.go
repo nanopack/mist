@@ -1,81 +1,124 @@
 package auth
 
-// import (
-// 	"os/user"
-// 	"testing"
-// )
+import (
+	// "fmt"
+	"net/url"
+	"testing"
 
+	_ "github.com/lib/pq"
+)
+
+var (
+	testToken = "token"
+	testTag1  = "hello"
+	testTag2  = "world"
+)
+
+// TestStart
+func TestStart(t *testing.T) {
+
+	//
+	if err := Start("memory://", ""); err == nil {
+		t.Fatalf("Expecting error!")
+	}
+
+	//
+	if err := Start("memory://", "TOKEN"); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	if DefaultAuth == nil {
+		t.Fatalf("Unexpected nil DefaultAuth!")
+	}
+
+	//
+	if Token == "" {
+		t.Fatalf("Unexpected blank Token!")
+	}
+}
+
+// TestPostgres skip this for now because I don't want to have a postgres running
+// func TestPostgres(t *testing.T) {
 //
-// func TestPostgresql(test *testing.T) {
-// 	usr, err := user.Current()
+// 	//
+// 	url, err := url.Parse("postgres://postgres@127.0.0.1:5432?db=postgres")
 // 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
+// 		t.Fatalf(err.Error())
 // 	}
 //
-// 	pg, err := NewPostgresql(usr.Username, "postgres", "127.0.0.1:5432")
+// 	//
+// 	pg, err := NewPostgres(url)
 // 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
+// 		t.Fatalf(err.Error())
 // 	}
 //
-// 	if err = pg.Clear(); err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
+// 	//
+// 	if _, err := pg.(postgresql).exec("TRUNCATE tokens, tags"); err != nil {
+// 		t.Fatalf(err.Error())
 // 	}
-// 	testDb(test, pg)
+//
+// 	//
+// 	testAuth(pg, t)
 // }
 
-//
-// func TestMemory(test *testing.T) {
-// 	memory := NewMemory()
-// 	testDb(test, memory)
-// }
+// TestMemory
+func TestMemory(t *testing.T) {
 
-//
-// func testDb(test *testing.T, auth Authenticator) {
-//
-// 	tags, err := auth.GetTagsForToken("token")
-// 	if err == nil {
-// 		test.Log("there should have been an error")
-// 		test.FailNow()
-// 	}
-// 	if len(tags) != 0 {
-// 		test.Log("wrong number of tags were returned")
-// 		test.FailNow()
-// 	}
-//
-// 	err = auth.AddToken("token")
-// 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
-// 	}
-//
-// 	err = auth.AddTags("token", []string{"a", "b"})
-// 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
-// 	}
-//
-// 	tags, err = auth.GetTagsForToken("token")
-// 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
-// 	}
-// 	if len(tags) != 2 {
-// 		test.Log("wrong number of tags were returned", tags)
-// 		test.FailNow()
-// 	}
-//
-// 	err = auth.RemoveTags("token", []string{"a", "b"})
-// 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
-// 	}
-//
-// 	err = auth.RemoveToken("token")
-// 	if err != nil {
-// 		test.Log(err)
-// 		test.FailNow()
-// 	}
-// }
+	//
+	url, err := url.Parse("memory://")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	mem, err := NewMemory(url)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	testAuth(mem, t)
+}
+
+// testAuth
+func testAuth(auth Authenticator, t *testing.T) {
+
+	//
+	tags, err := auth.GetTagsForToken(testToken)
+	if err == nil {
+		t.Fatalf("Expecting error!")
+	}
+	if len(tags) != 0 {
+		t.Fatalf("Wrong number of tags. Expecting 0 got %v", len(tags))
+	}
+
+	//
+	if err := auth.AddToken(testToken); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	if err := auth.AddTags(testToken, []string{testTag1, testTag2}); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	tags, err = auth.GetTagsForToken(testToken)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if len(tags) != 2 {
+		t.Fatalf("Wrong number of tags. Expecting 2 received %v", len(tags))
+	}
+
+	//
+	if err := auth.RemoveTags(testToken, []string{testTag1, testTag2}); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	if err := auth.RemoveToken(testToken); err != nil {
+		t.Fatalf(err.Error())
+	}
+}

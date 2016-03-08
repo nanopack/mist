@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/url"
 
 	"github.com/deckarep/golang-set"
@@ -13,15 +12,12 @@ type (
 
 //
 func init() {
-	authenticators["memory"] = newMemory
+	authenticators["memory"] = NewMemory
 }
 
 //
-func newMemory(url *url.URL) error {
-
-	DefaultAuth = memory{}
-
-	return nil
+func NewMemory(url *url.URL) (Authenticator, error) {
+	return memory{}, nil
 }
 
 //
@@ -74,20 +70,17 @@ func (m memory) RemoveTags(token string, tags []string) error {
 //
 func (m memory) GetTagsForToken(token string) ([]string, error) {
 
+	//
 	value, ok := m[token]
 	if !ok {
 		return nil, ErrTokenNotFound
 	}
 
-	fmt.Println("VALUE???", value)
-
+	//
 	stored := value.ToSlice()
 
-	fmt.Println("STORED???", stored)
-
+	//
 	tags := make([]string, len(stored))
-
-	fmt.Println("TAGS???", tags)
 
 	//
 	for idx, tag := range stored {
