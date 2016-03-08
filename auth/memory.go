@@ -44,7 +44,6 @@ func (m memory) AddTags(token string, tags []string) error {
 		return ErrTokenNotFound
 	}
 
-	//
 	for _, tag := range tags {
 		current.Add(tag)
 	}

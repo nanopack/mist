@@ -1,8 +1,8 @@
 package auth
 
 import (
-	// "fmt"
 	"net/url"
+	"os"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -10,8 +10,10 @@ import (
 
 var (
 	testToken = "token"
-	testTag1  = "hello"
-	testTag2  = "world"
+	testTag1  = "onefish"
+	testTag2  = "twofish"
+	testTag3  = "redfish"
+	testTag4  = "bluefish"
 )
 
 // TestStart
@@ -38,6 +40,49 @@ func TestStart(t *testing.T) {
 	}
 }
 
+// TestMemory
+func TestMemory(t *testing.T) {
+
+	//
+	url, err := url.Parse("memory://")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	mem, err := NewMemory(url)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	testAuth(mem, t)
+}
+
+// TestScribble
+func TestScribble(t *testing.T) {
+
+	// attempt to remove the db from any previous tests
+	if err := os.RemoveAll("/tmp/scribble"); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	url, err := url.Parse("scribble://?db=/tmp/scribble")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	scribble, err := NewScribble(url)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	//
+	testAuth(scribble, t)
+}
+
 // TestPostgres skip this for now because I don't want to have a postgres running
 // func TestPostgres(t *testing.T) {
 //
@@ -62,25 +107,6 @@ func TestStart(t *testing.T) {
 // 	testAuth(pg, t)
 // }
 
-// TestMemory
-func TestMemory(t *testing.T) {
-
-	//
-	url, err := url.Parse("memory://")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
-	//
-	mem, err := NewMemory(url)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
-	//
-	testAuth(mem, t)
-}
-
 // testAuth
 func testAuth(auth Authenticator, t *testing.T) {
 
@@ -98,18 +124,34 @@ func testAuth(auth Authenticator, t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	//
+	// add tags
 	if err := auth.AddTags(testToken, []string{testTag1, testTag2}); err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	//
+	// add same tags; these should not get added
+	if err := auth.AddTags(testToken, []string{testTag1, testTag2}); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	// add same tags, different order; these should not get added
+	if err := auth.AddTags(testToken, []string{testTag2, testTag1}); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	// add more tags
+	if err := auth.AddTags(testToken, []string{testTag3, testTag4}); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	// this tests to ensure that same tags don't get added and we only get back
+	// what we expect (in this case 4 unique tags)
 	tags, err = auth.GetTagsForToken(testToken)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	if len(tags) != 2 {
-		t.Fatalf("Wrong number of tags. Expecting 2 received %v", len(tags))
+	if len(tags) != 4 {
+		t.Fatalf("Wrong number of tags. Expecting 4 received %v", len(tags))
 	}
 
 	//
