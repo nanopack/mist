@@ -16,31 +16,31 @@ var (
 	testTag4  = "bluefish"
 )
 
-// TestStart
+// TestStart tests the auth start process
 func TestStart(t *testing.T) {
 
-	//
+	// test for error if an auth is provided w/o a token
 	if err := Start("memory://", ""); err == nil {
 		t.Fatalf("Expecting error!")
 	}
 
-	//
-	if err := Start("memory://", "TOKEN"); err != nil {
+	// test for no error if an auth and token are provided
+	if err := Start("memory://", testToken); err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	//
+	// DefaultAuth is set inside of an auth start and should not be nil once started
 	if DefaultAuth == nil {
 		t.Fatalf("Unexpected nil DefaultAuth!")
 	}
 
-	//
+	// Token is set inside of an auth start and should not be nil once started
 	if Token == "" {
 		t.Fatalf("Unexpected blank Token!")
 	}
 }
 
-// TestMemory
+// TestMemory tests the memory authenticator
 func TestMemory(t *testing.T) {
 
 	//
@@ -49,7 +49,7 @@ func TestMemory(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	//
+	// create a new memory authenticator
 	mem, err := NewMemory(url)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -59,7 +59,7 @@ func TestMemory(t *testing.T) {
 	testAuth(mem, t)
 }
 
-// TestScribble
+// TestScribble tests the scribble authenticator
 func TestScribble(t *testing.T) {
 
 	// attempt to remove the db from any previous tests
@@ -83,7 +83,7 @@ func TestScribble(t *testing.T) {
 	testAuth(scribble, t)
 }
 
-// TestPostgres skip this for now because I don't want to have a postgres running
+// TestPostgres tests the postgres authenticator (requires running postgres server)
 // func TestPostgres(t *testing.T) {
 //
 // 	//
@@ -107,19 +107,19 @@ func TestScribble(t *testing.T) {
 // 	testAuth(pg, t)
 // }
 
-// testAuth
+// testAuth tests to ensure all authenticator methods are working as intended
 func testAuth(auth Authenticator, t *testing.T) {
 
-	//
+	// no token should exist yet
 	tags, err := auth.GetTagsForToken(testToken)
 	if err == nil {
-		t.Fatalf("Expecting error!")
+		t.Fatalf("Unexpected token!")
 	}
 	if len(tags) != 0 {
-		t.Fatalf("Wrong number of tags. Expecting 0 got %v", len(tags))
+		t.Fatalf("Unexpected tags!")
 	}
 
-	//
+	// add a new token
 	if err := auth.AddToken(testToken); err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -154,13 +154,22 @@ func testAuth(auth Authenticator, t *testing.T) {
 		t.Fatalf("Wrong number of tags. Expecting 4 received %v", len(tags))
 	}
 
-	//
+	// remove tags
 	if err := auth.RemoveTags(testToken, []string{testTag1, testTag2}); err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	//
+	// remote token
 	if err := auth.RemoveToken(testToken); err != nil {
 		t.Fatalf(err.Error())
+	}
+
+	// same as the first test; the token should no longer exist
+	tags, err = auth.GetTagsForToken(testToken)
+	if err == nil {
+		t.Fatalf("Unexpected token!")
+	}
+	if len(tags) != 0 {
+		t.Fatalf("Unexpected tags")
 	}
 }

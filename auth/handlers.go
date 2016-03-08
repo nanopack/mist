@@ -70,12 +70,12 @@ func handleUnset(proxy *mist.Proxy, args []string) error {
 // handleTags
 func handleTags(proxy *mist.Proxy, args []string) error {
 
-	tags, err := DefaultAuth.GetTagsForToken(args[0])
-	if err != nil {
-		return fmt.Errorf("%s\n", err.Error())
-	}
+	// tags, err := DefaultAuth.GetTagsForToken(args[0])
+	// if err != nil {
+	// 	return fmt.Errorf("%s\n", err.Error())
+	// }
 
-	fmt.Println("TAGS????", tags)
+	// proxy.Pipe <- tags
 
 	//
 	return nil

@@ -13,12 +13,12 @@ type (
 	postgres string
 )
 
-//
+// add "postgres" to the list of supported Authenticators
 func init() {
 	authenticators["postgres"] = NewPostgres
 }
 
-//
+// NewPostgres creates a new "postgres" Authenticator
 func NewPostgres(url *url.URL) (Authenticator, error) {
 
 	//
@@ -52,19 +52,19 @@ CREATE TABLE IF NOT EXISTS tags (
 	return pg, nil
 }
 
-//
+// AddToken
 func (a postgres) AddToken(token string) error {
 	_, err := a.exec("INSERT INTO tokens (token) VALUES ($1)", token)
 	return err
 }
 
-//
+// RemoveToken
 func (a postgres) RemoveToken(token string) error {
 	_, err := a.exec("DELETE FROM tokens WHERE token = $1", token)
 	return err
 }
 
-//
+// AddTags
 func (a postgres) AddTags(token string, tags []string) error {
 
 	// This could be optimized a LOT
@@ -75,7 +75,7 @@ func (a postgres) AddTags(token string, tags []string) error {
 	return nil
 }
 
-//
+// RemoveTags
 func (a postgres) RemoveTags(token string, tags []string) error {
 	for _, tag := range tags {
 		a.exec("DELETE FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1 AND tag = $2", token, tag)
@@ -83,7 +83,7 @@ func (a postgres) RemoveTags(token string, tags []string) error {
 	return nil
 }
 
-//
+// GetTagsForToken
 func (a postgres) GetTagsForToken(token string) ([]string, error) {
 
 	//

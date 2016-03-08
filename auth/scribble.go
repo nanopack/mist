@@ -9,26 +9,28 @@ import (
 
 type (
 
-	//
+	// scribble is an authenticator that is a driver to interfaces with the "scribble"
+	// database
 	scribble struct {
 		driver *scribbleDB.Driver
 	}
 
-	//
+	// scribbleToken represents an entry in the scribble token database
 	scribbleToken struct {
 		Value string
 		Tags  map[string]struct{}
 	}
 )
 
-//
+// add "scribble" to the list of supported authenticators
 func init() {
 	authenticators["scribble"] = NewScribble
 }
 
-//
+// NewScribble creates a new "scribble" authenticator
 func NewScribble(url *url.URL) (Authenticator, error) {
 
+	// get the desired location of the scribble database
 	dir := url.Query().Get("db")
 
 	// if no database location is provided, fail
@@ -36,7 +38,7 @@ func NewScribble(url *url.URL) (Authenticator, error) {
 		return nil, fmt.Errorf("Missing database location in scheme (?db=)")
 	}
 
-	// create a new scribble at the specified location
+	// create a new scribble database at the specified location
 	db, err := scribbleDB.New(dir, nil)
 	if err != nil {
 		return nil, err
@@ -45,11 +47,11 @@ func NewScribble(url *url.URL) (Authenticator, error) {
 	return &scribble{driver: db}, nil
 }
 
-//
+// AddToken
 func (a *scribble) AddToken(token string) error {
 
 	// look for existing token; we want to fail if a token is found
-	entry, err := a.findToken(token)
+	entry, err := a.findScribbleToken(token)
 	if err == nil {
 		return ErrTokenExist
 	}
@@ -61,16 +63,16 @@ func (a *scribble) AddToken(token string) error {
 	return a.driver.Write("tokens", token, &entry)
 }
 
-//
+// RemoveToken
 func (a *scribble) RemoveToken(token string) error {
 	return a.driver.Delete("tokens", token)
 }
 
-//
+// AddTags
 func (a *scribble) AddTags(token string, tags []string) error {
 
 	// look for existing token
-	entry, err := a.findToken(token)
+	entry, err := a.findScribbleToken(token)
 	if err != nil {
 		return err
 	}
@@ -81,7 +83,7 @@ func (a *scribble) AddTags(token string, tags []string) error {
 		entry.Tags = map[string]struct{}{}
 	}
 
-	// add new tags
+	// add new tags individually to avoid duplication
 	for _, tag := range tags {
 		entry.Tags[tag] = struct{}{}
 	}
@@ -90,11 +92,11 @@ func (a *scribble) AddTags(token string, tags []string) error {
 	return a.driver.Write("tokens", token, entry)
 }
 
-//
+// RemoveTags
 func (a *scribble) RemoveTags(token string, tags []string) error {
 
 	// look for existing token
-	entry, err := a.findToken(token)
+	entry, err := a.findScribbleToken(token)
 	if err != nil {
 		return err
 	}
@@ -108,11 +110,11 @@ func (a *scribble) RemoveTags(token string, tags []string) error {
 	return a.driver.Write("tokens", token, entry)
 }
 
-//
+// GetTagsForToken
 func (a *scribble) GetTagsForToken(token string) ([]string, error) {
 
 	// look for existing token
-	entry, err := a.findToken(token)
+	entry, err := a.findScribbleToken(token)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +128,8 @@ func (a *scribble) GetTagsForToken(token string) ([]string, error) {
 	return tags, nil
 }
 
-//
-func (a *scribble) findToken(token string) (entry scribbleToken, err error) {
+// findScribbleToken attempts to find the desired token within "scribble"
+func (a *scribble) findScribbleToken(token string) (entry scribbleToken, err error) {
 
 	// look for existing token
 	if err = a.driver.Read("tokens", token, &entry); err != nil {
