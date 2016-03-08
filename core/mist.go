@@ -63,7 +63,14 @@ func publish(pid uint32, tags []string, data string) error {
 					continue
 				}
 
-				subscriber.check <- Message{Cmd: "publish", Tags: tags, Data: data}
+				//
+				msg := Message{Cmd: "publish", Tags: tags, Data: data}
+
+				// we don't want this operation blocking the range of other subscribers
+				// waiting to get messages
+				go func(p *Proxy, msg Message) {
+					p.check <- msg
+				}(subscriber, msg)
 			}
 		}
 		mutex.Unlock()
