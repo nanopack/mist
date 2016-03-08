@@ -90,9 +90,9 @@ func (p *Proxy) handleMessages() {
 	}
 }
 
-//
-func (p *Proxy) Ping() {
-	fmt.Println("PROXY PING!", p.id)
+// Ping
+func (p *Proxy) Ping() error {
+	return nil
 }
 
 // Subscribe

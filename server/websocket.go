@@ -31,9 +31,9 @@ func StartWS(uri string, errChan chan<- error) {
 		upgrader := websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
-			// CheckOrigin: func(r *http.Request) bool {
-			// 	return true
-			// },
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
 		}
 
 		//
@@ -120,8 +120,6 @@ func StartWS(uri string, errChan chan<- error) {
 				continue
 			}
 
-			fmt.Printf("FRAME! %#v\n", string(frame))
-
 			//
 			input := struct {
 				Cmd  string   `json:"command"`
@@ -133,8 +131,6 @@ func StartWS(uri string, errChan chan<- error) {
 				write <- fmt.Sprintf("{\"success\":false,\"error\":\"%v\"}", err.Error())
 				continue
 			}
-
-			fmt.Printf("INPUT! %#v\n", input)
 
 			//
 			handler, found := handlers[input.Cmd]
@@ -153,14 +149,11 @@ func StartWS(uri string, errChan chan<- error) {
 
 			// execute command
 			default:
-				fmt.Println("WSS EXECUTE! ", input.Cmd)
 				err = handler.Handle(proxy, input.Args)
-
 			}
 
 			// if something failed along the way, respond accordingly...
 			if err != nil {
-				fmt.Println("FAIL!")
 				write <- fmt.Sprintf("{\"success\":false, \"command\":\"%v\", \"error\":\"%v\"}", input.Cmd, err.Error())
 
 				// break
@@ -168,7 +161,6 @@ func StartWS(uri string, errChan chan<- error) {
 			}
 
 			// ...otherwise write a successful response
-			fmt.Println("WSS WRITING RESPONSE! ")
 			write <- fmt.Sprintf("{\"success\":true, \"command\":\"%v\", \"tags\":\"%v\"}", input.Cmd, input.Args)
 		}
 	})

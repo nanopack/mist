@@ -19,7 +19,7 @@ func GenerateHandlers() map[string]mist.Handler {
 
 // handlePing
 func handlePing(proxy *mist.Proxy, args []string) error {
-	return nil
+	return proxy.Ping()
 }
 
 // handleSubscribe
