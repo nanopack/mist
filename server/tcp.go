@@ -72,7 +72,8 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		for msg := range proxy.Pipe {
 
 			// if the message fails to encode its probably a syntax issue and needs to
-			// break the loop here because it will never be able to encode it
+			// break the loop here because it will never be able to encode it; this will
+			// disconnect the client.
 			if err := encoder.Encode(msg); err != nil {
 				errChan <- fmt.Errorf(err.Error())
 				break
@@ -88,9 +89,9 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		//
 		msg := mist.Message{}
 
-		// decode an array value (Message); if the message fails to decode its probably
-		// a syntax issue and needs to break the loop here because it will never be able
-		// to decode it
+		// if the message fails to decode its probably a syntax issue and needs to
+		// break the loop here because it will never be able to decode it; this will
+		// disconnect the client.
 		if err := decoder.Decode(&msg); err != nil {
 			errChan <- fmt.Errorf(err.Error())
 			break

@@ -12,6 +12,7 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 		"subscribe":   handleSubscribe,
 		"unsubscribe": handleUnsubscribe,
 		"publish":     handlePublish,
+		// "publishAfter":     handlePublishAfter,
 	}
 }
 
@@ -34,6 +35,11 @@ func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
 func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	return proxy.Publish(msg.Tags, msg.Data)
 }
+
+// // handlePublishAfter
+// func handlePublishAfter(proxy *mist.Proxy, msg mist.Message) error {
+// 	return proxy.PublishAfter(msg.Tags, msg.Data)
+// }
 
 // handleList
 func handleList(proxy *mist.Proxy, msg mist.Message) error {
