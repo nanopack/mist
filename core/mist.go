@@ -33,7 +33,12 @@ type (
 	HandleFunc func(*Proxy, Message) error
 )
 
-// publish publishes to both subscribers, and to replicators
+// Publish publishes to ALL subscribers (even the publisher)
+func Publish(tags []string, data string) error {
+	return publish(0, tags, data)
+}
+
+// publish publishes to all subscribers (expect the one who issued the publish)
 func publish(pid uint32, tags []string, data string) error {
 
 	//
