@@ -24,7 +24,7 @@ type (
 
 // add "scribble" to the list of supported authenticators
 func init() {
-	authenticators["scribble"] = NewScribble
+	Register("scribble", NewScribble)
 }
 
 // NewScribble creates a new "scribble" authenticator

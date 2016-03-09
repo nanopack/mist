@@ -50,7 +50,7 @@ func (p *Proxy) connect() {
 
 	// add the proxy to mists list of subscribers
 	p.Lock()
-	subscribers[p.id] = p
+	subscribe(p)
 	p.Unlock()
 
 	// this gofunc handles matching messages to subscriptions for the proxy
@@ -186,13 +186,8 @@ func (p *Proxy) List() error {
 	}
 	p.Unlock()
 
-	msg := Message{
-		Cmd:  "list",
-		Tags: []string{},
-		Data: fmt.Sprintf(strings.Join(data, " ")),
-	}
-
-	p.Pipe <- msg
+	//
+	p.Pipe <- Message{Command: "list", Tags: []string{}, Data: fmt.Sprintf(strings.Join(data, " "))}
 
 	//
 	return nil

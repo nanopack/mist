@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -12,12 +11,10 @@ import (
 	"github.com/nanopack/mist/core"
 )
 
-// init
+// init adds ws/wss as available mist server types
 func init() {
-
-	// add websockets as an available server type
-	listeners["ws"] = StartWS
-	listeners["wss"] = StartWSS
+	Register("ws", StartWS)
+	Register("wss", StartWSS)
 }
 
 // StartWS starts a mist server listening over a websocket
@@ -48,34 +45,17 @@ func StartWS(uri string, errChan chan<- error) {
 		proxy := mist.NewProxy()
 		defer proxy.Close()
 
-		// read and publish mist messages to connected clients (non-blocking)
-		go func() {
-
-			// convert mist messages to text messages
-			for msg := range proxy.Pipe {
-				b, err := json.Marshal(msg)
-				if err != nil {
-					// log this error and continue?
-				}
-
-				//
-				conn.WriteMessage(websocket.TextMessage, b)
-			}
-		}()
-
-		//
-		write := make(chan string)
-		defer close(write)
-
-		// read and publish websocket messages to connected clients (non-blocking)
-		go func() {
-			for msg := range write {
-				conn.WriteMessage(websocket.TextMessage, []byte(msg))
-			}
-		}()
-
 		// add basic WS handlers for this socket
 		handlers = GenerateHandlers()
+
+		// read and publish mist messages to connected clients (non-blocking)
+		go func() {
+			for msg := range proxy.Pipe {
+				if err := conn.WriteJSON(msg); err != nil {
+					// do something
+				}
+			}
+		}()
 
 		// check for authentication
 		switch {
@@ -83,17 +63,17 @@ func StartWS(uri string, errChan chan<- error) {
 		// authentication wanted...
 		case auth.DefaultAuth != nil:
 			//
-			var token string
+			var xtoken string
 			switch {
 			case r.Header.Get("x-auth-token") != "":
-				token = r.Header.Get("x-auth-token")
+				xtoken = r.Header.Get("x-auth-token")
 			case r.FormValue("x-auth-token") != "":
-				token = r.FormValue("x-auth-token")
+				xtoken = r.FormValue("x-auth-token")
 			}
 
 			// if the websocket is connected with the required token, add auth command
 			// handlers
-			if token == auth.Token {
+			if xtoken == token {
 				for k, v := range auth.GenerateHandlers() {
 					handlers[k] = v
 				}
@@ -104,64 +84,36 @@ func StartWS(uri string, errChan chan<- error) {
 			// proxy.Authorized = true
 		}
 
-		// add a reader that reads off the connection (blocking)
+		// connection loop (blocking); continually read off the connection. Once something
+		// is read, check to see if it's a message the client understands to be one of
+		// its commands. If so attempt to execute the command.
 		for {
 
-			//
-			msgType, frame, err := conn.ReadMessage()
-			if err != nil {
-				write <- fmt.Sprintf("{\"success\":false,\"error\":\"%v\"}", err.Error())
-				// maybe log this also?
-			}
+			msg := mist.Message{}
 
-			//
-			if msgType != websocket.TextMessage {
-				write <- "{\"success\":false,\"error\":\"I don't understand binary messages\"}"
+			// decode an array value (Message)
+			if err := conn.ReadJSON(&msg); err != nil {
+				// errChan <- fmt.Errorf("Read error %v", r.Err)
 				continue
 			}
 
-			//
-			input := struct {
-				Cmd  string   `json:"command"`
-				Args []string `json:"tags"`
-			}{}
+			// look for the command
+			handler, found := handlers[msg.Command]
 
-			//
-			if err := json.Unmarshal(frame, &input); err != nil {
-				write <- fmt.Sprintf("{\"success\":false,\"error\":\"%v\"}", err.Error())
+			// if the command isn't found, return an error
+			if !found {
+				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: "Unknown Command"}); err != nil {
+					// do something
+				}
 				continue
 			}
 
-			//
-			handler, found := handlers[input.Cmd]
-
-			//
-			// var err error
-			switch {
-
-			// command not found
-			case !found:
-				err = fmt.Errorf("Unknown command")
-
-			// wrong number of arguments
-			case handler.NumArgs != len(input.Args):
-				err = fmt.Errorf("Wrong number of args. Expected %v got %v\"", handler.NumArgs, len(input.Args))
-
-			// execute command
-			default:
-				err = handler.Handle(proxy, input.Args)
+			// attempt to run the command
+			if err := handler(proxy, msg); err != nil {
+				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
+					// do something
+				}
 			}
-
-			// if something failed along the way, respond accordingly...
-			if err != nil {
-				write <- fmt.Sprintf("{\"success\":false, \"command\":\"%v\", \"error\":\"%v\"}", input.Cmd, err.Error())
-
-				// break
-				continue
-			}
-
-			// ...otherwise write a successful response
-			write <- fmt.Sprintf("{\"success\":true, \"command\":\"%v\", \"tags\":\"%v\"}", input.Cmd, input.Args)
 		}
 	})
 

@@ -2,28 +2,27 @@ package auth
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/nanopack/mist/core"
 )
 
 //
-func GenerateHandlers() map[string]mist.Handler {
-	return map[string]mist.Handler{
-		"register":   {2, handleRegister},
-		"unregister": {1, handleUnregister},
-		"authorize":  {1, handleAuth},
-		"set":        {2, handleSet},
-		"unset":      {2, handleUnset},
-		"tags":       {1, handleTags},
+func GenerateHandlers() map[string]mist.HandleFunc {
+	return map[string]mist.HandleFunc{
+		"register":   handleRegister,
+		"unregister": handleUnregister,
+		"authorize":  handleAuth,
+		"set":        handleSet,
+		"unset":      handleUnset,
+		"tags":       handleTags,
 	}
 }
 
 // handleAuth
-func handleAuth(proxy *mist.Proxy, args []string) error {
+func handleAuth(proxy *mist.Proxy, msg mist.Message) error {
 
 	//
-	if _, err := DefaultAuth.GetTagsForToken(args[0]); err != nil {
+	if _, err := DefaultAuth.GetTagsForToken(msg.Data); err != nil {
 		return fmt.Errorf("Incorrect token\n")
 	}
 
@@ -34,17 +33,15 @@ func handleAuth(proxy *mist.Proxy, args []string) error {
 }
 
 // handleRegister
-func handleRegister(proxy *mist.Proxy, args []string) error {
-
-	token := args[0]
+func handleRegister(proxy *mist.Proxy, msg mist.Message) error {
 
 	//
-	if err := DefaultAuth.AddToken(token); err != nil {
+	if err := DefaultAuth.AddToken(msg.Data); err != nil {
 		return fmt.Errorf("%s\n", err.Error())
 	}
 
 	//
-	if err := DefaultAuth.AddTags(token, strings.Split(args[1], ",")); err != nil {
+	if err := DefaultAuth.AddTags(msg.Data, msg.Tags); err != nil {
 		return fmt.Errorf("%s\n", err.Error())
 	}
 
@@ -53,22 +50,22 @@ func handleRegister(proxy *mist.Proxy, args []string) error {
 }
 
 // handleUnregister
-func handleUnregister(proxy *mist.Proxy, args []string) error {
-	return DefaultAuth.RemoveToken(args[0])
+func handleUnregister(proxy *mist.Proxy, msg mist.Message) error {
+	return DefaultAuth.RemoveToken(msg.Data)
 }
 
 // handleSet
-func handleSet(proxy *mist.Proxy, args []string) error {
-	return DefaultAuth.AddTags(args[0], strings.Split(args[1], ","))
+func handleSet(proxy *mist.Proxy, msg mist.Message) error {
+	return DefaultAuth.AddTags(msg.Data, msg.Tags)
 }
 
 // handleUnset
-func handleUnset(proxy *mist.Proxy, args []string) error {
-	return DefaultAuth.RemoveTags(args[0], strings.Split(args[1], ","))
+func handleUnset(proxy *mist.Proxy, msg mist.Message) error {
+	return DefaultAuth.RemoveTags(msg.Data, msg.Tags)
 }
 
 // handleTags
-func handleTags(proxy *mist.Proxy, args []string) error {
+func handleTags(proxy *mist.Proxy, msg mist.Message) error {
 
 	// tags, err := DefaultAuth.GetTagsForToken(args[0])
 	// if err != nil {

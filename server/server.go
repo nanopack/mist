@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
 )
 
@@ -14,18 +15,35 @@ var (
 	//
 	ErrNotImplemented = fmt.Errorf("Error: Not Implemented\n")
 
-	// this is a map of the supported listeners/servers that can be started by mist
-	listeners = map[string]func(uri string, errChan chan<- error){}
-	handlers  = map[string]mist.Handler{}
+	// this is a map of the supported servers that can be started by mist
+	servers  = map[string]handleFunc{}
+	handlers = map[string]mist.HandleFunc{}
 
 	//
 	authorized = true
+	token      string // used when determining if auth command handlers should be added
 )
+
+//
+type (
+	handleFunc func(uri string, errChan chan<- error)
+)
+
+// Register registers a new mist server
+func Register(name string, auth handleFunc) {
+	servers[name] = auth
+}
 
 // Start attempts to individually start mist servers from a list of provided
 // listeners; the listeners provided is a comma delimited list of uri strings
 // (scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])
-func Start(uris []string) error {
+func Start(uris []string, token string) error {
+
+	// check to see if a token is provided; an authenticator cannot work without
+	// a token and so it should error here informing that.
+	if auth.DefaultAuth != nil && token == "" {
+		return fmt.Errorf("An authenticator has been specified but no token provided!\n")
+	}
 
 	// this chan is given to each individual server start as a way for them to
 	// communcate back their startup status
@@ -43,7 +61,7 @@ func Start(uris []string) error {
 
 		// check to see if the scheme is supported; if not, indicate as such and
 		// continue
-		server, ok := listeners[url.Scheme]
+		server, ok := servers[url.Scheme]
 		if !ok {
 			fmt.Printf("Unsupported scheme '%v'", url.Scheme)
 			continue
@@ -75,7 +93,6 @@ func Start(uris []string) error {
 	// REMOVE THIS WHEN DONE: we'll just hold the connection open for now to see output
 	for err := range errChan {
 		fmt.Println("ERR!", err)
-		// write to a log
 	}
 
 	return nil

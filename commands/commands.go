@@ -58,13 +58,13 @@ var (
 			if daemon {
 
 				//
-				if err := auth.Start(viper.GetString("authenticator"), viper.GetString("token")); err != nil {
+				if err := auth.Start(viper.GetString("authenticator")); err != nil {
 					fmt.Println("Failed to start authenticator!", err)
 					os.Exit(1)
 				}
 
 				//
-				if err := server.Start(viper.GetStringSlice("listeners")); err != nil {
+				if err := server.Start(viper.GetStringSlice("listeners"), viper.GetString("token")); err != nil {
 					fmt.Println("One or more servers failed to start!", err)
 					os.Exit(1)
 				}
@@ -73,6 +73,9 @@ var (
 				// if err := replicator.Start(); err != nil {
 				// 	os.Exit(1)
 				// }
+
+				//
+				return
 			}
 
 			// fall back on default help if no args/flags are passed

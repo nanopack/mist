@@ -9,7 +9,7 @@ type redis struct{}
 
 // add "redis" to the list of supported Authenticatores
 func init() {
-	authenticators["redis"] = NewRedis
+	Register("redis", NewRedis)
 }
 
 // NewRedis creates a new "redis" Authenticator

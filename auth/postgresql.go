@@ -15,7 +15,7 @@ type (
 
 // add "postgres" to the list of supported Authenticators
 func init() {
-	authenticators["postgres"] = NewPostgres
+	Register("postgres", NewPostgres)
 }
 
 // NewPostgres creates a new "postgres" Authenticator

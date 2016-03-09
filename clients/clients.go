@@ -1,13 +1,12 @@
 package clients
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/util"
 )
 
 //
@@ -17,6 +16,7 @@ type (
 	tcp struct {
 		host     string
 		conn     net.Conn          // the connection the mist server
+		encoder  *json.Encoder     //
 		messages chan mist.Message // the channel that mist server 'publishes' updates to
 	}
 )
@@ -45,25 +45,27 @@ func (c *tcp) connect() error {
 	//
 	c.conn = conn
 
-	// listen for incoming mist messages
+	//
+	c.encoder = json.NewEncoder(c.conn)
+
+	// connection loop (blocking); continually read off the connection. Once something
+	// is read, check to see if it's a message the client understands to be one of
+	// its commands. If so attempt to execute the command.
 	go func() {
-		r := util.NewReader(c.conn)
-		for r.Next() {
+		decoder := json.NewDecoder(conn)
+
+		for decoder.More() {
 
 			//
-			var msg mist.Message
-			switch r.Input.Cmd {
+			msg := mist.Message{}
 
-			// this is any message published from mist
-			case "publish", "list":
-				msg = mist.Message{Tags: strings.Split(r.Input.Args[0], ","), Data: r.Input.Args[1]}
-
-			// this would be any message sent from this client (ping, subscribe, unsubscribe
-			// publish, or list) which we don't care about here
-			default:
+			// decode an array value (Message)
+			if err := decoder.Decode(&msg); err != nil {
+				// log this error and continue?
 				continue
 			}
 
+			//
 			c.messages <- msg
 		}
 	}()
@@ -73,8 +75,7 @@ func (c *tcp) connect() error {
 
 // Ping the server
 func (c *tcp) Ping() error {
-	_, err := fmt.Fprintf(c.conn, "ping\n")
-	return err
+	return c.encoder.Encode(&mist.Message{Command: "ping"})
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
@@ -86,8 +87,8 @@ func (c *tcp) Subscribe(tags []string) error {
 		return fmt.Errorf("Unable to subscribe - missing tags")
 	}
 
-	_, err := fmt.Fprintf(c.conn, fmt.Sprintf("subscribe %v\n", strings.Join(tags, ",")))
-	return err
+	//
+	return c.encoder.Encode(&mist.Message{Command: "subscribe", Tags: tags})
 }
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
@@ -99,8 +100,8 @@ func (c *tcp) Unsubscribe(tags []string) error {
 		return fmt.Errorf("Unable to unsubscribe - missing tags")
 	}
 
-	_, err := fmt.Fprintf(c.conn, fmt.Sprintf("unsubscribe %v\n", strings.Join(tags, ",")))
-	return err
+	//
+	return c.encoder.Encode(&mist.Message{Command: "unsubscribe", Tags: tags})
 }
 
 // Publish sends a message to the mist server to be published to all subscribed
@@ -117,8 +118,8 @@ func (c *tcp) Publish(tags []string, data string) error {
 		return fmt.Errorf("Unable to publish - missing data")
 	}
 
-	_, err := fmt.Fprintf(c.conn, fmt.Sprintf("publish %v %v\n", strings.Join(tags, ","), data))
-	return err
+	//
+	return c.encoder.Encode(&mist.Message{Command: "publish", Tags: tags, Data: data})
 }
 
 // PublishAfter sends a message to the mist server to be published to all subscribed
@@ -133,22 +134,19 @@ func (c *tcp) PublishAfter(tags []string, data string, delay time.Duration) erro
 
 // List requests a list from the server of the tags this client is subscribed to
 func (c *tcp) List() error {
-	_, err := fmt.Fprintf(c.conn, "list\n")
-	return err
+	return c.encoder.Encode(&mist.Message{Command: "list"})
 }
 
 // Close closes the client data channel and the connection to the server
-func (c *tcp) Close() error {
+func (c *tcp) Close() {
 
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
 	c.conn.Close()
 	close(c.messages)
-
-	return nil
 }
 
-//
+// Messages
 func (c *tcp) Messages() <-chan mist.Message {
 	return c.messages
 }

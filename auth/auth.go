@@ -12,18 +12,20 @@ import (
 //
 var (
 	DefaultAuth Authenticator // this is the current authenticator for the package; this is set during an authenticator start
-	Token       string        // used by the server package when determining if auth command handlers should be added
 
 	//
 	ErrTokenNotFound = fmt.Errorf("Token not found\n")
 	ErrTokenExist    = fmt.Errorf("Token already exists\n")
 
 	// the list of available authenticators
-	authenticators = map[string]func(url *url.URL) (Authenticator, error){}
+	authenticators = map[string]handleFunc{}
 )
 
 //
 type (
+
+	//
+	handleFunc func(url *url.URL) (Authenticator, error)
 
 	// an authenticator represnets a database of authorized token/tag combinations.
 	// These combinations are used as a way to allow access to mist methods for a
@@ -37,24 +39,20 @@ type (
 	}
 )
 
+// Register registers a new mist authenticator
+func Register(name string, auth handleFunc) {
+	authenticators[name] = auth
+}
+
 // Start attempts to start a mist authenticator from the list of available
 // authenticators; the authenticator provided is in the uri string format
 // (scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])
-func Start(uri, token string) error {
+func Start(uri string) error {
 
 	// no authenticator is wanted
 	if uri == "" {
 		return nil
 	}
-
-	// check to see if a token is provided; an authenticator cannot work without
-	// a token and so it should error here informing that.
-	if token == "" {
-		return fmt.Errorf("An authenticator has been specified but no token provided!\n")
-	}
-
-	// set the package token
-	Token = token
 
 	// parse the uri string into a url object
 	url, err := url.Parse(uri)

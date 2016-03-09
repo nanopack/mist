@@ -11,7 +11,7 @@ type memory map[string]mapset.Set
 
 // add "memory" to the list of supported Authenticators
 func init() {
-	authenticators["memory"] = NewMemory
+	Register("memory", NewMemory)
 }
 
 // NewMemory creates a new in-memory Authenticator

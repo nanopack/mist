@@ -1,9 +1,7 @@
 package clients
 
 import (
-	// "net"
-	// "net/http"
-	// "fmt"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -38,20 +36,19 @@ func TestTCPClientSubscriptions(t *testing.T) {
 	}
 	defer client.Close()
 
-	//
+	// test ping
 	if err := client.Ping(); err != nil {
 		t.Fatalf("ping failed")
 	}
 
-	//
+	// test subscribe
 	err = client.Subscribe([]string{testTag})
 	err = client.Subscribe([]string{testTag, testMsg})
-	defer client.Unsubscribe([]string{testTag, testMsg})
 	if err != nil {
 		t.Fatalf("client subscriptions failed %v", err.Error())
 	}
 
-	//
+	// test list
 	err = client.List()
 	if err != nil {
 		t.Fatalf("listing subscriptions failed %v", err.Error())
@@ -63,6 +60,8 @@ func TestTCPClientSubscriptions(t *testing.T) {
 	//
 	case msg := <-client.Messages():
 
+		fmt.Println("MESG!", msg)
+
 		//
 		subs := strings.Split(msg.Data, " ")
 		if len(subs) != 2 {
@@ -73,6 +72,13 @@ func TestTCPClientSubscriptions(t *testing.T) {
 	//
 	case <-time.After(time.Second * 1):
 		t.Fatalf("Expecting messages, received none!")
+	}
+
+	// test unsubscribe
+	err = client.Unsubscribe([]string{testTag})
+	err = client.Unsubscribe([]string{testTag, testMsg})
+	if err != nil {
+		t.Fatalf("client unsubscriptions failed %v", err.Error())
 	}
 }
 
@@ -153,6 +159,10 @@ func TestDifferentTCPClient(t *testing.T) {
 		t.Fatalf("client unsubscribe failed %v", err.Error())
 	}
 
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
+
+	//
 	err = sender.Publish([]string{testTag}, testMsg)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
@@ -211,6 +221,7 @@ func TestManyTCPClients(t *testing.T) {
 		t.Fatalf("one or more client subscription failed %v", err.Error())
 	}
 
+	//
 	err = sender.Publish([]string{testTag}, testMsg)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
@@ -230,6 +241,10 @@ func TestManyTCPClients(t *testing.T) {
 		t.Fatalf("one or more client unsubscription failed %v", err.Error())
 	}
 
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
+
+	//
 	err = sender.Publish([]string{testTag}, testMsg)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())

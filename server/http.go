@@ -11,12 +11,10 @@ var (
 	Router = pat.New()
 )
 
-// init
+// init adds http/https as available mist server types
 func init() {
-
-	// add http as an available server type
-	listeners["http"] = StartHTTP
-	listeners["https"] = StartHTTPS
+	Register("http", StartHTTP)
+	Register("https", StartHTTPS)
 }
 
 // StartHTTP starts a mist server listening over HTTP

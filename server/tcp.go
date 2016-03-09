@@ -1,20 +1,17 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/util"
 )
 
-// init
+// init adds "tcp" as an available mist server type
 func init() {
-
-	// add tcp as an available server type
-	listeners["tcp"] = StartTCP
+	Register("tcp", StartTCP)
 }
 
 // StartTCP starts a tcp server listening on the specified address (default 127.0.0.1:1445)
@@ -29,7 +26,6 @@ func StartTCP(uri string, errChan chan<- error) {
 	// start a TCP listener
 	ln, err := net.Listen("tcp", uri)
 	if err != nil {
-		fmt.Println("ERR!!!", err)
 		errChan <- fmt.Errorf("Failed to start tcp listener %v", err.Error())
 		return
 	}
@@ -64,104 +60,67 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	proxy := mist.NewProxy()
 	defer proxy.Close()
 
-	// publish mist messages to connected tcp clients (non-blocking)
-	go func() {
-		for msg := range proxy.Pipe {
-			if _, err := conn.Write([]byte(fmt.Sprintf("%v %v %v\n", msg.Cmd, strings.Join(msg.Tags, ","), msg.Data))); err != nil {
-				errChan <- fmt.Errorf("Failed to write to connection %v", err)
-			}
-		}
-	}()
-
 	// add basic TCP command handlers for this connection
 	handlers = GenerateHandlers()
 
 	//
-	r := util.NewReader(conn)
+	encoder := json.NewEncoder(conn)
+	decoder := json.NewDecoder(conn)
 
-	// check for authentication
-	switch {
+	// publish mist messages to connected tcp clients (non-blocking)
+	go func() {
+		for msg := range proxy.Pipe {
+			if err := encoder.Encode(msg); err != nil {
+				// log this error and continue?
+			}
+		}
+	}()
 
-	// authentication wanted...
-	case auth.DefaultAuth != nil:
+	// connection loop (blocking); continually read off the connection. Once something
+	// is read, check to see if it's a message the client understands to be one of
+	// its commands. If so attempt to execute the command.
+	for decoder.More() {
 
-		// prompt for auth
-		if _, err := conn.Write([]byte("auth: ")); err != nil {
-			break
+		//
+		msg := mist.Message{}
+
+		// decode an array value (Message)
+		if err := decoder.Decode(&msg); err != nil {
+			// errChan <- fmt.Errorf("Read error %v", r.Err)
+			continue
 		}
 
 		// read from the connection looking for an auth token; if anything that comes
 		// across the connection at this point and it's not the auth token, nothing
 		// proceeds
-		for r.Next() {
+		if auth.DefaultAuth != nil {
 
-			// if the next input does not match the token then promt again
-			if r.Input.Cmd != auth.Token {
-				if _, err := conn.Write([]byte("auth: ")); err != nil {
-					break
-				}
-				continue
+			// if the next input does not match the token then bugout
+			if msg.Data != token {
+				return
 			}
 
 			// successful auth; allow auth command handlers on this connection
 			for k, v := range auth.GenerateHandlers() {
 				handlers[k] = v
 			}
-
-			//
-			break
 		}
 
-	// no authentication wanted; authorize the proxy
-	default:
+		// no authentication wanted; authorize the proxy
 		// proxy.Authorized = true
-	}
 
-	// connection loop (blocking); continually read off the connection. Once something
-	// is read, check to see if it is a message the client understands to be one of
-	// its commands. If so attempt to execute the command.
-	for r.Next() {
+		// look for the command
+		handler, found := handlers[msg.Command]
 
-		// what should we do with this error?
-		if r.Err != nil {
-			errChan <- fmt.Errorf("Read error %v", r.Err)
-		}
-
-		//
-		handler, found := handlers[r.Input.Cmd]
-
-		//
-		var err error
-		switch {
-
-		// command not found
-		case !found:
-			err = fmt.Errorf("Unknown Command '%s'\n", r.Input.Cmd)
-
-		// wrong number of args
-		case handler.NumArgs != len(r.Input.Args):
-			err = fmt.Errorf("Wrong number of arguments for '%s'. Expected %v got %v\n", r.Input.Cmd, handler.NumArgs, len(r.Input.Args))
-
-		// execute the command
-		default:
-			err = handler.Handle(proxy, r.Input.Args)
-		}
-
-		// if something failed along the way, respond accordingly...
-		if err != nil {
-			if _, err := conn.Write([]byte(err.Error())); err != nil {
-				errChan <- fmt.Errorf("Failed to write to connection %v", err.Error())
-				break
-			}
-
-			//
+		// if the command isn't found, return an error
+		if !found {
+			encoder.Encode(&mist.Message{Command: msg.Command, Error: "Unknown Command"})
 			continue
 		}
 
-		// ...otherwise write a successful response
-		if _, err := conn.Write([]byte("success\n")); err != nil {
-			errChan <- fmt.Errorf("Failed to write to connection %v", err.Error())
-			break
+		// attempt to run the command
+		if err := handler(proxy, msg); err != nil {
+			encoder.Encode(&mist.Message{Command: msg.Command, Error: err.Error()})
 		}
 	}
 }

@@ -20,23 +20,13 @@ var (
 func TestStart(t *testing.T) {
 
 	// test for error if an auth is provided w/o a token
-	if err := Start("memory://", ""); err == nil {
-		t.Fatalf("Expecting error!")
-	}
-
-	// test for no error if an auth and token are provided
-	if err := Start("memory://", testToken); err != nil {
-		t.Fatalf(err.Error())
+	if err := Start("memory://"); err != nil {
+		t.Fatalf("Unexpected error!")
 	}
 
 	// DefaultAuth is set inside of an auth start and should not be nil once started
 	if DefaultAuth == nil {
 		t.Fatalf("Unexpected nil DefaultAuth!")
-	}
-
-	// Token is set inside of an auth start and should not be nil once started
-	if Token == "" {
-		t.Fatalf("Unexpected blank Token!")
 	}
 }
 

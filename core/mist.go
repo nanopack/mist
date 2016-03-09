@@ -27,16 +27,14 @@ type (
 	// A Message contains the tags used when subscribing, and the data that is being
 	// published through mist
 	Message struct {
-		Cmd  string   `json:"command"`
-		Tags []string `json:"tags"`
-		Data string   `json:"data"`
+		Command string   `json:"command"`
+		Tags    []string `json:"tags"`
+		Data    string   `json:"data,omitemtpy"`
+		Error   string   `json:"error,omitempty"`
 	}
 
 	//
-	Handler struct {
-		NumArgs int
-		Handle  func(*Proxy, []string) error
-	}
+	HandleFunc func(*Proxy, Message) error
 )
 
 // publish publishes to both subscribers, and to replicators
@@ -64,7 +62,7 @@ func publish(pid uint32, tags []string, data string) error {
 				}
 
 				//
-				msg := Message{Cmd: "publish", Tags: tags, Data: data}
+				msg := Message{Command: "publish", Tags: tags, Data: data}
 
 				// we don't want this operation blocking the range of other subscribers
 				// waiting to get messages
@@ -79,9 +77,18 @@ func publish(pid uint32, tags []string, data string) error {
 	return nil
 }
 
+// subscribe adds a proxy to the list of mist subscribers; we need this so that
+// we can lock this process incase multiple proxies are subscribing at the same
+// time
+func subscribe(p *Proxy) {
+	mutex.Lock()
+	subscribers[p.id] = p
+	mutex.Unlock()
+}
+
 // unsubscribe removes a proxy from the list of mist subscribers; we need this
-// so that we can lock this process incase multiple proxies are closing at the
-// same time
+// so that we can lock this process incase multiple proxies are unsubscribing at
+// the same time
 func unsubscribe(pid uint32) {
 	mutex.Lock()
 	delete(subscribers, pid)

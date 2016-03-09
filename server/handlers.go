@@ -1,43 +1,41 @@
 package server
 
 import (
-	"strings"
-
 	"github.com/nanopack/mist/core"
 )
 
 //
-func GenerateHandlers() map[string]mist.Handler {
-	return map[string]mist.Handler{
-		"ping":        {0, handlePing},
-		"list":        {0, handleList},
-		"subscribe":   {1, handleSubscribe},
-		"unsubscribe": {1, handleUnsubscribe},
-		"publish":     {2, handlePublish},
+func GenerateHandlers() map[string]mist.HandleFunc {
+	return map[string]mist.HandleFunc{
+		"ping":        handlePing,
+		"list":        handleList,
+		"subscribe":   handleSubscribe,
+		"unsubscribe": handleUnsubscribe,
+		"publish":     handlePublish,
 	}
 }
 
 // handlePing
-func handlePing(proxy *mist.Proxy, args []string) error {
+func handlePing(proxy *mist.Proxy, msg mist.Message) error {
 	return proxy.Ping()
 }
 
 // handleSubscribe
-func handleSubscribe(proxy *mist.Proxy, args []string) error {
-	return proxy.Subscribe(strings.Split(args[0], ","))
+func handleSubscribe(proxy *mist.Proxy, msg mist.Message) error {
+	return proxy.Subscribe(msg.Tags)
 }
 
 // handleUnsubscribe
-func handleUnsubscribe(proxy *mist.Proxy, args []string) error {
-	return proxy.Unsubscribe(strings.Split(args[0], ","))
+func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
+	return proxy.Unsubscribe(msg.Tags)
 }
 
 // handlePublish
-func handlePublish(proxy *mist.Proxy, args []string) error {
-	return proxy.Publish(strings.Split(args[0], ","), args[1])
+func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
+	return proxy.Publish(msg.Tags, msg.Data)
 }
 
 // handleList
-func handleList(proxy *mist.Proxy, args []string) error {
+func handleList(proxy *mist.Proxy, msg mist.Message) error {
 	return proxy.List()
 }
