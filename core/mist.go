@@ -4,6 +4,7 @@ package mist
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 //
@@ -33,12 +34,24 @@ type (
 	HandleFunc func(*Proxy, Message) error
 )
 
-// Publish publishes to ALL subscribers (even the publisher)
+// Publish publishes to ALL subscribers
 func Publish(tags []string, data string) error {
 	return publish(0, tags, data)
 }
 
-// publish publishes to all subscribers (expect the one who issued the publish)
+// PublishAfter publishes to ALL subscribers
+func PublishAfter(tags []string, data string, delay time.Duration) error {
+	go func() {
+		<-time.After(delay)
+		if err := Publish(tags, data); err != nil {
+			// log this error and continue?
+		}
+	}()
+
+	return nil
+}
+
+// publish publishes to all subscribers expect the one who issued the publish
 func publish(pid uint32, tags []string, data string) error {
 
 	//

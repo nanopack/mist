@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -59,8 +58,6 @@ func TestTCPClientSubscriptions(t *testing.T) {
 
 	//
 	case msg := <-client.Messages():
-
-		fmt.Println("MESG!", msg)
 
 		//
 		subs := strings.Split(msg.Data, " ")
@@ -176,16 +173,7 @@ func TestDifferentTCPClient(t *testing.T) {
 	<-time.After(time.Second * 1)
 
 	// receiver should NOT get a message this time
-	select {
-
-	// wait for a message...
-	case msg := <-receiver.Messages():
-		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
-
-	// after 1 second assume no message is coming
-	case <-time.After(time.Second * 1):
-		break
-	}
+	waitNoMessage(receiver.Messages(), t)
 }
 
 // TestManyTCPClients tests to ensure that mist will send messages to many
@@ -261,22 +249,9 @@ func TestManyTCPClients(t *testing.T) {
 	<-time.After(time.Second * 1)
 
 	// receivers should NOT get a message this time
-	select {
-
-	// wait for a messages...
-	case msg := <-r1.Messages():
-		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
-
-	case msg := <-r2.Messages():
-		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
-
-	case msg := <-r3.Messages():
-		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
-
-	// after 1 second assume no message is coming
-	case <-time.After(time.Second * 1):
-		break
-	}
+	waitNoMessage(r1.Messages(), t)
+	waitNoMessage(r2.Messages(), t)
+	waitNoMessage(r3.Messages(), t)
 }
 
 // waitMessage waits for a message to come to a proxy then tests to see if it is
@@ -299,5 +274,21 @@ func waitMessage(messages <-chan mist.Message, t *testing.T) {
 	// after 1 second assume no messages are coming
 	case <-time.After(time.Second * 1):
 		t.Fatalf("Expecting messages, received none!")
+	}
+}
+
+// waitNoMessage waits to NOT receive a message
+func waitNoMessage(messages <-chan mist.Message, t *testing.T) {
+
+	//
+	select {
+
+	// wait for a message...
+	case msg := <-messages:
+		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
+
+	// after 1 second assume no message is coming
+	case <-time.After(time.Second * 1):
+		break
 	}
 }

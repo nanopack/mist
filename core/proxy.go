@@ -130,8 +130,6 @@ func (p *Proxy) Publish(tags []string, data string) error {
 
 // Sends a message with delay
 func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
-
-	//
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
