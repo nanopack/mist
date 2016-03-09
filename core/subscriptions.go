@@ -1,5 +1,4 @@
-//
-package subscription
+package mist
 
 const (
 	create = iota
@@ -10,7 +9,7 @@ const (
 type (
 
 	//
-	Subscriptions interface {
+	subscriptions interface {
 		Add([]string)
 		Remove([]string)
 		Match([]string) bool
@@ -32,19 +31,16 @@ type (
 )
 
 //
-func NewNode() *Node {
-	child := newNode()
-	child.leafs = map[uint64]*Node{}
-	return child
-}
-
-//
-func newNode() *Node {
-	return &Node{
+func newNode() (child *Node) {
+	child = &Node{
 		id:       0,
 		count:    0,
 		children: map[string]*Node{},
+		leafs:    map[uint64]*Node{},
 	}
+
+	//
+	return
 }
 
 //

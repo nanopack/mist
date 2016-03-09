@@ -6,8 +6,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/nanopack/mist/subscription"
 )
 
 type (
@@ -16,7 +14,7 @@ type (
 	Proxy struct {
 		sync.Mutex
 
-		subscriptions subscription.Subscriptions
+		subscriptions subscriptions
 		check         chan Message
 		done          chan bool
 		id            uint32
@@ -29,7 +27,7 @@ func NewProxy() (p *Proxy) {
 
 	//
 	p = &Proxy{
-		subscriptions: subscription.NewNode(),
+		subscriptions: newNode(),
 		check:         make(chan Message),
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),

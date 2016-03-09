@@ -10,26 +10,6 @@ var (
 	testMsg = "world"
 )
 
-// BenchmarkMist
-func BenchmarkMist(b *testing.B) {
-
-	//
-	p := NewProxy()
-	defer p.Close()
-
-	//
-	p.Subscribe([]string{testTag})
-
-	//
-	b.ResetTimer()
-
-	//
-	for i := 0; i < b.N; i++ {
-		p.Publish([]string{testTag}, testMsg)
-		_ = <-p.Pipe
-	}
-}
-
 // TestSameSubscriber tests to ensure that mist will not send message to the
 // same proxy who publishes them
 func TestSameSubscriber(t *testing.T) {
@@ -171,5 +151,25 @@ func waitMessage(p *Proxy, t *testing.T) {
 	// after 1 second assume no messages are coming
 	case <-time.After(time.Second * 1):
 		t.Errorf("Expecting messages, received none!")
+	}
+}
+
+// BenchmarkMist
+func BenchmarkMist(b *testing.B) {
+
+	//
+	p := NewProxy()
+	defer p.Close()
+
+	//
+	p.Subscribe([]string{testTag})
+
+	//
+	b.ResetTimer()
+
+	//
+	for i := 0; i < b.N; i++ {
+		p.Publish([]string{testTag}, testMsg)
+		_ = <-p.Pipe
 	}
 }
