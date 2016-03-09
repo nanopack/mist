@@ -27,11 +27,14 @@ func TestEmptySubscription(t *testing.T) {
 // TestAddRemove
 func TestAddRemove(t *testing.T) {
 	node := newNode()
+
+	//
 	node.Add([]string{"a", "b"})
 	if node.Len() != 1 {
 		t.Fatalf("add should have added a node")
 	}
 
+	//
 	node.Remove([]string{"a", "b"})
 	if node.Len() != 0 {
 		t.Fatalf("remove should have removed a node")
@@ -41,12 +44,13 @@ func TestAddRemove(t *testing.T) {
 // TestList
 func TestList(t *testing.T) {
 	node := newNode()
+
+	//
 	node.Add([]string{"a", "b"})
 	list := node.ToSlice()
 	if len(list) != 1 {
 		t.Fatalf("wrong length of list. Expecting 1 got %v", list)
 	}
-
 	if len(list[0]) != 2 {
 		t.Fatalf("wrong numer of tags. Expecing 2 got %v", len(list[0]))
 	}
@@ -55,19 +59,21 @@ func TestList(t *testing.T) {
 // TestAddRemoveDuplicate
 func TestAddRemoveDuplicate(t *testing.T) {
 	node := newNode()
+
+	//
 	node.Add([]string{"a", "b"})
-	if node.Len() != 1 {
-		t.Fatalf("duplicate add should have added a node")
-	}
 	node.Add([]string{"a", "b"})
 	if node.Len() != 1 {
 		t.Fatalf("duplicate add should not have added a node")
 	}
 
+	//
 	node.Remove([]string{"a", "b"})
 	if node.Len() != 1 {
 		t.Fatalf("duplicate remove should not have removed a node with a count > 1")
 	}
+
+	//
 	node.Remove([]string{"a", "b"})
 	if node.Len() != 0 {
 		t.Fatalf("duplicate remove should have removed a node")
@@ -77,19 +83,26 @@ func TestAddRemoveDuplicate(t *testing.T) {
 // TestAddRemoveSimilarDuplicate
 func TestAddRemoveSimilarDuplicate(t *testing.T) {
 	node := newNode()
+
+	//
 	node.Add([]string{"a", "b"})
 	if node.Len() != 1 {
 		t.Fatalf("similar duplicate add should have added a node")
 	}
+
+	//
 	node.Add([]string{"a", "b", "c"})
 	if node.Len() != 2 {
 		t.Fatalf("similar duplicate add should not have added a node")
 	}
 
+	//
 	node.Remove([]string{"a", "b"})
 	if node.Len() != 1 {
 		t.Fatalf("similar duplicate remove should not have removed a node with a count > 1")
 	}
+
+	//
 	node.Remove([]string{"a", "b", "c"})
 	if node.Len() != 0 {
 		t.Fatalf("similar duplicate remove should have removed a node")
