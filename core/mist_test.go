@@ -1,169 +1,108 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
-
 package mist
 
 import (
-	"net"
-	"net/http"
 	"testing"
 	"time"
 )
 
-func TestMistCore(test *testing.T) {
-	mist := New()
-	client := NewLocalClient(mist, 0)
-	defer client.Close()
+var (
+	testTag = "hello"
+	testMsg = "world"
+)
 
-	client.Subscribe([]string{"tag0"})
-	for count := 0; count < 2; count++ {
-		mist.Publish([]string{"tag0"}, "this is my data")
-		message := <-client.Messages()
-		assert(test, len(message.Tags) == 1, "wrong number of tags")
-		// assert(test, message.Data == []byte("this is my data"), "data was incorrect")
+// TestPublish tests that the publish Publish method publishes to all subscribers
+func TestPublish(t *testing.T) {
+
+	//
+	p1 := NewProxy()
+	defer p1.Close()
+
+	p2 := NewProxy()
+	defer p2.Close()
+
+	//
+	err := p1.Subscribe([]string{testTag})
+	err = p2.Subscribe([]string{testTag})
+	if err != nil {
+		t.Fatalf("one or more proxy subscribes failed %v", err.Error())
 	}
 
-	client.Unsubscribe([]string{"tag0"})
-	mist.Publish([]string{"tag0"}, "this is my data")
-	select {
-	case <-client.Messages():
-		assert(test, false, "the message should not have been received")
-	default:
+	// have mist publish the message
+	PublishAfter([]string{testTag}, testMsg, 1)
+
+	//
+	waitMessage(p1, t)
+	waitMessage(p2, t)
+
+	err = p1.Unsubscribe([]string{testTag})
+	err = p2.Unsubscribe([]string{testTag})
+	if err != nil {
+		t.Fatalf("one or more proxy unsubscribes failed %v", err.Error())
 	}
 
+	// have mist publish the message
+	PublishAfter([]string{testTag}, testMsg, 1)
+
+	// proxies should NOT get a message this time
+	waitNoMessage(p1, t)
+	waitNoMessage(p2, t)
 }
 
-func TestMistReplication(test *testing.T) {
-	mist := New()
-	replication := NewLocalClient(mist, 0)
-	client := NewLocalClient(mist, 0)
-	replication1 := NewLocalClient(mist, 0)
+// BenchmarkMist
+func BenchmarkMist(b *testing.B) {
 
-	defer replication.Close()
-	defer client.Close()
-	defer replication1.Close()
+	//
+	p := NewProxy()
+	defer p.Close()
 
-	// two clients will represent remote replicated nodes
-	replication.(EnableReplication).EnableReplication()
-	replication1.(EnableReplication).EnableReplication()
+	//
+	p.Subscribe([]string{testTag})
 
-	client.Subscribe([]string{"foo"})
-	replication.Subscribe([]string{"foo"})
-	replication1.Subscribe([]string{"foo"})
-
-	// when a normal client publishes, both replicated clients receive the message
-	client.Publish([]string{"foo"}, "data")
-	<-replication.Messages()
-	<-replication1.Messages()
-	<-client.Messages()
-
-	replication.Publish([]string{"foo"}, "data")
-	<-client.Messages()
-	select {
-	case <-replication1.Messages():
-		test.Log("a replicated client should not get a message from another replicated client")
-		test.Fail()
-	default:
-	}
-
-	replication1.Publish([]string{"foo"}, "data")
-	<-client.Messages()
-	select {
-	case <-replication.Messages():
-		test.Log("a replicated client should not get a message from another replicated client")
-		test.Fail()
-	default:
-	}
-
-}
-
-func BenchmarkMistCore(b *testing.B) {
-	mist := New()
-	client := NewLocalClient(mist, 0)
-	defer client.Close()
-	client.Subscribe([]string{"tag0"})
-
+	//
 	b.ResetTimer()
+
+	//
 	for i := 0; i < b.N; i++ {
-		mist.Publish([]string{"tag0"}, "this is my data")
-		_ = <-client.Messages()
+		p.Publish([]string{testTag}, testMsg)
+		_ = <-p.Pipe
 	}
 }
 
-func TestMistApi(test *testing.T) {
-	mist := New()
-	serverSocket, err := mist.Listen("127.0.0.1:1234", nil)
-	assert(test, err == nil, "listen errored: %v", err)
-	defer serverSocket.Close()
+// waitMessage waits for a message to come to a proxy then tests to see if it is
+// the expected message
+func waitMessage(p *Proxy, t *testing.T) {
 
-	client, err := NewRemoteClient("127.0.0.1:1234")
-	defer client.Close()
-	assert(test, err == nil, "connect errored: %v", err)
+	//
+	select {
 
-	<-time.After(time.Millisecond * 10)
+	// wait for a message then test to make sure it's the expected message...
+	case msg := <-p.Pipe:
+		if len(msg.Tags) != 1 {
+			t.Fatalf("Wrong number of tags: Expected '%v' received '%v'\n", 1, len(msg.Tags))
+		}
+		if msg.Data != testMsg {
+			t.Fatalf("Incorrect data: Expected '%v' received '%v'\n", testMsg, msg.Data)
+		}
+		break
 
-	assert(test, client.Ping() == nil, "ping failed")
-
-	client.Subscribe([]string{"tag"})
-	client.Subscribe([]string{"other", "what", "is", "going", "on"})
-
-	client.Publish([]string{"tag"}, "message")
-
-	list, err := client.List()
-	assert(test, err == nil, "listing subsctiptions failed %v", err)
-	assert(test, len(list) == 2, "wrong number of subscriptions were returned %v", list)
-	assert(test, len(list[0]) == 1, "wrong number of tags %v", list[0])
-	assert(test, len(list[1]) == 5, "wrong number of tags %v", list[1])
-
-	msg, ok := <-client.Messages()
-
-	assert(test, ok, "got a nil message")
-	assert(test, msg.Data == "message", "got the wrong message %v", msg.Data)
-
-	client.PublishDelay([]string{"tag"}, "message_delay", 10*time.Millisecond)
-	msg, ok = <-client.Messages()
-
-	assert(test, ok, "got a nil message")
-	assert(test, msg.Data == "message_delay", "got the wrong message %v", msg.Data)
-
+	// after 1 second assume no messages are coming
+	case <-time.After(time.Second * 1):
+		t.Errorf("Expecting messages, received none!")
+	}
 }
 
-func TestMistWebsocket(test *testing.T) {
-	mist := New()
-	httpListener, err := net.Listen("tcp", "127.0.0.1:2345")
-	assert(test, err == nil, "unable to listen to websockets %v", err)
+// waitNoMessage waits to NOT receive a message
+func waitNoMessage(p *Proxy, t *testing.T) {
 
-	defer httpListener.Close()
+	//
+	select {
 
-	go http.Serve(httpListener, GenerateWebsocketUpgrade(mist, nil))
+	// wait for a message...
+	case msg := <-p.Pipe:
+		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
 
-	header := make(http.Header, 0)
-	client, err := NewWebsocketClient("ws://127.0.0.1:2345/", header)
-	assert(test, err == nil, "unable to connect %v", err)
-	defer client.Close()
-	err = client.Subscribe([]string{"test"})
-	assert(test, err == nil, "subscription failed %v", err)
-	mist.Publish([]string{"test"}, "some data")
-	<-client.Messages()
-	list, err := client.List()
-	assert(test, err == nil, "unable to list %v", err)
-	assert(test, len(list) == 1, "list of subscriptions is wrong %v", list)
-	assert(test, len(list[0]) == 1, "wrong number of tags in subscription %v", list[0])
-	err = client.Unsubscribe([]string{"test"})
-	list, err = client.List()
-	assert(test, err == nil, "unable to list %v", err)
-	assert(test, len(list) == 0, "list of subscriptions is wrong %v", list)
-	mist.Publish([]string{"test"}, "more data")
-	client.Close()
-}
-
-func assert(test *testing.T, check bool, fmt string, args ...interface{}) {
-	if !check {
-		test.Logf(fmt, args...)
-		test.FailNow()
+	// after 1 second assume no message is coming
+	case <-time.After(time.Second * 1):
+		break
 	}
 }

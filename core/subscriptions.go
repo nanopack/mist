@@ -1,11 +1,4 @@
-// Copyright (c) 2015 Pagoda Box Inc
-//
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
-
-package subscription
+package mist
 
 const (
 	create = iota
@@ -14,6 +7,19 @@ const (
 )
 
 type (
+
+	//
+	subscriptions interface {
+		Add([]string)
+		Remove([]string)
+		Match([]string) bool
+		ToSlice() [][]string
+	}
+)
+
+type (
+
+	//
 	Node struct {
 		id       uint64
 		key      string
@@ -24,24 +30,25 @@ type (
 	}
 )
 
-func NewNode() *Node {
-	child := newNode()
-	child.leafs = map[uint64]*Node{}
-	return child
-}
-
-func newNode() *Node {
-	return &Node{
+//
+func newNode() (child *Node) {
+	child = &Node{
 		id:       0,
 		count:    0,
 		children: map[string]*Node{},
+		leafs:    map[uint64]*Node{},
 	}
+
+	//
+	return
 }
 
+//
 func (root *Node) Len() int {
 	return len(root.leafs)
 }
 
+//
 func (root *Node) Add(keys []string) {
 	if len(keys) == 0 {
 		return
@@ -55,6 +62,7 @@ func (root *Node) Add(keys []string) {
 	}
 }
 
+//
 func (root *Node) Remove(keys []string) {
 	if len(keys) == 0 {
 		return
@@ -68,11 +76,13 @@ func (root *Node) Remove(keys []string) {
 	}
 }
 
+//
 func (root *Node) Match(keys []string) bool {
 	last, count := root.traverse(keys, nothing)
 	return last != nil && count != -1
 }
 
+//
 func (root *Node) ToSlice() [][]string {
 	paths := make([][]string, len(root.leafs))
 	for idx, leaf := range root.leafs {
@@ -85,11 +95,13 @@ func (root *Node) ToSlice() [][]string {
 	return paths
 }
 
+//
 func (root *Node) Find(keys []string) *Node {
 	child, _ := root.traverse(keys, nothing)
 	return child
 }
 
+//
 func (root *Node) traverse(keys []string, action int) (*Node, int) {
 	if len(keys) == 0 {
 		if root.count == 0 {
@@ -100,10 +112,7 @@ func (root *Node) traverse(keys []string, action int) (*Node, int) {
 	}
 
 	key := keys[0]
-
-	var ok bool
-	var child *Node
-	child, ok = root.children[key]
+	child, ok := root.children[key]
 
 	switch action {
 	case remove:
@@ -116,6 +125,7 @@ func (root *Node) traverse(keys []string, action int) (*Node, int) {
 			}
 			return found, count
 		}
+
 		return nil, 0
 	case create:
 		if !ok {
@@ -124,6 +134,7 @@ func (root *Node) traverse(keys []string, action int) (*Node, int) {
 			child.key = keys[0] // preserve the original key
 			root.children[key] = child
 		}
+
 		return child.traverse(keys[1:], action)
 	default:
 		if ok {
@@ -133,9 +144,8 @@ func (root *Node) traverse(keys []string, action int) (*Node, int) {
 				return found, count
 			}
 		}
+
 		// we didn't find a match with the key, try the rest of the keys
 		return root.traverse(keys[1:], action)
 	}
-	return nil, 0
-
 }
