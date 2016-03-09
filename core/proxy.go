@@ -21,8 +21,6 @@ type (
 		done          chan bool
 		id            uint32
 		Pipe          chan Message
-
-		// Authorized bool
 	}
 )
 
@@ -36,8 +34,6 @@ func NewProxy() (p *Proxy) {
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),
 		Pipe:          make(chan Message),
-
-		// Authorized: false,
 	}
 
 	p.connect()
@@ -98,10 +94,7 @@ func (p *Proxy) Ping() error {
 // Subscribe
 func (p *Proxy) Subscribe(tags []string) error {
 
-	//
-	// if !p.Authorized {
-	// 	return ErrUnauthorized
-	// }
+	// verify access before doing action
 
 	// is this an error?
 	if len(tags) == 0 {
@@ -120,10 +113,7 @@ func (p *Proxy) Subscribe(tags []string) error {
 // Unsubscribe
 func (p *Proxy) Unsubscribe(tags []string) error {
 
-	//
-	// if !p.Authorized {
-	// 	return ErrUnauthorized
-	// }
+	// verify access before doing action
 
 	// is this an error?
 	if len(tags) == 0 {
@@ -142,10 +132,7 @@ func (p *Proxy) Unsubscribe(tags []string) error {
 // Publish
 func (p *Proxy) Publish(tags []string, data string) error {
 
-	//
-	// if !p.Authorized {
-	// 	return ErrUnauthorized
-	// }
+	// verify access before doing action
 
 	//
 	return publish(p.id, tags, data)
@@ -154,10 +141,7 @@ func (p *Proxy) Publish(tags []string, data string) error {
 // Sends a message with delay
 func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
 
-	//
-	// if !p.Authorized {
-	// 	return ErrUnauthorized
-	// }
+	// verify access before doing action
 
 	//
 	go func() {
@@ -173,10 +157,7 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) er
 // List
 func (p *Proxy) List() error {
 
-	//
-	// if !p.Authorized {
-	// 	return ErrUnauthorized
-	// }
+	// verify access before doing action
 
 	// convert the list into something friendlier
 	p.Lock()

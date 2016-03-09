@@ -12,10 +12,6 @@ const (
 )
 
 var (
-
-	//
-	ErrUnauthorized = fmt.Errorf("Error: Unauthorized action\n")
-
 	mutex       = &sync.Mutex{}
 	subscribers = make(map[uint32]*Proxy)
 	uid         uint32

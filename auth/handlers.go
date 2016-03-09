@@ -11,25 +11,10 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 	return map[string]mist.HandleFunc{
 		"register":   handleRegister,
 		"unregister": handleUnregister,
-		"authorize":  handleAuth,
 		"set":        handleSet,
 		"unset":      handleUnset,
 		"tags":       handleTags,
 	}
-}
-
-// handleAuth
-func handleAuth(proxy *mist.Proxy, msg mist.Message) error {
-
-	//
-	if _, err := DefaultAuth.GetTagsForToken(msg.Data); err != nil {
-		return fmt.Errorf("Incorrect token\n")
-	}
-
-	// authorize the proxy
-	// proxy.Authorized = true
-
-	return nil
 }
 
 // handleRegister
