@@ -1,7 +1,7 @@
 package server
 
 import (
-// "testing"
+	"testing"
 )
 
 var (
@@ -9,13 +9,23 @@ var (
 )
 
 // TestStart tests the auth start process
-// func TestStart(t *testing.T) {
-//
-// 	// test for error if an auth is provided w/o a token
-// 	if err := Start([]string{"tcp://127.0.0.1:1445"}, testToken); err != nil {
-// 		t.Fatalf("Expecting error!")
-// 	}
-// }
+func TestStart(t *testing.T) {
+
+	// test for error if an auth is provided w/o a token
+	// if err := Start([]string{"tcp://127.0.0.1:1445"}, ""); err == nil {
+	// 	t.Fatalf("Expecting error!")
+	// }
+
+	//
+	// if err := Start([]string{"tcp://127.0.0.1:1445"}, testToken); err != nil {
+	// 	t.Fatalf("Unexpected error!")
+	// }
+
+	// test for error if authtoken does not match the token the server started with
+	// if authtoken != testToken {
+	// 	t.Fatalf("Unexpected token!")
+	// }
+}
 
 //
 // func TestAuthCommands(t *testing.T) {

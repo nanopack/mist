@@ -44,6 +44,9 @@ func Start(uris []string, token string) error {
 		return fmt.Errorf("An authenticator has been specified but no token provided!\n")
 	}
 
+	// set the authtoken
+	authtoken = token
+
 	// this chan is given to each individual server start as a way for them to
 	// communcate back their startup status
 	errChan := make(chan error, len(uris))

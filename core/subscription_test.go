@@ -6,10 +6,14 @@ import (
 )
 
 type (
+
+	//
 	subTest struct {
 		test   []string
 		result bool
 	}
+
+	//
 	matchTest struct {
 		sub   []string
 		tests []subTest
