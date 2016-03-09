@@ -92,8 +92,6 @@ func (p *Proxy) Ping() error {
 // Subscribe
 func (p *Proxy) Subscribe(tags []string) error {
 
-	// verify access before doing action
-
 	// is this an error?
 	if len(tags) == 0 {
 		return nil
@@ -111,8 +109,6 @@ func (p *Proxy) Subscribe(tags []string) error {
 // Unsubscribe
 func (p *Proxy) Unsubscribe(tags []string) error {
 
-	// verify access before doing action
-
 	// is this an error?
 	if len(tags) == 0 {
 		return nil
@@ -129,17 +125,11 @@ func (p *Proxy) Unsubscribe(tags []string) error {
 
 // Publish
 func (p *Proxy) Publish(tags []string, data string) error {
-
-	// verify access before doing action
-
-	//
 	return publish(p.id, tags, data)
 }
 
 // Sends a message with delay
 func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
-
-	// verify access before doing action
 
 	//
 	go func() {
@@ -154,8 +144,6 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) er
 
 // List
 func (p *Proxy) List() error {
-
-	// verify access before doing action
 
 	// convert the list into something friendlier
 	p.Lock()

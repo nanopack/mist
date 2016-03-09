@@ -13,7 +13,7 @@ import (
 type (
 
 	// A tcp represents a TCP connection to the mist server
-	tcp struct {
+	TCP struct {
 		host     string
 		conn     net.Conn          // the connection the mist server
 		encoder  *json.Encoder     //
@@ -23,8 +23,8 @@ type (
 
 // New attempts to connect to a running mist server at the clients specified
 // host and port.
-func New(host string) (*tcp, error) {
-	client := &tcp{
+func New(host string) (*TCP, error) {
+	client := &TCP{
 		host:     host,
 		messages: make(chan mist.Message),
 	}
@@ -34,7 +34,7 @@ func New(host string) (*tcp, error) {
 
 // connect dials the remote mist server and handles any incoming responses back
 // from mist
-func (c *tcp) connect() error {
+func (c *TCP) connect() error {
 
 	// attempt to connect to the server
 	conn, err := net.Dial("tcp", c.host)
@@ -74,13 +74,13 @@ func (c *tcp) connect() error {
 }
 
 // Ping the server
-func (c *tcp) Ping() error {
+func (c *TCP) Ping() error {
 	return c.encoder.Encode(&mist.Message{Command: "ping"})
 }
 
 // Subscribe takes the specified tags and tells the server to subscribe to updates
 // on those tags, returning the tags and an error or nil
-func (c *tcp) Subscribe(tags []string) error {
+func (c *TCP) Subscribe(tags []string) error {
 
 	//
 	if len(tags) == 0 {
@@ -93,7 +93,7 @@ func (c *tcp) Subscribe(tags []string) error {
 
 // Unsubscribe takes the specified tags and tells the server to unsubscribe from
 // updates on those tags, returning an error or nil
-func (c *tcp) Unsubscribe(tags []string) error {
+func (c *TCP) Unsubscribe(tags []string) error {
 
 	//
 	if len(tags) == 0 {
@@ -106,7 +106,7 @@ func (c *tcp) Unsubscribe(tags []string) error {
 
 // Publish sends a message to the mist server to be published to all subscribed
 // clients
-func (c *tcp) Publish(tags []string, data string) error {
+func (c *TCP) Publish(tags []string, data string) error {
 
 	//
 	if len(tags) == 0 {
@@ -124,7 +124,7 @@ func (c *tcp) Publish(tags []string, data string) error {
 
 // PublishAfter sends a message to the mist server to be published to all subscribed
 // clients after a specified delay
-func (c *tcp) PublishAfter(tags []string, data string, delay time.Duration) error {
+func (c *TCP) PublishAfter(tags []string, data string, delay time.Duration) error {
 	go func() {
 		<-time.After(delay)
 		c.Publish(tags, data)
@@ -133,12 +133,12 @@ func (c *tcp) PublishAfter(tags []string, data string, delay time.Duration) erro
 }
 
 // List requests a list from the server of the tags this client is subscribed to
-func (c *tcp) List() error {
+func (c *TCP) List() error {
 	return c.encoder.Encode(&mist.Message{Command: "list"})
 }
 
 // Close closes the client data channel and the connection to the server
-func (c *tcp) Close() {
+func (c *TCP) Close() {
 
 	// we need to do it in this order in case the goroutine is stuck waiting for
 	// more data from the socket
@@ -147,6 +147,6 @@ func (c *tcp) Close() {
 }
 
 // Messages
-func (c *tcp) Messages() <-chan mist.Message {
+func (c *TCP) Messages() <-chan mist.Message {
 	return c.messages
 }
