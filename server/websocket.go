@@ -58,11 +58,9 @@ func StartWS(uri string, errChan chan<- error) {
 			}
 		}()
 
-		// check for authentication
-		switch {
-
-		// authentication wanted...
-		case auth.DefaultAuth != nil:
+		// if an authenticator was passed, check for a token on connect to see if
+		// auth commands are allowed
+		if auth.DefaultAuth != nil {
 
 			//
 			var xtoken string
@@ -73,17 +71,16 @@ func StartWS(uri string, errChan chan<- error) {
 				xtoken = r.FormValue("x-auth-token")
 			}
 
-			// if the websocket is connected with the required token, add auth command
-			// handlers
-			if xtoken == token {
-				for k, v := range auth.GenerateHandlers() {
-					handlers[k] = v
-				}
+			// if the next input does not match the token then...
+			if xtoken != authtoken {
+				// break // ...allow the connection but no auth commands
+				return // ...kill the connection
 			}
 
-		// no authentication wanted; authorize the proxy
-		default:
-			// proxy.Authorized = true
+			// successful auth; allow auth command handlers on this connection
+			for k, v := range auth.GenerateHandlers() {
+				handlers[k] = v
+			}
 		}
 
 		// connection loop (blocking); continually read off the connection. Once something

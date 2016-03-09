@@ -91,14 +91,14 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 			continue
 		}
 
-		// read from the connection looking for an auth token; if anything that comes
-		// across the connection at this point and it's not the auth token, nothing
-		// proceeds
+		// if an authenticator was passed, check for a token on connect to see if
+		// auth commands are allowed
 		if auth.DefaultAuth != nil {
 
-			// if the next input does not match the token then bugout
-			if msg.Data != token {
-				return
+			// if the next input does not match the token then...
+			if msg.Data != authtoken {
+				// break // ...allow the connection but no auth commands
+				return // ...kill the connection
 			}
 
 			// successful auth; allow auth command handlers on this connection
@@ -106,9 +106,6 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 				handlers[k] = v
 			}
 		}
-
-		// no authentication wanted; authorize the proxy
-		// proxy.Authorized = true
 
 		// look for the command
 		handler, found := handlers[msg.Command]

@@ -21,7 +21,7 @@ var (
 
 	//
 	authorized = true
-	token      string // used when determining if auth command handlers should be added
+	authtoken  string // used when determining if auth command handlers should be added
 )
 
 //
@@ -82,11 +82,11 @@ func Start(uris []string, token string) error {
 	}
 
 	// handle errors that happen after initial start; if any errors are received they
-	// are logged and the servers try to just keep running
+	// are logged and the servers just try to keep running
 	go func() {
 		for err := range errChan {
 			fmt.Println("ERR!", err)
-			// TODO: log this error and continue
+			// TODO: log these errors and continue
 		}
 	}()
 
