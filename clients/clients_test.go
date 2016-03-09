@@ -100,10 +100,14 @@ func TestSameTCPClient(t *testing.T) {
 	}
 	defer sender.Unsubscribe([]string{testTag})
 
-	err = sender.Publish([]string{testTag}, testMsg)
+	// publish after to allow time for communication across TCP connection
+	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
 	}
+
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
 
 	// sender should NOT get a message because mist shouldnt send a message to the
 	// same proxy that publishes them.
@@ -143,11 +147,14 @@ func TestDifferentTCPClient(t *testing.T) {
 		t.Fatalf("client subscription failed %v", err.Error())
 	}
 
-	//
-	err = sender.Publish([]string{testTag}, testMsg)
+	// publish after to allow time for communication across TCP connection
+	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
 	}
+
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
 
 	//
 	waitMessage(receiver.Messages(), t)
@@ -159,14 +166,14 @@ func TestDifferentTCPClient(t *testing.T) {
 		t.Fatalf("client unsubscribe failed %v", err.Error())
 	}
 
-	// allow time for communication across TCP connection
-	<-time.After(time.Second * 1)
-
-	//
-	err = sender.Publish([]string{testTag}, testMsg)
+	// publish after to allow time for communication across TCP connection
+	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
 	}
+
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
 
 	// receiver should NOT get a message this time
 	select {
@@ -221,11 +228,14 @@ func TestManyTCPClients(t *testing.T) {
 		t.Fatalf("one or more client subscription failed %v", err.Error())
 	}
 
-	//
-	err = sender.Publish([]string{testTag}, testMsg)
+	// publish after to allow time for communication across TCP connection
+	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
 	}
+
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
 
 	//
 	waitMessage(r1.Messages(), t)
@@ -241,14 +251,14 @@ func TestManyTCPClients(t *testing.T) {
 		t.Fatalf("one or more client unsubscription failed %v", err.Error())
 	}
 
-	// allow time for communication across TCP connection
-	<-time.After(time.Second * 1)
-
-	//
-	err = sender.Publish([]string{testTag}, testMsg)
+	// publish after to allow time for communication across TCP connection
+	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
 	if err != nil {
 		t.Fatalf("client publish failed %v", err.Error())
 	}
+
+	// allow time for communication across TCP connection
+	<-time.After(time.Second * 1)
 
 	// receivers should NOT get a message this time
 	select {
