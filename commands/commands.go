@@ -74,6 +74,10 @@ var (
 				// 	os.Exit(1)
 				// }
 
+				// just "hang" out"; this needs to be updated to be/do something real
+				done := make(chan bool)
+				<-done
+
 				//
 				return
 			}

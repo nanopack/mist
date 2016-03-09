@@ -19,7 +19,7 @@ var (
 // TestStart tests the auth start process
 func TestStart(t *testing.T) {
 
-	// test for error if an auth is provided w/o a token
+	//
 	if err := Start("memory://"); err != nil {
 		t.Fatalf("Unexpected error!")
 	}

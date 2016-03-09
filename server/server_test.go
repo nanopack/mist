@@ -1,52 +1,56 @@
 package server
 
-// import (
-// 	"strings"
-// 	"testing"
+import (
+// "testing"
+)
+
+var (
+	testToken = "token"
+)
+
+// TestStart tests the auth start process
+// func TestStart(t *testing.T) {
 //
-// 	"github.com/nanopack/mist/auth"
-// )
+// 	// test for error if an auth is provided w/o a token
+// 	if err := Start([]string{"tcp://127.0.0.1:1445"}, testToken); err != nil {
+// 		t.Fatalf("Expecting error!")
+// 	}
+// }
 
 //
-// func TestAuthCommands(test *testing.T) {
+// func TestAuthCommands(t *testing.T) {
 //
 // 	//
 // 	commands := GenerateAuthCommands(auth.NewMemory())
 //
 // 	// the client parameter is not used.
 // 	if res := commands["register"].Handle(nil, []string{"token", "1,2,3,4"}); testForError(res) {
-// 		test.Log(res)
-// 		test.FailNow()
+// 		t.Fatalf(res)
 // 	}
 //
 // 	//
 // 	if res := commands["set"].Handle(nil, []string{"token", "a,b,c,d"}); testForError(res) {
-// 		test.Log(res)
-// 		test.FailNow()
+// 		t.Fatalf(res)
 // 	}
 //
 // 	//
 // 	if tags := commands["tags"].Handle(nil, []string{"token"}); tags == "" {
-// 		test.Log("wrong tags were returned")
-// 		test.FailNow()
+// 		t.Fatalf("wrong tags were returned")
 // 	}
 //
 // 	//
 // 	if res := commands["unset"].Handle(nil, []string{"token", "a,b,c,d"}); testForError(res) {
-// 		test.Log(res)
-// 		test.FailNow()
+// 		t.Fatalf(res)
 // 	}
 //
 // 	//
 // 	if res := commands["unregister"].Handle(nil, []string{"token"}); testForError(res) {
-// 		test.Log(res)
-// 		test.FailNow()
+// 		t.Fatalf(res)
 // 	}
 //
 // 	//
 // 	if tags := commands["tags"].Handle(nil, []string{"token"}); !testForError(tags) {
-// 		test.Log("wrong tags were returned", tags)
-// 		test.FailNow()
+// 		t.Fatalf("wrong number of tags returned", tags)
 // 	}
 // }
 

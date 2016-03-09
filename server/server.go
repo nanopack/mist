@@ -83,17 +83,12 @@ func Start(uris []string, token string) error {
 
 	// handle errors that happen after initial start; if any errors are received they
 	// are logged and the servers try to just keep running
-	// go func() {
-	// 	for err := range errChan {
-	// 		fmt.Println("ERR!", err)
-	// 		// write to a log
-	// 	}
-	// }()
-
-	// REMOVE THIS WHEN DONE: we'll just hold the connection open for now to see output
-	for err := range errChan {
-		fmt.Println("ERR!", err)
-	}
+	go func() {
+		for err := range errChan {
+			fmt.Println("ERR!", err)
+			// write to a log
+		}
+	}()
 
 	return nil
 }
