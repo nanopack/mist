@@ -70,9 +70,12 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	// publish mist messages to connected tcp clients (non-blocking)
 	go func() {
 		for msg := range proxy.Pipe {
+
+			// if the message fails to encode its probably a syntax issue and needs to
+			// break the loop here because it will never be able to encode it
 			if err := encoder.Encode(msg); err != nil {
 				errChan <- fmt.Errorf(err.Error())
-				continue
+				break
 			}
 		}
 	}()
@@ -85,10 +88,12 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		//
 		msg := mist.Message{}
 
-		// decode an array value (Message)
+		// decode an array value (Message); if the message fails to decode its probably
+		// a syntax issue and needs to break the loop here because it will never be able
+		// to decode it
 		if err := decoder.Decode(&msg); err != nil {
 			errChan <- fmt.Errorf(err.Error())
-			continue
+			break
 		}
 
 		// if an authenticator was passed, check for a token on connect to see if
@@ -110,15 +115,17 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		// look for the command
 		handler, found := handlers[msg.Command]
 
-		// if the command isn't found, return an error
+		// if the command isn't found, return an error and wait for the next command
 		if !found {
 			encoder.Encode(&mist.Message{Command: msg.Command, Error: "Unknown Command"})
 			continue
 		}
 
-		// attempt to run the command
+		// attempt to run the command; if the command fails return the error and wait
+		// for the next command
 		if err := handler(proxy, msg); err != nil {
 			encoder.Encode(&mist.Message{Command: msg.Command, Error: err.Error()})
+			continue
 		}
 	}
 }
