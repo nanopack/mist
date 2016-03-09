@@ -42,10 +42,10 @@ func (c *tcp) connect() error {
 		return err
 	}
 
-	//
+	// set the connection for the client
 	c.conn = conn
 
-	//
+	// create a new json encoder for the clients connection
 	c.encoder = json.NewEncoder(c.conn)
 
 	// connection loop (blocking); continually read off the connection. Once something
@@ -61,7 +61,7 @@ func (c *tcp) connect() error {
 
 			// decode an array value (Message)
 			if err := decoder.Decode(&msg); err != nil {
-				// log this error and continue?
+				// TODO: log this error and continue?
 				continue
 			}
 

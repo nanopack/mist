@@ -86,7 +86,7 @@ func Start(uris []string, token string) error {
 	go func() {
 		for err := range errChan {
 			fmt.Println("ERR!", err)
-			// write to a log
+			// TODO: log this error and continue
 		}
 	}()
 

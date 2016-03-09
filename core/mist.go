@@ -52,8 +52,9 @@ func publish(pid uint32, tags []string, data string) error {
 		for _, subscriber := range subscribers {
 			select {
 			case <-subscriber.done:
-				fmt.Println("DONE???")
+				fmt.Println("Does this ever happen?")
 
+			//
 			default:
 
 				// dont sent this message to the publisher who just sent it

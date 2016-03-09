@@ -111,18 +111,18 @@ func init() {
 	MistCmd.PersistentFlags().String("token", viper.GetString("token"), "desc.")
 
 	//
-	viper.BindPFlag("listeners", MistCmd.PersistentFlags().Lookup("listeners"))
 	viper.BindPFlag("authenticator", MistCmd.PersistentFlags().Lookup("authenticator"))
+	viper.BindPFlag("listeners", MistCmd.PersistentFlags().Lookup("listeners"))
 	viper.BindPFlag("log-level", MistCmd.PersistentFlags().Lookup("log-level"))
 	viper.BindPFlag("replicator", MistCmd.PersistentFlags().Lookup("replicator"))
 	viper.BindPFlag("token", MistCmd.PersistentFlags().Lookup("token"))
 
 	// commands
-	MistCmd.AddCommand(listCmd)
 	MistCmd.AddCommand(pingCmd)
-	MistCmd.AddCommand(publishCmd)
 	MistCmd.AddCommand(subscribeCmd)
 	MistCmd.AddCommand(unsubscribeCmd)
+	MistCmd.AddCommand(publishCmd)
+	MistCmd.AddCommand(listCmd)
 
 	// hidden/aliased commands
 	MistCmd.AddCommand(messageCmd)

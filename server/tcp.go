@@ -71,7 +71,8 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	go func() {
 		for msg := range proxy.Pipe {
 			if err := encoder.Encode(msg); err != nil {
-				// log this error and continue?
+				errChan <- fmt.Errorf(err.Error())
+				continue
 			}
 		}
 	}()
@@ -86,7 +87,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// decode an array value (Message)
 		if err := decoder.Decode(&msg); err != nil {
-			// errChan <- fmt.Errorf("Read error %v", r.Err)
+			errChan <- fmt.Errorf(err.Error())
 			continue
 		}
 

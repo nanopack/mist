@@ -52,7 +52,8 @@ func StartWS(uri string, errChan chan<- error) {
 		go func() {
 			for msg := range proxy.Pipe {
 				if err := conn.WriteJSON(msg); err != nil {
-					// do something
+					errChan <- fmt.Errorf(err.Error())
+					continue
 				}
 			}
 		}()
@@ -62,6 +63,7 @@ func StartWS(uri string, errChan chan<- error) {
 
 		// authentication wanted...
 		case auth.DefaultAuth != nil:
+
 			//
 			var xtoken string
 			switch {
@@ -93,7 +95,7 @@ func StartWS(uri string, errChan chan<- error) {
 
 			// decode an array value (Message)
 			if err := conn.ReadJSON(&msg); err != nil {
-				// errChan <- fmt.Errorf("Read error %v", r.Err)
+				errChan <- fmt.Errorf(err.Error())
 				continue
 			}
 
@@ -103,7 +105,7 @@ func StartWS(uri string, errChan chan<- error) {
 			// if the command isn't found, return an error
 			if !found {
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: "Unknown Command"}); err != nil {
-					// do something
+					errChan <- fmt.Errorf(err.Error())
 				}
 				continue
 			}
@@ -111,8 +113,9 @@ func StartWS(uri string, errChan chan<- error) {
 			// attempt to run the command
 			if err := handler(proxy, msg); err != nil {
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
-					// do something
+					errChan <- fmt.Errorf(err.Error())
 				}
+				continue
 			}
 		}
 	})
