@@ -1,128 +1,111 @@
-// Copyright (c) 2015 Pagoda Box Inc
 //
-// This Source Code Form is subject to the terms of the Mozilla Public License, v.
-// 2.0. If a copy of the MPL was not distributed with this file, You can obtain one
-// at http://mozilla.org/MPL/2.0/.
-//
-
 package mist
 
 import (
-	"sort"
-	"sync/atomic"
+	"fmt"
+	"sync"
 	"time"
 )
 
+//
+const (
+	DEFAULT_ADDR = "127.0.0.1:1445"
+)
+
+var (
+	mutex       = &sync.Mutex{}
+	subscribers = make(map[uint32]*Proxy)
+	uid         uint32
+)
+
+//
 type (
-
-	//
-	Client interface {
-		List() ([][]string, error)
-		Subscribe(tags []string) error
-		Unsubscribe(tags []string) error
-		Publish(tags []string, data string) error
-		PublishDelay(tags []string, data string, delay time.Duration) error
-		Ping() error
-		Messages() <-chan Message
-		Close() error
-	}
-
-	//
-	Mist struct {
-		subscribers map[uint32]*localSubscriber
-		replicators map[uint32]*localSubscriber
-		internal    map[uint32]*localSubscriber
-		next        uint32
-	}
 
 	// A Message contains the tags used when subscribing, and the data that is being
 	// published through mist
 	Message struct {
-		internal bool
-		Tags     []string `json:"tags"`
-		Data     string   `json:"data"`
+		Command string   `json:"command"`
+		Tags    []string `json:"tags"`
+		Data    string   `json:"data,omitemtpy"`
+		Error   string   `json:"error,omitempty"`
 	}
+
+	//
+	HandleFunc func(*Proxy, Message) error
 )
 
-// creates a new mist
-func New() *Mist {
-
-	return &Mist{
-		subscribers: make(map[uint32]*localSubscriber),
-		replicators: make(map[uint32]*localSubscriber),
-		internal:    make(map[uint32]*localSubscriber),
-	}
+// Publish publishes to ALL subscribers
+func Publish(tags []string, data string) error {
+	return publish(0, tags, data)
 }
 
-// Publish takes a list of tags and iterates through mist's list of subscribers,
-// sending to each if they are available.
-func (mist *Mist) Publish(tags []string, data string) error {
-
-	// is this an error? or just something we need to ignore
-	if len(tags) == 0 {
-		return nil
-	}
-
-	message := Message{
-		Tags: tags,
-		Data: data,
-	}
-	// publishes go to both subscribers, and to replicators
-	forward(message, mist.subscribers)
-	forward(message, mist.replicators)
-
-	return nil
-}
-
-func (mist *Mist) Replicate(tags []string, data string) error {
-
-	// is this an error? or just something we need to ignore
-	if len(tags) == 0 {
-		return nil
-	}
-
-	message := Message{
-		Tags: tags,
-		Data: data,
-	}
-	// replicate only goes to subscribers
-	forward(message, mist.subscribers)
-
-	return nil
-}
-
-func (mist *Mist) publish(tags []string, data string) error {
-	// is this an error? or just something we need to ignore
-	if len(tags) == 0 {
-		return nil
-	}
-
-	message := Message{
-		Tags:     tags,
-		internal: true,
-		Data:     data,
-	}
-	forward(message, mist.internal)
-
-	return nil
-}
-
-func forward(msg Message, subscribers map[uint32]*localSubscriber) {
-	// we do this here so that the tags come pre sorted for the clients
-	sort.Sort(sort.StringSlice(msg.Tags))
-	// this should be more optimized, but it might not be an issue unless thousands of clients
-	// are using mist.
-	for _, localReplicator := range subscribers {
-		select {
-		case <-localReplicator.done:
-		case localReplicator.check <- msg:
-			// default:
-			// do we drop the message? enqueue it? pull one off the front and then add this one?
+// PublishAfter publishes to ALL subscribers
+func PublishAfter(tags []string, data string, delay time.Duration) error {
+	go func() {
+		<-time.After(delay)
+		if err := Publish(tags, data); err != nil {
+			// log this error and continue?
 		}
-	}
+	}()
+
+	return nil
 }
 
-//
-func (mist *Mist) nextId() uint32 {
-	return atomic.AddUint32(&mist.next, 1)
+// publish publishes to all subscribers expect the one who issued the publish
+func publish(pid uint32, tags []string, data string) error {
+
+	//
+	if len(tags) == 0 {
+		return fmt.Errorf("Failed to publish. Missing tags...")
+	}
+
+	// this should be more optimized, but it might not be an issue unless thousands
+	// of clients are using mist.
+	go func() {
+		mutex.Lock()
+		for _, subscriber := range subscribers {
+			select {
+			case <-subscriber.done:
+				fmt.Println("Does this ever happen?")
+
+			//
+			default:
+
+				// dont sent this message to the publisher who just sent it
+				if subscriber.id == pid {
+					continue
+				}
+
+				//
+				msg := Message{Command: "publish", Tags: tags, Data: data}
+
+				// we don't want this operation blocking the range of other subscribers
+				// waiting to get messages
+				go func(p *Proxy, msg Message) {
+					p.check <- msg
+				}(subscriber, msg)
+			}
+		}
+		mutex.Unlock()
+	}()
+
+	return nil
+}
+
+// subscribe adds a proxy to the list of mist subscribers; we need this so that
+// we can lock this process incase multiple proxies are subscribing at the same
+// time
+func subscribe(p *Proxy) {
+	mutex.Lock()
+	subscribers[p.id] = p
+	mutex.Unlock()
+}
+
+// unsubscribe removes a proxy from the list of mist subscribers; we need this
+// so that we can lock this process incase multiple proxies are unsubscribing at
+// the same time
+func unsubscribe(pid uint32) {
+	mutex.Lock()
+	delete(subscribers, pid)
+	mutex.Unlock()
 }

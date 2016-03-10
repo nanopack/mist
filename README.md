@@ -1,102 +1,226 @@
 [![mist logo](http://nano-assets.gopagoda.io/readme-headers/mist.png)](http://nanobox.io/open-source#mist)
- [![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
 
-Mist is a simple pub/sub based on the idea that messages are tagged. To subscribe the client simply constructs a list of tags that it is interested in, and all messages that are tagged with ALL the tags are sent to the client. A client may have multiple subscriptions active at the same time.
+[![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
 
-## TCP Protocol
+Mist is a simple pub/sub based on the idea that messages are tagged. To subscribe, a client simply constructs a list of tags that it is interested in, and all messages that are tagged with *all* of those tags are sent to that client.
 
-The protocol to talk to mist is a simple line-based TCP protocol. It was designed to be readable, debuggable and observable without specialized tools needed to decode framed packets.
+A client can not only be a subscriber (with multiple active subscriptions), but also a publisher. Clients will receive messages for any tags they are subscribed, *except message publish by themselves*.
 
-### Client commands
+## Available Commands
+Mist comes with two sets of available commands out of the box. Basic commands and Admin commands. It also has the ability to accept custom commands and handlers.
 
-| command format | description | server response |
+You can connect to mist with something like netcat; once connected you can simply type commands:
+
+```
+>> nc 127.0.0.1 1445
+{"command":"publish", "tags":["hello"], "data":"world!"}
+```
+
+#### Basic Commands
+Basic command are what provide the core functionality of mist. They allow you subscribe to and publish messages, see all of your active subscriptions and also unsubscribe from any tags you no longer want to receive messages for.
+
+| Command | Description | Example |
 | --- | --- | --- |
-| `ping` | ask for a pong response, mainly to ensure that the connection is alive | `pong`
-| `publish {tags} {data}` | publish a message `data` with a list of comma-delimited tags | nil |
-| `subscribe {tags}` | subscribe to messages that contain ALL tags in `tags` |  nil |
-| `unsubscribe {tags}` | unsubscribe to a previous subscription to `tags`; order of the tags does not matter | nil |
-| `list` | list all current subscriptions active with the current client; returns a space-delimited set of subscriptions, where each tag in the subscription is delimited with a comma | `list {subscriptions}` |
-| `register {tags} {token}` | register a token with a set of tags; this allows a WebSocket client to subscribe to tags | nil |
-| `unregister {token}` | removes a token from mist completely | nil |
-| `set {tags} {token}` | adds a set of tags to a token | nil |
-| `unset {tags} {token}` | removes a set of tags from a token | nil |
-| `tags {token}` | show tags that are associated with a token | `tags {token} {tags}` |
+| `ping` | ping the server to test for an active connection | `{"command":"ping"}` |
+| `subscribe` | subscribe to messages for *all* `tags` in a group | `{"command":"subscribe", "tags":["hello"]}` |
+| `unsubscribe` | unsubscribe `tags` (order does not matter) | `{"command":"unsubscribe", "tags":["hello"]}` |
+| `publish` | publish `data` to the list of `tags` | `{"command":"publish", "tags":["hello"], "data":"world!"}` |
+| `list` | list all active subscriptions for client | `{"command":"list"}` |
 
-### Published message format
+#### Admin Commands
+If mist is started with an `authenticator` and a `token` then a client has the chance to validate that token on connect. Once validated mist adds some additional admin commands that allow the creation of `token`/`tag` combos that provide a layer of authentication when using basic commands.
 
-Message that are published to clients as the result of a subscription are delivered in this format over the wire:
-
-`publish {tags} {data}`
-
-### Notes
-
-- Data flowing through mist is **NOT** touched in anyway. It is not verified in any way, but it **MUST NOT** contain a newline character as this will break the mist protocol.
-- Messages are not guaranteed to be delivered, if the client is running behind on processing messages, newer messages could be dropped.
-- Messages are not stored until they are delivered, if no client is available to receive the message, then it is dropped without being sent anywhere.
-
-## WebSocket Endpoint
-
-Mist also comes with an embeddable WebSocket api, that can be dropped into an already existing application. And by default has a layer of authentication.
-
-To authenticate with the WebSocket endpoint, a valid token MUST be passed in as the `X-Auth-Token` header value. If the user is authenticated correctly, then the WebSocket is allowed to be established. The token is used to look up which tags can be used in a subscription, and all subscriptions MUST have at least 1 valid tag in them to be successful.
-
-## Payloads
-
-**note** - all frames are text frames
-
-| Client Frame | Description | Server Frame |
+| Command | Description | Example |
 | --- | --- | --- |
-| `{"command": "subscribe", "tags": ["tag1", "Tag2"]}` | subscribe to events matching the tags field | `{"success": true, "command": "subscribe"}` |
-| `{"command": "unsubscribe", "tags": ["tag1", "Tag2"]}` | unsubscribe to events matching the tags | `{"success": true, "command": "unsubscribe"}` |
-| `{"command": "list"}` | list the subscriptions that are currently active | `{"success": true, "command": "list"}` |
-| `{"command": "ping"}` | ping pong frame | `{"success": true, "command": "ping"}` |
-| nil | Frame forwarded as a result of matching a subscription | `{"keys": ["tag1", "tag2"], "data": "Opaque Data encoded as a JSON string"}` |
+| `register` | register a `token` with a set of `tags` | `{"command":"register", "tags":["hello"], "data":"TOKEN"}` |
+| `unregister` | removes a `token` from mist completely | `{"command":"unregister", "data":"TOKEN"}` |
+| `set` | adds a set of `tags` to a `token` | `{"command":"set", "tags":["hello"], "data":"TOKEN"}` |
+| `unset` | removes a set of `tags` from a `token` | `{"command":"unset", "tags":["hello"], "data":"TOKEN"}` |
+| `tags` | show `tags` that are associated with a `token` | `{"command":"tags", "data":"TOKEN"}` |
 
-### Notes
-- publishing is not allowed over WebSockets.
+## Messages
 
-## Subscription explanation
-
-All events passing through Mist have a list of tags associated with them. For example, if Mist was forwarding IRC messages, then the format could look something like this:
-
-```json
-{
-  "data": "How can I help?",
-  "tags": ["user:nanobot", "type:public", "room:#nanobox"]
+All communications within mist are sent and received as JSON encoded/decoded messages:
+```go
+Message struct {
+  Command string   `json:"command"`
+  Tags    []string `json:"tags"`
+  Data    string   `json:"data,omitemtpy"`
+  Error   string   `json:"error,omitempty"`
 }
 ```
 
-### Possible subscriptions
+Each Message has a set of `tags` and `data`. Tags can take any form you like, as they are just an array of strings.
 
-| Tags | Description |
+``` json
+{
+  "tags": ["company:pagodabox", "product:mist", "repo:#nanopack"],
+  "data": "Mist is awesome!"
+}
+```
+
+### Subscribing / Publishing
+
+Think of `tags` as a way to filter out messages you don't want to receive; the more tags that are added to a subscription the more direct a message has to be:
+
+| Subscribed tags | Messages received from tags |
 | --- | --- |
-| `["user:nanobot"]` | subscribe only to messages from the user nanobot, ignore everyone else |
-| `["room:#nanobox"]` | subscribe only to messages from everyone in the #nanobox channel |
-| `["room:#nanobox", "user:nanobot"]` | subscribe only to messages from nanobot in the #nanobox channel |
+| `["onefish"]` | `["onefish"]`, `["onefish","twofish"]`, `["onefish","twofish","redfish"]` |
+| `["onefish", "twofish"]` | `["onefish","twofish"]`, `["onefish","twofish","redfish"]` |
+| `["onefish", "twofish", "redfish"]` | `["onefish","twofish","redfish"]` |
 
-### Config
-- Config files must contain space separated keys/values
+Message that are published to clients as the result of a subscription are delivered in this format:
+
+`{"command":"<command>", "tags":["<tag>", "<tag>"], "data":"<data>"}`
+
+A few things to not about how mist handles data:
+
+* Data flowing through mist is *not touched or verified in anyway*, however, it **MUST NOT** contain a newline character as this will break the mist protocol.
+
+* Messages are not guaranteed to be delivered, if the client is running behind on processing messages, newer messages could be dropped.
+
+* Messages are not stored, if no client is available to receive the message, then it is dropped.
+
+## Listeners
+
+Out of the box mist supports three different types of servers (`TCP`, `HTTP`, and `Websocket`). By default, when mist starts, it will start one of each.
+
+```
+TCP server listening at '127.0.0.1:1445'...
+HTTP server listening at '127.0.0.1:8080'...
+WS server listening at '127.0.0.1:8888'...
+```
+
+When starting mist, you can specify any number and type of server you'd like as long as it follows the string URI protocol (If a listener is passed that mist doesn't support it will skip).
+
+Also, if mist doesn't support a server you need it allows you to register custom servers that can be used on startup.
+
+#### Available listeners:
+
+`(scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])`
+
+| Listener | URI scheme |
+| --- | --- |
+| tcp | `tcp://127.0.0.1:1445` |
+| http | `http://127.0.0.1:8080` |
+| websocket | `ws://127.0.0.1:8888` |
+
+##### Example
+```
+./mist --server --listeners "tcp://127.0.0.1:1445", "http://127.0.0.1:8080", "ws://127.0.0.1:8888"
+```
+
+## Authenticators
+
+Mist also provides support for authentication. This means that during startup you can provide mist with a `token` that you want to be used as authentication. Once enabled, any client that attempts to connect to mist *must* provide that token or be disconnected. By default mist does not use authentication.
+
+Like listeners, mist allows for the registration of custom authenticators.
+
+#### Available authenticators
+
+`(scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])`
+
+| Authenticator | URI scheme | description
+| --- | --- | --- |
+| memory | `memory://` | an in memory store |
+| [scribble](https://github.com/nanobox-io/golang-scribble) | `scribble://?db=/tmp` | a tiny JSON database |
+| postgres | `postgres://postgres@127.0.0.1:5432?db=postgres` | n/a |
+
+##### Example
+
+```
+./mist --server --authenticator "memory://"
+```
+
+## Websockets
+
+Since mist just uses a JSON message protocol internally, sending messages via websocket is easy.
+
+NOTE: If authentication is enabled you'll need to provide a token when connecting the websocket:
+
+* As a Header: `X-Auth-Token: token`
+* As a query param: `x-auth-token=token`
+
+##### Example
+
+``` javascript
+
+  // connect the websocket
+  var ws = new WebSocket("ws://localhost:8080/subscribe/websocket?x-auth-token=token")
+
+  // handle responses from the server
+  ws.onmessage = function(me){
+    console.log("Response!", me.data)
+  }
+
+  // ping
+  ws.send(JSON.stringify({"command": "ping"}))
+
+  // subscribe
+  ws.send(JSON.stringify({"command": "subscribe", "tags": ["hello", "world"]}))
+
+  // unsubscribe
+  ws.send(JSON.stringify({"command": "unsubscribe", "tags": ["hello", "world"]}))
+
+  // list
+  ws.send(JSON.stringify({"command": "list"}))
+```
+
+## Configuration
+
+mist will accept a config file on startup that can override any of the following defaults:
+
 ```ini
-tcp_listen_address 127.0.0.1:1445
-http_listen_address 127.0.0.1:8080
-log_level INFO
-multicast_interface eth1
-pg_user postgres
-pg_database postgres
-pg_address 127.0.0.1:5432
-```
-- Config passed as args must have a leading '-' and be separated by an '='
-```
--tcp_listen_address=127.0.0.1:1445 \
--http_listen_address=127.0.0.1:8080 \
--log_level=INFO \
--multicast_interface=eth1 \
--pg_user=postgres \
--pg_database=postgres \
--pg_address=127.0.0.1:5432
+authenticator memory://
+listeners:
+  - tcp://127.0.0.1:1445
+log-level INFO
+token TOKEN
 ```
 
-### Running
-- Run mist as follows `mist [CONFIG_FILE|-OPTION=VALUE]`
+## Running mist
+
+mist can be run as either a client or a server.
+
+#### As a server:
+To run mist as a server, using the following command will start mist as a daemon:
+
+`mist --server`
+
+If you need to override any default config options you can pass the path to a config file:
+
+`mist --server --config path/to/config`
+
+Or you can just pass any configuration options as flags:
+
+`mist --server --log-level DEBUG`
+
+#### As a client (CLI):
+You can also use mist as a client to any running mist.
+
+```
+Usage:
+   [flags]
+   [command]
+
+Available Commands:
+  ping        Ping a running mist server
+  subscribe   Subscribe tags
+  unsubscribe Unsubscribe tags
+  publish     Publish a message
+  list        List all subscriptions
+
+Flags:
+      --authenticator="": desc.
+      --config="": Path to config options
+      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: desc.
+      --log-level="INFO": desc.
+      --replicator="": desc.
+      --server[=false]: Run mist as a server
+      --token="": desc.
+  -v, --version[=false]: Display the current version of this CLI
+
+Use " [command] --help" for more information about a command.
+```
 
 [![open source](http://nano-assets.gopagoda.io/open-src/nanobox-open-src.png)](http://nanobox.io/open-source)
