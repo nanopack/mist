@@ -51,9 +51,13 @@ func StartWS(uri string, errChan chan<- error) {
 		// read and publish mist messages to connected clients (non-blocking)
 		go func() {
 			for msg := range proxy.Pipe {
+
+				// failing to write is probably because the connection is dead; we dont
+				// want mist just looping forever tyring to write to something it will
+				// never be able to.
 				if err := conn.WriteJSON(msg); err != nil {
 					errChan <- fmt.Errorf(err.Error())
-					continue
+					break
 				}
 			}
 		}()
@@ -90,10 +94,12 @@ func StartWS(uri string, errChan chan<- error) {
 
 			msg := mist.Message{}
 
-			// decode an array value (Message)
+			// failing to read is probably because the connection is dead; we dont
+			// want mist just looping forever tyring to write to something it will
+			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
 				errChan <- fmt.Errorf(err.Error())
-				continue
+				break
 			}
 
 			// look for the command
