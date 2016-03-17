@@ -169,6 +169,8 @@ NOTE: If authentication is enabled you'll need to provide a token when connectin
 
 mist will accept a config file on startup that can override any of the following defaults:
 
+`mist --server --config /path/to/config.yml`
+
 ```yml
 authenticator: memory://
 listeners:
