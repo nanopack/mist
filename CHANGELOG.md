@@ -1,3 +1,12 @@
+## v1.0.2 (March 17, 2016)
+
+BUG FIXES:
+  - Updated how Mist parses configs.
+
+IMPROVEMENTS:
+  - Added additional options for specifying logging type (stdout, file) and an option
+  for specifying the log path.
+
 ## v1.0.1 (March 10, 2016)
 
 BUG FIXES:
