@@ -169,12 +169,12 @@ NOTE: If authentication is enabled you'll need to provide a token when connectin
 
 mist will accept a config file on startup that can override any of the following defaults:
 
-```ini
-authenticator memory://
+```yml
+authenticator: memory://
 listeners:
   - tcp://127.0.0.1:1445
-log-level INFO
-token TOKEN
+log-level: INFO
+token: TOKEN
 ```
 
 ## Running mist
