@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/pat"
 	"github.com/gorilla/websocket"
+	"github.com/jcelliott/lumber"
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
@@ -19,10 +20,10 @@ func init() {
 
 // StartWS starts a mist server listening over a websocket
 func StartWS(uri string, errChan chan<- error) {
-	fmt.Printf("WS server listening at '%s'...\n", uri)
+	lumber.Info("WS server listening at '%s'...\n", uri)
 
 	router := pat.New()
-	router.Get("/subscribe/websocket", func(w http.ResponseWriter, r *http.Request) {
+	router.Get("/subscribe/websocket", func(rw http.ResponseWriter, req *http.Request) {
 
 		//
 		upgrader := websocket.Upgrader{
@@ -34,7 +35,7 @@ func StartWS(uri string, errChan chan<- error) {
 		}
 
 		//
-		conn, err := upgrader.Upgrade(w, r, nil)
+		conn, err := upgrader.Upgrade(rw, req, nil)
 		if err != nil {
 			errChan <- fmt.Errorf("Failed to upgrade connection %v", err.Error())
 			return
@@ -69,10 +70,10 @@ func StartWS(uri string, errChan chan<- error) {
 			//
 			var xtoken string
 			switch {
-			case r.Header.Get("x-auth-token") != "":
-				xtoken = r.Header.Get("x-auth-token")
-			case r.FormValue("x-auth-token") != "":
-				xtoken = r.FormValue("x-auth-token")
+			case req.Header.Get("x-auth-token") != "":
+				xtoken = req.Header.Get("x-auth-token")
+			case req.FormValue("x-auth-token") != "":
+				xtoken = req.FormValue("x-auth-token")
 			}
 
 			// if the next input does not match the token then...

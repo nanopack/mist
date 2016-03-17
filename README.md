@@ -211,13 +211,16 @@ Available Commands:
   list        List all subscriptions
 
 Flags:
-      --authenticator="": desc.
-      --config="": Path to config options
-      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: desc.
-      --log-level="INFO": desc.
-      --replicator="": desc.
+      --authenticator="": Setting this option enables authentication and uses the authenticator provided to store tokens
+      --config="": /path/to/config.yml
+  -h, --help[=false]: help for
+      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: A comma delimited list of servers to start
+      --log-file="/var/log/mist.log": If log-type=file, the /path/to/logfile; ignored otherwise
+      --log-level="INFO": Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)
+      --log-type="stdout": The type of logging (stdout, file)
+      --replicator="": not yet implemented
       --server[=false]: Run mist as a server
-      --token="": desc.
+      --token="": Auth token used when connecting to a Mist started with an authenticator
   -v, --version[=false]: Display the current version of this CLI
 
 Use " [command] --help" for more information about a command.

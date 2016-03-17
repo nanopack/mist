@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/pat"
+	"github.com/jcelliott/lumber"
 )
 
 var (
@@ -31,7 +32,7 @@ func StartHTTPS(uri string, errChan chan<- error) {
 
 //
 func newHTTP(address string) error {
-	fmt.Printf("HTTP server listening at '%s'...\n", address)
+	lumber.Info("HTTP server listening at '%s'...\n", address)
 
 	// blocking...
 	return http.ListenAndServe(address, routes())

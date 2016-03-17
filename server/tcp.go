@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/jcelliott/lumber"
+
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
 )
@@ -29,7 +31,7 @@ func StartTCP(uri string, errChan chan<- error) {
 		errChan <- fmt.Errorf("Failed to start tcp listener %v", err.Error())
 		return
 	}
-	fmt.Printf("TCP server listening at '%s'...\n", uri)
+	lumber.Info("TCP server listening at '%s'...\n", uri)
 
 	// start continually listening for any incomeing tcp connections (non-blocking)
 	go func() {
