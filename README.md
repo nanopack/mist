@@ -165,20 +165,6 @@ NOTE: If authentication is enabled you'll need to provide a token when connectin
   ws.send(JSON.stringify({"command": "list"}))
 ```
 
-## Configuration
-
-mist will accept a config file on startup that can override any of the following defaults:
-
-`mist --server --config /path/to/config.yml`
-
-```yml
-authenticator: memory://
-listeners:
-  - tcp://127.0.0.1:1445
-log-level: INFO
-token: TOKEN
-```
-
 ## Running mist
 
 mist can be run as either a client or a server.
@@ -190,7 +176,17 @@ To run mist as a server, using the following command will start mist as a daemon
 
 If you need to override any default config options you can pass the path to a config file:
 
-`mist --server --config path/to/config`
+`mist --server --config /path/to/config`
+
+##### example config
+
+```yml
+authenticator: memory://
+listeners:
+  - tcp://127.0.0.1:1445
+log-level: INFO
+token: TOKEN
+```
 
 Or you can just pass any configuration options as flags:
 
