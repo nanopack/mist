@@ -9,11 +9,11 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 	return map[string]mist.HandleFunc{
 		"auth":        handleAuth,
 		"ping":        handlePing,
-		"list":        handleList,
 		"subscribe":   handleSubscribe,
 		"unsubscribe": handleUnsubscribe,
 		"publish":     handlePublish,
 		// "publishAfter":     handlePublishAfter,
+		"list": handleList,
 	}
 }
 

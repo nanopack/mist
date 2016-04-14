@@ -21,7 +21,7 @@ var (
 
 	//
 	authtoken     string  // used when determining if auth command handlers should be added
-	authenticated = false //
+	authenticated = false // used to determine if a connection has already authenticated
 )
 
 //

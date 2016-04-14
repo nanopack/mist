@@ -64,7 +64,7 @@ func StartWS(uri string, errChan chan<- error) {
 		}()
 
 		// if an authenticator was passed, check for a token on connect to see if
-		// auth commands are allowed
+		// auth commands are added
 		if auth.DefaultAuth != nil && !authenticated {
 
 			//
@@ -76,18 +76,16 @@ func StartWS(uri string, errChan chan<- error) {
 				xtoken = req.FormValue("x-auth-token")
 			}
 
-			// if the next input does not match the token then...
-			if xtoken != authtoken {
-				// break // ...allow the connection but no auth commands
-				return // ...kill the connection
-			}
+			// if the next input matches the token then add auth commands
+			if xtoken == authtoken {
 
-			//
-			authenticated = true
+				// successful auth; allow auth command handlers on this connection
+				for k, v := range auth.GenerateHandlers() {
+					handlers[k] = v
+				}
 
-			// successful auth; allow auth command handlers on this connection
-			for k, v := range auth.GenerateHandlers() {
-				handlers[k] = v
+				// establish that the socket has already authenticated
+				authenticated = true
 			}
 		}
 

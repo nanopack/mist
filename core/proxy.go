@@ -10,7 +10,7 @@ import (
 
 type (
 
-	// Proxy ...}
+	// Proxy ...
 	Proxy struct {
 		sync.Mutex
 
