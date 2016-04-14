@@ -10,7 +10,7 @@ import (
 
 type (
 
-	//
+	// Proxy ...}
 	Proxy struct {
 		sync.Mutex
 
@@ -22,7 +22,7 @@ type (
 	}
 )
 
-//
+// NewProxy ...
 func NewProxy() (p *Proxy) {
 
 	//
@@ -84,12 +84,13 @@ func (p *Proxy) handleMessages() {
 	}
 }
 
-// Ping
+// Ping ...
 func (p *Proxy) Ping() error {
+	p.Pipe <- Message{Command: "ping", Tags: []string{}, Data: "pong"}
 	return nil
 }
 
-// Subscribe
+// Subscribe ...
 func (p *Proxy) Subscribe(tags []string) error {
 
 	// is this an error?
@@ -103,10 +104,13 @@ func (p *Proxy) Subscribe(tags []string) error {
 	p.Unlock()
 
 	//
+	p.Pipe <- Message{Command: "subscribe", Tags: tags, Data: "success"}
+
+	//
 	return nil
 }
 
-// Unsubscribe
+// Unsubscribe ...
 func (p *Proxy) Unsubscribe(tags []string) error {
 
 	// is this an error?
@@ -120,15 +124,18 @@ func (p *Proxy) Unsubscribe(tags []string) error {
 	p.Unlock()
 
 	//
+	p.Pipe <- Message{Command: "unsubscribe", Tags: tags, Data: "success"}
+
+	//
 	return nil
 }
 
-// Publish
+// Publish ...
 func (p *Proxy) Publish(tags []string, data string) error {
 	return publish(p.id, tags, data)
 }
 
-// Sends a message with delay
+// PublishAfter sends a message after [delay]
 func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
 	go func() {
 		<-time.After(delay)
@@ -140,7 +147,7 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) er
 	return nil
 }
 
-// List
+// List ...
 func (p *Proxy) List() error {
 
 	// convert the list into something friendlier
@@ -158,7 +165,7 @@ func (p *Proxy) List() error {
 	return nil
 }
 
-//
+// Close ...
 func (p *Proxy) Close() {
 
 	// this closes the goroutine that is matching messages to subscriptions

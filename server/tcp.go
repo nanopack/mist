@@ -101,13 +101,16 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are allowed
-		if auth.DefaultAuth != nil {
+		if auth.DefaultAuth != nil && !authenticated {
 
 			// if the next input does not match the token then...
 			if msg.Data != authtoken {
 				// break // ...allow the connection but no auth commands
 				return // ...kill the connection
 			}
+
+			//
+			authenticated = true
 
 			// successful auth; allow auth command handlers on this connection
 			for k, v := range auth.GenerateHandlers() {

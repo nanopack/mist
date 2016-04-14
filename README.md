@@ -82,7 +82,7 @@ A few things to not about how mist handles data:
 
 ## Listeners
 
-Out of the box mist supports three different types of servers (`TCP`, `HTTP`, and `Websocket`). By default, when mist starts, it will start one of each.
+Out of the box mist supports three different types of servers (`TCP`, `HTTP`, and `Websocket`). **By default, when mist starts, it will start one of each.**
 
 ```
 TCP server listening at '127.0.0.1:1445'...
@@ -111,7 +111,7 @@ Also, if mist doesn't support a server you need it allows you to register custom
 
 ## Authenticators
 
-Mist also provides support for authentication. This means that during startup you can provide mist with a `token` that you want to be used as authentication. Once enabled, any client that attempts to connect to mist *must* provide that token or be disconnected. By default mist does not use authentication.
+Mist also provides support for authentication. This means that during startup you can provide mist with a `token` that you want to be used as authentication. Once enabled, any client that attempts to connect to mist *must* provide that token or be disconnected. **By default mist does not use authentication.**
 
 Like listeners, mist allows for the registration of custom authenticators.
 
@@ -137,7 +137,7 @@ Since mist just uses a JSON message protocol internally, sending messages via we
 
 NOTE: If authentication is enabled you'll need to provide a token when connecting the websocket:
 
-* As a Header: `X-Auth-Token: token`
+* As a Header: `X-AUTH-TOKEN: token`
 * As a query param: `x-auth-token=token`
 
 ##### Example
