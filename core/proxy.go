@@ -1,7 +1,6 @@
 package mist
 
 import (
-	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -84,50 +83,32 @@ func (p *Proxy) handleMessages() {
 	}
 }
 
-// Ping ...
-func (p *Proxy) Ping() error {
-	p.Pipe <- Message{Command: "ping", Tags: []string{}, Data: "pong"}
-	return nil
-}
-
 // Subscribe ...
-func (p *Proxy) Subscribe(tags []string) error {
+func (p *Proxy) Subscribe(tags []string) {
 
-	// is this an error?
+	//
 	if len(tags) == 0 {
-		return nil
+		// is this an error?
 	}
 
 	//
 	p.Lock()
 	p.subscriptions.Add(tags)
 	p.Unlock()
-
-	//
-	p.Pipe <- Message{Command: "subscribe", Tags: tags, Data: "success"}
-
-	//
-	return nil
 }
 
 // Unsubscribe ...
-func (p *Proxy) Unsubscribe(tags []string) error {
+func (p *Proxy) Unsubscribe(tags []string) {
 
-	// is this an error?
+	//
 	if len(tags) == 0 {
-		return nil
+		// is this an error?
 	}
 
 	//
 	p.Lock()
 	p.subscriptions.Remove(tags)
 	p.Unlock()
-
-	//
-	p.Pipe <- Message{Command: "unsubscribe", Tags: tags, Data: "success"}
-
-	//
-	return nil
 }
 
 // Publish ...
@@ -136,33 +117,27 @@ func (p *Proxy) Publish(tags []string, data string) error {
 }
 
 // PublishAfter sends a message after [delay]
-func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
+func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
 			// TODO: log this error and continue?
 		}
 	}()
-
-	return nil
 }
 
-// List ...
-func (p *Proxy) List() error {
+// List returns a list of all current subscriptions
+func (p *Proxy) List() (data []string) {
 
 	// convert the list into something friendlier
 	p.Lock()
-	var data []string
 	for _, subscription := range p.subscriptions.ToSlice() {
 		data = append(data, strings.Join(subscription, ","))
 	}
 	p.Unlock()
 
 	//
-	p.Pipe <- Message{Command: "list", Tags: []string{}, Data: fmt.Sprintf(strings.Join(data, " "))}
-
-	//
-	return nil
+	return
 }
 
 // Close ...

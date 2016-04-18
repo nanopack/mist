@@ -1,4 +1,4 @@
-//
+// Package mist ...
 package mist
 
 import (
@@ -30,7 +30,7 @@ type (
 		Error   string   `json:"error,omitempty"`
 	}
 
-	//
+	// HandleFunc ...
 	HandleFunc func(*Proxy, Message) error
 )
 

@@ -14,11 +14,8 @@ func TestSameSubscriber(t *testing.T) {
 	defer sender.Close()
 
 	// sender subscribes to tags and then tries to publish to those same tags...
-	err := sender.Subscribe([]string{testTag})
-	err = sender.Publish([]string{testTag}, testMsg)
-	if err != nil {
-		t.Fatalf("action failed %v", err.Error())
-	}
+	sender.Subscribe([]string{testTag})
+	sender.Publish([]string{testTag}, testMsg)
 
 	// sender should NOT get a message because mist shouldnt send a message to the
 	// same proxy that publishes them.
@@ -34,10 +31,7 @@ func TestSameSubscriber(t *testing.T) {
 	}
 
 	//
-	err = sender.Unsubscribe([]string{testTag})
-	if err != nil {
-		t.Fatalf("action failed %v", err.Error())
-	}
+	sender.Unsubscribe([]string{testTag})
 }
 
 // TestDifferentSubscriber tests to ensure that mist will send messages
@@ -53,22 +47,16 @@ func TestDifferentSubscriber(t *testing.T) {
 	defer receiver.Close()
 
 	// receiver subscribes to tags and then sender publishes to those tags...
-	err := receiver.Subscribe([]string{testTag})
-	err = sender.Publish([]string{testTag}, testMsg)
-	if err != nil {
-		t.Fatalf("action failed %v", err.Error())
-	}
+	receiver.Subscribe([]string{testTag})
+	sender.Publish([]string{testTag}, testMsg)
 
 	//
 	waitMessage(receiver, t)
 
 	// receiver unsubscribes from the tags and sender publishes again to the same
 	// tags
-	err = receiver.Unsubscribe([]string{testTag})
-	err = sender.Publish([]string{testTag}, testMsg)
-	if err != nil {
-		t.Fatalf("action failed %v", err.Error())
-	}
+	receiver.Unsubscribe([]string{testTag})
+	sender.Publish([]string{testTag}, testMsg)
 
 	// receiver should NOT get a message this time
 	select {
@@ -104,18 +92,12 @@ func TestManySubscribers(t *testing.T) {
 	defer r3.Close()
 
 	// receivers subscribe to tags and then sender publishes to those tags...
-	err := r1.Subscribe([]string{testTag})
-	err = r2.Subscribe([]string{testTag})
-	err = r3.Subscribe([]string{testTag})
-	if err != nil {
-		t.Fatalf("one or more proxy subscription failed %v", err.Error())
-	}
+	r1.Subscribe([]string{testTag})
+	r2.Subscribe([]string{testTag})
+	r3.Subscribe([]string{testTag})
 
 	//
-	err = sender.Publish([]string{testTag}, testMsg)
-	if err != nil {
-		t.Fatalf("proxy publish failed %v", err.Error())
-	}
+	sender.Publish([]string{testTag}, testMsg)
 
 	//
 	waitMessage(r1, t)
@@ -124,18 +106,12 @@ func TestManySubscribers(t *testing.T) {
 
 	// receiver unsubscribes from the tags and sender publishes again to the same
 	// tags
-	err = r1.Unsubscribe([]string{testTag})
-	err = r2.Unsubscribe([]string{testTag})
-	err = r3.Unsubscribe([]string{testTag})
-	if err != nil {
-		t.Fatalf("one or more proxy unsubscription failed %v", err.Error())
-	}
+	r1.Unsubscribe([]string{testTag})
+	r2.Unsubscribe([]string{testTag})
+	r3.Unsubscribe([]string{testTag})
 
 	//
-	err = sender.Publish([]string{testTag}, testMsg)
-	if err != nil {
-		t.Fatalf("proxy publish failed %v", err.Error())
-	}
+	sender.Publish([]string{testTag}, testMsg)
 
 	// receivers should NOT get a message this time
 	waitNoMessage(r1, t)

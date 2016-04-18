@@ -12,7 +12,7 @@ import (
 //
 type (
 
-	// A tcp represents a TCP connection to the mist server
+	// TCP represents a TCP connection to the mist server
 	TCP struct {
 		host     string
 		conn     net.Conn          // the connection the mist server
@@ -146,7 +146,7 @@ func (c *TCP) Close() {
 	close(c.messages)
 }
 
-// Messages
+// Messages ...
 func (c *TCP) Messages() <-chan mist.Message {
 	return c.messages
 }

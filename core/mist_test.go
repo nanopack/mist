@@ -21,11 +21,8 @@ func TestPublish(t *testing.T) {
 	defer p2.Close()
 
 	//
-	err := p1.Subscribe([]string{testTag})
-	err = p2.Subscribe([]string{testTag})
-	if err != nil {
-		t.Fatalf("one or more proxy subscribes failed %v", err.Error())
-	}
+	p1.Subscribe([]string{testTag})
+	p2.Subscribe([]string{testTag})
 
 	// have mist publish the message
 	PublishAfter([]string{testTag}, testMsg, 1)
@@ -34,11 +31,8 @@ func TestPublish(t *testing.T) {
 	waitMessage(p1, t)
 	waitMessage(p2, t)
 
-	err = p1.Unsubscribe([]string{testTag})
-	err = p2.Unsubscribe([]string{testTag})
-	if err != nil {
-		t.Fatalf("one or more proxy unsubscribes failed %v", err.Error())
-	}
+	p1.Unsubscribe([]string{testTag})
+	p2.Unsubscribe([]string{testTag})
 
 	// have mist publish the message
 	PublishAfter([]string{testTag}, testMsg, 1)

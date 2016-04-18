@@ -235,6 +235,9 @@ Flags:
 Use " [command] --help" for more information about a command.
 ```
 
+## Clients
+
+
 ## Contributing
 
 Contributions to mist are welcome and encouraged. Mist is a [Nanobox](https://nanobox.io) project and contributions should follow the [Nanobox Contribution Process & Guidelines](https://docs.nanobox.io/contributing/).

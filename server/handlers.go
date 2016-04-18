@@ -1,6 +1,9 @@
 package server
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/nanopack/mist/core"
 )
 
@@ -26,30 +29,41 @@ func handleAuth(proxy *mist.Proxy, msg mist.Message) error {
 
 // handlePing
 func handlePing(proxy *mist.Proxy, msg mist.Message) error {
-	return proxy.Ping()
+	proxy.Pipe <- mist.Message{Command: "ping", Tags: []string{}, Data: "pong"}
+	return nil
 }
 
 // handleSubscribe
 func handleSubscribe(proxy *mist.Proxy, msg mist.Message) error {
-	return proxy.Subscribe(msg.Tags)
+	proxy.Subscribe(msg.Tags)
+	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: msg.Tags, Data: "success"}
+	return nil
 }
 
 // handleUnsubscribe
 func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
-	return proxy.Unsubscribe(msg.Tags)
+	proxy.Unsubscribe(msg.Tags)
+	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: msg.Tags, Data: "success"}
+	return nil
 }
 
 // handlePublish
 func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
-	return proxy.Publish(msg.Tags, msg.Data)
+	proxy.Publish(msg.Tags, msg.Data)
+	proxy.Pipe <- mist.Message{Command: "publish", Tags: msg.Tags, Data: "success"}
+	return nil
 }
 
-// // handlePublishAfter - how do we get the [delay] here?
+// handlePublishAfter - how do we get the [delay] here?
 // func handlePublishAfter(proxy *mist.Proxy, msg mist.Message) error {
-// 	return proxy.PublishAfter(msg.Tags, msg.Data)
+// 	proxy.PublishAfter(msg.Tags, msg.Data, ???)
+// 	proxy.Pipe <- mist.Message{Command: "publish after", Tags: msg.Tags, Data: "success"}
+// 	return nil
 // }
 
 // handleList
 func handleList(proxy *mist.Proxy, msg mist.Message) error {
-	return proxy.List()
+	subscriptions := proxy.List()
+	proxy.Pipe <- mist.Message{Command: "list", Tags: msg.Tags, Data: fmt.Sprintf(strings.Join(subscriptions, " "))}
+	return nil
 }
