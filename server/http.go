@@ -9,6 +9,8 @@ import (
 )
 
 var (
+
+	// Router ...
 	Router = pat.New()
 )
 

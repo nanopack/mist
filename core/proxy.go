@@ -140,7 +140,7 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) er
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
-			// log this error and continue?
+			// TODO: log this error and continue?
 		}
 	}()
 

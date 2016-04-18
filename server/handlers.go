@@ -17,7 +17,8 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 	}
 }
 
-// handleAuth
+// handleAuth only exists to avoid getting the message "Unknown command" when
+// authing with a authenticated server
 func handleAuth(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Pipe <- mist.Message{Command: "auth", Tags: []string{}, Data: "success"}
 	return nil
@@ -43,7 +44,7 @@ func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	return proxy.Publish(msg.Tags, msg.Data)
 }
 
-// // handlePublishAfter - do we want a publish after here?
+// // handlePublishAfter - how do we get the [delay] here?
 // func handlePublishAfter(proxy *mist.Proxy, msg mist.Message) error {
 // 	return proxy.PublishAfter(msg.Tags, msg.Data)
 // }

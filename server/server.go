@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/nanopack/mist/auth"
@@ -38,6 +39,14 @@ func Register(name string, auth handleFunc) {
 // listeners; the listeners provided is a comma delimited list of uri strings
 // (scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])
 func Start(uris []string, token string) error {
+
+	// BUG: https://github.com/spf13/viper/issues/112
+	// due to the above issue with cobra/viper (pflag) we have to parse this string
+	// slice manually and then split it into the slice of string schemes it should
+	// have been in the first place; one day this bug will get fixed and this will
+	// probably break... at that point this should be removed
+	r := strings.NewReplacer("[", "", "]", "")
+	uris = strings.Split(r.Replace(uris[0]), ",")
 
 	// check to see if a token is provided; an authenticator cannot work without
 	// a token and so it should error here informing that.
