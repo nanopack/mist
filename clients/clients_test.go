@@ -1,13 +1,10 @@
 package clients
 
 import (
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/nanopack/mist/core"
-	"github.com/nanopack/mist/server"
 )
 
 var (
@@ -17,100 +14,100 @@ var (
 )
 
 // TestMain
-func TestMain(m *testing.M) {
-
-	//
-	server.StartTCP(testAddr, nil)
-
-	//
-	os.Exit(m.Run())
-}
+// func TestMain(m *testing.M) {
+//
+// 	//
+// 	server.StartTCP(testAddr, nil)
+//
+// 	//
+// 	os.Exit(m.Run())
+// }
 
 // TestTCPClient tests
-func TestTCPClientSubscriptions(t *testing.T) {
-
-	//
-	client, err := New(testAddr)
-	if err != nil {
-		t.Fatalf("failed to connect - %v", err.Error())
-	}
-	defer client.Close()
-
-	// ping...
-	if err := client.Ping(); err != nil {
-		t.Fatalf("ping failed")
-	}
-
-	// ...should return pong
-	if msg := <-client.Messages(); msg.Data != "pong" {
-		t.Fatalf("Unexpected data: Expecting 'pong' got %s", msg.Data)
-	}
-
-	// subscribe...
-
-	// ...should fail with no tags
-	if err := client.Subscribe([]string{}); err == nil {
-		t.Fatalf("Subscription succeeded with missing tags!")
-	}
-
-	// ...should subscribe a single tag
-	if err := client.Subscribe([]string{testTag}); err != nil {
-		t.Fatalf("client subscriptions failed %v", err.Error())
-	}
-
-	// ...should subscribe multiple tags
-	if err := client.Subscribe([]string{testTag, testMsg}); err != nil {
-		t.Fatalf("client subscriptions failed %v", err.Error())
-	}
-
-	// ...should list two sets of tags
-	if err := client.List(); err != nil {
-		t.Fatalf("listing subscriptions failed %v", err.Error())
-	}
-	if msg := <-filterChannel(client.Messages(), t); msg.Data != fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg) {
-		t.Fatalf("Incorrect subscriptions: Expected %v got %v", fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg), msg.Data)
-	}
-
-	// unsubscribe...
-
-	// ...should remove a single tag
-	if err := client.Unsubscribe([]string{testTag}); err != nil {
-		t.Fatalf("client unsubscriptions failed %v", err.Error())
-	}
-
-	// ...should remove multiple tags
-	if err := client.Unsubscribe([]string{testTag, testMsg}); err != nil {
-		t.Fatalf("client unsubscriptions failed %v", err.Error())
-	}
-
-	// ...should list no tags
-	if err := client.List(); err != nil {
-		t.Fatalf("listing subscriptions failed %v", err.Error())
-	}
-	if msg := <-filterChannel(client.Messages(), t); msg.Data != "" {
-		t.Fatalf("Unexpected subscriptions: %v", msg.Data)
-	}
-}
-
+// func TestTCPClientSubscriptions(t *testing.T) {
 //
-func filterChannel(msgChan <-chan mist.Message, t *testing.T) <-chan mist.Message {
-	rtn := make(chan mist.Message)
-	go func() {
-		for msg := range msgChan {
-			fmt.Printf("MESSAGE! %#v\n", msg)
-			if msg.Data != "success" {
-				fmt.Printf("DATA! %#v\n", msg)
-				rtn <- msg
-			}
-			if msg.Error != "" {
-				t.Fatalf("Unexpected error: %v", msg.Error)
-			}
-		}
-		close(rtn)
-	}()
-
-	return rtn
-}
+// 	//
+// 	client, err := New(testAddr)
+// 	if err != nil {
+// 		t.Fatalf("failed to connect - %v", err.Error())
+// 	}
+// 	defer client.Close()
+//
+// 	// ping...
+// 	if err := client.Ping(); err != nil {
+// 		t.Fatalf("ping failed")
+// 	}
+//
+// 	// ...should return pong
+// 	if msg := <-client.Messages(); msg.Data != "pong" {
+// 		t.Fatalf("Unexpected data: Expecting 'pong' got %s", msg.Data)
+// 	}
+//
+// 	// subscribe...
+//
+// 	// ...should fail with no tags
+// 	if err := client.Subscribe([]string{}); err == nil {
+// 		t.Fatalf("Subscription succeeded with missing tags!")
+// 	}
+//
+// 	// ...should subscribe a single tag
+// 	if err := client.Subscribe([]string{testTag}); err != nil {
+// 		t.Fatalf("client subscriptions failed %v", err.Error())
+// 	}
+//
+// 	// ...should subscribe multiple tags
+// 	if err := client.Subscribe([]string{testTag, testMsg}); err != nil {
+// 		t.Fatalf("client subscriptions failed %v", err.Error())
+// 	}
+//
+// 	// ...should list two sets of tags
+// 	if err := client.List(); err != nil {
+// 		t.Fatalf("listing subscriptions failed %v", err.Error())
+// 	}
+// 	if msg := <-filterChannel(client.Messages(), t); msg.Data != fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg) {
+// 		t.Fatalf("Incorrect subscriptions: Expected %v got %v", fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg), msg.Data)
+// 	}
+//
+// 	// unsubscribe...
+//
+// 	// ...should remove a single tag
+// 	if err := client.Unsubscribe([]string{testTag}); err != nil {
+// 		t.Fatalf("client unsubscriptions failed %v", err.Error())
+// 	}
+//
+// 	// ...should remove multiple tags
+// 	if err := client.Unsubscribe([]string{testTag, testMsg}); err != nil {
+// 		t.Fatalf("client unsubscriptions failed %v", err.Error())
+// 	}
+//
+// 	// ...should list no tags
+// 	if err := client.List(); err != nil {
+// 		t.Fatalf("listing subscriptions failed %v", err.Error())
+// 	}
+// 	if msg := <-filterChannel(client.Messages(), t); msg.Data != "" {
+// 		t.Fatalf("Unexpected subscriptions: %v", msg.Data)
+// 	}
+// }
+//
+// //
+// func filterChannel(msgChan <-chan mist.Message, t *testing.T) <-chan mist.Message {
+// 	rtn := make(chan mist.Message)
+// 	go func() {
+// 		for msg := range msgChan {
+// 			fmt.Printf("MESSAGE! %#v\n", msg)
+// 			if msg.Data != "success" {
+// 				fmt.Printf("DATA! %#v\n", msg)
+// 				rtn <- msg
+// 			}
+// 			if msg.Error != "" {
+// 				t.Fatalf("Unexpected error: %v", msg.Error)
+// 			}
+// 		}
+// 		close(rtn)
+// 	}()
+//
+// 	return rtn
+// }
 
 // TestSameTCPClient tests to ensure that mist will not send message to the
 // same client who publishes them
