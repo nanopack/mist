@@ -35,21 +35,21 @@ func handlePing(proxy *mist.Proxy, msg mist.Message) error {
 // handleSubscribe
 func handleSubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Subscribe(msg.Tags)
-	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: []string{}, Data: "pong"}
+	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: []string{}, Data: "success"}
 	return nil
 }
 
 // handleUnsubscribe
 func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Unsubscribe(msg.Tags)
-	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: []string{}, Data: "pong"}
+	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: []string{}, Data: "success"}
 	return nil
 }
 
 // handlePublish
 func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Publish(msg.Tags, msg.Data)
-	proxy.Pipe <- mist.Message{Command: "publish", Tags: []string{}, Data: "pong"}
+	proxy.Pipe <- mist.Message{Command: "publish", Tags: []string{}, Data: "success"}
 	return nil
 }
 
