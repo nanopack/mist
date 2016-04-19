@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/nanopack/mist/core"
@@ -36,21 +35,21 @@ func handlePing(proxy *mist.Proxy, msg mist.Message) error {
 // handleSubscribe
 func handleSubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Subscribe(msg.Tags)
-	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: msg.Tags, Data: "success"}
+	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: []string{}, Data: "pong"}
 	return nil
 }
 
 // handleUnsubscribe
 func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Unsubscribe(msg.Tags)
-	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: msg.Tags, Data: "success"}
+	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: []string{}, Data: "pong"}
 	return nil
 }
 
 // handlePublish
 func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Publish(msg.Tags, msg.Data)
-	proxy.Pipe <- mist.Message{Command: "publish", Tags: msg.Tags, Data: "success"}
+	proxy.Pipe <- mist.Message{Command: "publish", Tags: []string{}, Data: "pong"}
 	return nil
 }
 
@@ -63,7 +62,10 @@ func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 
 // handleList
 func handleList(proxy *mist.Proxy, msg mist.Message) error {
-	subscriptions := proxy.List()
-	proxy.Pipe <- mist.Message{Command: "list", Tags: msg.Tags, Data: fmt.Sprintf(strings.Join(subscriptions, " "))}
+	var subscriptions string
+	for _, v := range proxy.List() {
+		subscriptions += strings.Join(v, ",")
+	}
+	proxy.Pipe <- mist.Message{Command: "list", Tags: msg.Tags, Data: subscriptions}
 	return nil
 }

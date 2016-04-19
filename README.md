@@ -23,7 +23,7 @@ Basic command are what provide the core functionality of mist. They allow you su
 | `auth` | authenticate with the server to enter "admin" mode | `{"command":"auth", "data":"TOKEN"}` |
 | `ping` | ping the server to test for an active connection | `{"command":"ping"}` |
 | `subscribe` | subscribe to messages for *all* `tags` in a group | `{"command":"subscribe", "tags":["hello"]}` |
-| `unsubscribe` | unsubscribe `tags` (order does not matter) | `{"command":"unsubscribe", "tags":["hello"]}` |
+| `unsubscribe` | unsubscribe from *exact* `tags` provided| `{"command":"unsubscribe", "tags":["hello"]}` |
 | `publish` | publish `data` to the list of `tags` | `{"command":"publish", "tags":["hello"], "data":"world!"}` |
 | `list` | list all active subscriptions for client | `{"command":"list"}` |
 

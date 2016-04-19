@@ -20,11 +20,6 @@ func init() {
 // and then continually reads from the server handling any incoming connections
 func StartTCP(uri string, errChan chan<- error) {
 
-	//
-	if uri == "" {
-		uri = mist.DEFAULT_ADDR
-	}
-
 	// start a TCP listener
 	ln, err := net.Listen("tcp", uri)
 	if err != nil {

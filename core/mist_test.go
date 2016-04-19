@@ -1,14 +1,34 @@
 package mist
 
 import (
+	"math/rand"
+	"strings"
 	"testing"
 	"time"
 )
 
 var (
-	testTag = "hello"
-	testMsg = "world"
+	testMsg     = "test"
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
+
+// BenchmarkPublish
+func BenchmarkPublish(b *testing.B) {
+
+	//
+	p := NewProxy()
+	defer p.Close()
+
+	//
+	p.Subscribe([]string{"a"})
+
+	b.ResetTimer()
+
+	//
+	for i := 0; i < b.N; i++ {
+		p.Publish([]string{"a"}, testMsg)
+	}
+}
 
 // TestPublish tests that the publish Publish method publishes to all subscribers
 func TestPublish(t *testing.T) {
@@ -21,82 +41,66 @@ func TestPublish(t *testing.T) {
 	defer p2.Close()
 
 	//
-	p1.Subscribe([]string{testTag})
-	p2.Subscribe([]string{testTag})
+	p1.Subscribe([]string{"a"})
+	p2.Subscribe([]string{"a"})
 
 	// have mist publish the message
-	PublishAfter([]string{testTag}, testMsg, 1)
+	Publish([]string{"a"}, testMsg)
 
 	//
-	waitMessage(p1, t)
-	waitMessage(p2, t)
+	verifyMessage(testMsg, p1, t)
+	verifyMessage(testMsg, p2, t)
 
-	p1.Unsubscribe([]string{testTag})
-	p2.Unsubscribe([]string{testTag})
+	p1.Unsubscribe([]string{"a"})
+	p2.Unsubscribe([]string{"a"})
 
 	// have mist publish the message
-	PublishAfter([]string{testTag}, testMsg, 1)
+	Publish([]string{"a"}, testMsg)
 
 	// proxies should NOT get a message this time
-	waitNoMessage(p1, t)
-	waitNoMessage(p2, t)
+	verifyNoMessage(p1, t)
+	verifyNoMessage(p2, t)
 }
 
-// BenchmarkMist
-func BenchmarkMist(b *testing.B) {
-
-	//
-	p := NewProxy()
-	defer p.Close()
-
-	//
-	p.Subscribe([]string{testTag})
-
-	//
-	b.ResetTimer()
-
-	//
-	for i := 0; i < b.N; i++ {
-		p.Publish([]string{testTag}, testMsg)
-		_ = <-p.Pipe
-	}
-}
-
-// waitMessage waits for a message to come to a proxy then tests to see if it is
-// the expected message
-func waitMessage(p *Proxy, t *testing.T) {
-
-	//
+//
+// verifyMessage waits for a message to come to a proxy then tests to see if it's
+// the expected message. After 1 second it assumes no message is coming and fails.
+func verifyMessage(expected string, p *Proxy, t *testing.T) {
 	select {
-
-	// wait for a message then test to make sure it's the expected message...
 	case msg := <-p.Pipe:
-		if len(msg.Tags) != 1 {
-			t.Fatalf("Wrong number of tags: Expected '%v' received '%v'\n", 1, len(msg.Tags))
-		}
-		if msg.Data != testMsg {
-			t.Fatalf("Incorrect data: Expected '%v' received '%v'\n", testMsg, msg.Data)
+		if msg.Data != expected {
+			t.Fatalf("Incorrect data: Expected '%v' received '%v'\n", msg, msg.Data)
 		}
 		break
-
-	// after 1 second assume no messages are coming
 	case <-time.After(time.Second * 1):
 		t.Errorf("Expecting messages, received none!")
 	}
 }
 
-// waitNoMessage waits to NOT receive a message
-func waitNoMessage(p *Proxy, t *testing.T) {
-
-	//
+// verifyNoMessage waits for a message that should never come, assuming after 1
+// second that no message is coming.
+func verifyNoMessage(p *Proxy, t *testing.T) {
 	select {
-
-	// wait for a message...
-	case msg := <-p.Pipe:
-		t.Fatalf("Received a message from unsubscribed tags: %#v", msg)
-
-	// after 1 second assume no message is coming
+	case <-p.Pipe:
+		t.Fatalf("Unexpected message!")
 	case <-time.After(time.Second * 1):
 		break
 	}
+}
+
+// randKey
+func randKey() string {
+	b := make([]byte, 3)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+// flattenSliceToString
+func flattenSliceToString(list [][]string) (flat string) {
+	for _, v := range list {
+		flat += strings.Join(v, ",")
+	}
+	return
 }

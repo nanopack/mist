@@ -1,8 +1,8 @@
 package clients
 
 import (
+	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -11,15 +11,16 @@ import (
 )
 
 var (
-	testTag = "hello"
-	testMsg = "world"
+	testAddr = "127.0.0.1:1445"
+	testTag  = "hello"
+	testMsg  = "world"
 )
 
 // TestMain
 func TestMain(m *testing.M) {
 
 	//
-	server.StartTCP(mist.DEFAULT_ADDR, nil)
+	server.StartTCP(testAddr, nil)
 
 	//
 	os.Exit(m.Run())
@@ -29,66 +30,86 @@ func TestMain(m *testing.M) {
 func TestTCPClientSubscriptions(t *testing.T) {
 
 	//
-	client, err := New(mist.DEFAULT_ADDR)
+	client, err := New(testAddr)
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}
 	defer client.Close()
 
-	// test ping
+	// ping...
 	if err := client.Ping(); err != nil {
 		t.Fatalf("ping failed")
 	}
+
+	// ...should return pong
 	if msg := <-client.Messages(); msg.Data != "pong" {
 		t.Fatalf("Unexpected data: Expecting 'pong' got %s", msg.Data)
 	}
 
-	// test single subscribe
+	// subscribe...
+
+	// ...should fail with no tags
+	if err := client.Subscribe([]string{}); err == nil {
+		t.Fatalf("Subscription succeeded with missing tags!")
+	}
+
+	// ...should subscribe a single tag
 	if err := client.Subscribe([]string{testTag}); err != nil {
 		t.Fatalf("client subscriptions failed %v", err.Error())
 	}
-	if msg := <-client.Messages(); len(msg.Tags) != 1 {
-		t.Fatalf("Incorrect number of tags returned. Expecting 1 got %v", len(msg.Tags))
-	}
 
-	// test multi subscribe
+	// ...should subscribe multiple tags
 	if err := client.Subscribe([]string{testTag, testMsg}); err != nil {
 		t.Fatalf("client subscriptions failed %v", err.Error())
 	}
-	if msg := <-client.Messages(); len(msg.Tags) != 2 {
-		t.Fatalf("Incorrect number of tags returned. Expecting 2 got %v", len(msg.Tags))
-	}
 
-	// test list
+	// ...should list two sets of tags
 	if err := client.List(); err != nil {
 		t.Fatalf("listing subscriptions failed %v", err.Error())
 	}
-	if msg := <-client.Messages(); len(strings.Split(msg.Data, " ")) != 2 {
-		t.Fatalf("Incorrect number of subscriptions: Expecting 2 got %v", len(strings.Split(msg.Data, " ")))
+	if msg := <-filterChannel(client.Messages(), t); msg.Data != fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg) {
+		t.Fatalf("Incorrect subscriptions: Expected %v got %v", fmt.Sprintf("%s %s,%s", testTag, testTag, testMsg), msg.Data)
 	}
 
-	// test unsubscribe
+	// unsubscribe...
+
+	// ...should remove a single tag
 	if err := client.Unsubscribe([]string{testTag}); err != nil {
 		t.Fatalf("client unsubscriptions failed %v", err.Error())
 	}
 
-	// read unsub
-	<-client.Messages()
-
+	// ...should remove multiple tags
 	if err := client.Unsubscribe([]string{testTag, testMsg}); err != nil {
 		t.Fatalf("client unsubscriptions failed %v", err.Error())
 	}
 
-	// read unsub
-	<-client.Messages()
-
-	// test list
+	// ...should list no tags
 	if err := client.List(); err != nil {
 		t.Fatalf("listing subscriptions failed %v", err.Error())
 	}
-	if msg := <-client.Messages(); msg.Data != "" {
+	if msg := <-filterChannel(client.Messages(), t); msg.Data != "" {
 		t.Fatalf("Unexpected subscriptions: %v", msg.Data)
 	}
+}
+
+//
+func filterChannel(msgChan <-chan mist.Message, t *testing.T) <-chan mist.Message {
+	rtn := make(chan mist.Message)
+	go func() {
+		for msg := range msgChan {
+			fmt.Printf("MESSAGE! %#v\n", msg)
+			if msg.Data != "success" {
+				fmt.Printf("DATA! %#v\n", msg)
+				rtn <- msg
+			}
+			if msg.Error != "" {
+				t.Fatalf("Unexpected error: %v", msg.Error)
+			}
+		}
+		close(rtn)
+	}()
+
+	return rtn
 }
 
 // TestSameTCPClient tests to ensure that mist will not send message to the
@@ -96,39 +117,38 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // func TestSameTCPClient(t *testing.T) {
 //
 // 	//
-// 	sender, err := New(mist.DEFAULT_ADDR)
+// 	sender, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
 // 	defer sender.Close()
 //
 // 	// sender subscribes to tags and then tries to publish to those same tags...
-// 	err = sender.Subscribe([]string{testTag})
-// 	if err != nil {
+// 	if err := sender.Subscribe([]string{testTag}); err != nil {
 // 		t.Fatalf("client subscription failed %v", err.Error())
 // 	}
-// 	defer sender.Unsubscribe([]string{testTag})
-//
-// 	// publish after to allow time for communication across TCP connection
-// 	err = sender.PublishAfter([]string{testTag}, testMsg, 1)
-// 	if err != nil {
+// 	if err := sender.Publish([]string{testTag}, testMsg); err != nil {
 // 		t.Fatalf("client publish failed %v", err.Error())
 // 	}
 //
-// 	// allow time for communication across TCP connection
-// 	<-time.After(time.Second * 1)
-//
 // 	// sender should NOT get a message because mist shouldnt send a message to the
 // 	// same proxy that publishes them.
-// 	select {
+// 	for msg := range sender.Messages() {
+// 		fmt.Printf("MESSAGE! %#v\n", msg)
+// 	}
+// 	for {
+// 		select {
 //
-// 	// wait for a message...
-// 	case <-sender.Messages():
-// 		t.Fatalf("Received own message!")
+// 		// wait for a message...
+// 		case msg := <-sender.Messages():
+// 			if msg.Data != "success" {
+// 				t.Fatalf("Received own message! %#v\n", msg)
+// 			}
 //
-// 	// after 1 second assume no message is coming
-// 	case <-time.After(time.Second * 1):
-// 		break
+// 		// after 1 second assume no message is coming
+// 		case <-time.After(time.Second * 1):
+// 			break
+// 		}
 // 	}
 // }
 
@@ -137,14 +157,14 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // func TestDifferentTCPClient(t *testing.T) {
 //
 // 	//
-// 	sender, err := New(mist.DEFAULT_ADDR)
+// 	sender, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
 // 	defer sender.Close()
 //
 // 	//
-// 	receiver, err := New(mist.DEFAULT_ADDR)
+// 	receiver, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
@@ -166,7 +186,7 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // 	<-time.After(time.Second * 1)
 //
 // 	//
-// 	waitMessage(receiver.Messages(), t)
+// 	verifyMessage(receiver.Messages(), t)
 //
 // 	// receiver unsubscribes from the tags and sender publishes again to the same
 // 	// tags
@@ -185,7 +205,7 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // 	<-time.After(time.Second * 1)
 //
 // 	// receiver should NOT get a message this time
-// 	waitNoMessage(receiver.Messages(), t)
+// 	verifyNoMessage(receiver.Messages(), t)
 // }
 
 // TestManyTCPClients tests to ensure that mist will send messages to many
@@ -193,28 +213,28 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // func TestManyTCPClients(t *testing.T) {
 //
 // 	//
-// 	sender, err := New(mist.DEFAULT_ADDR)
+// 	sender, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
 // 	defer sender.Close()
 //
 // 	//
-// 	r1, err := New(mist.DEFAULT_ADDR)
+// 	r1, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
 // 	defer r1.Close()
 //
 // 	//
-// 	r2, err := New(mist.DEFAULT_ADDR)
+// 	r2, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
 // 	defer r2.Close()
 //
 // 	//
-// 	r3, err := New(mist.DEFAULT_ADDR)
+// 	r3, err := New(testAddr)
 // 	if err != nil {
 // 		t.Fatalf("failed to connect - %v", err.Error())
 // 	}
@@ -238,9 +258,9 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // 	<-time.After(time.Second * 1)
 //
 // 	//
-// 	waitMessage(r1.Messages(), t)
-// 	waitMessage(r2.Messages(), t)
-// 	waitMessage(r3.Messages(), t)
+// 	verifyMessage(r1.Messages(), t)
+// 	verifyMessage(r2.Messages(), t)
+// 	verifyMessage(r3.Messages(), t)
 //
 // 	// receiver unsubscribes from the tags and sender publishes again to the same
 // 	// tags
@@ -261,14 +281,14 @@ func TestTCPClientSubscriptions(t *testing.T) {
 // 	<-time.After(time.Second * 1)
 //
 // 	// receivers should NOT get a message this time
-// 	waitNoMessage(r1.Messages(), t)
-// 	waitNoMessage(r2.Messages(), t)
-// 	waitNoMessage(r3.Messages(), t)
+// 	verifyNoMessage(r1.Messages(), t)
+// 	verifyNoMessage(r2.Messages(), t)
+// 	verifyNoMessage(r3.Messages(), t)
 // }
 
-// waitMessage waits for a message to come to a proxy then tests to see if it is
+// verifyMessage waits for a message to come to a proxy then tests to see if it is
 // the expected message
-func waitMessage(messages <-chan mist.Message, t *testing.T) {
+func verifyMessage(messages <-chan mist.Message, t *testing.T) {
 
 	//
 	select {
@@ -289,8 +309,8 @@ func waitMessage(messages <-chan mist.Message, t *testing.T) {
 	}
 }
 
-// waitNoMessage waits to NOT receive a message
-func waitNoMessage(messages <-chan mist.Message, t *testing.T) {
+// verifyNoMessage waits to NOT receive a message
+func verifyNoMessage(messages <-chan mist.Message, t *testing.T) {
 
 	//
 	select {

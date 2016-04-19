@@ -7,11 +7,6 @@ import (
 	"time"
 )
 
-//
-const (
-	DEFAULT_ADDR = "127.0.0.1:1445"
-)
-
 var (
 	mutex       = &sync.Mutex{}
 	subscribers = make(map[uint32]*Proxy)
@@ -44,7 +39,7 @@ func PublishAfter(tags []string, data string, delay time.Duration) error {
 	go func() {
 		<-time.After(delay)
 		if err := Publish(tags, data); err != nil {
-			// log this error and continue?
+			// TODO: log this error and continue?
 		}
 	}()
 
@@ -59,14 +54,14 @@ func publish(pid uint32, tags []string, data string) error {
 		return fmt.Errorf("Failed to publish. Missing tags...")
 	}
 
-	// this should be more optimized, but it might not be an issue unless thousands
+	// this could be more optimized, but it might not be an issue unless thousands
 	// of clients are using mist.
 	go func() {
 		mutex.Lock()
 		for _, subscriber := range subscribers {
 			select {
 			case <-subscriber.done:
-				fmt.Println("Does this ever happen?")
+				// do nothing?
 
 			//
 			default:

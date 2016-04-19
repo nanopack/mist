@@ -1,7 +1,6 @@
 package mist
 
 import (
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,7 +25,7 @@ func NewProxy() (p *Proxy) {
 
 	//
 	p = &Proxy{
-		subscriptions: newNode(),
+		subscriptions: newSub(),
 		check:         make(chan Message),
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),
@@ -127,13 +126,9 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 }
 
 // List returns a list of all current subscriptions
-func (p *Proxy) List() (data []string) {
-
-	// convert the list into something friendlier
+func (p *Proxy) List() (data [][]string) {
 	p.Lock()
-	for _, subscription := range p.subscriptions.ToSlice() {
-		data = append(data, strings.Join(subscription, ","))
-	}
+	data = p.subscriptions.ToSlice()
 	p.Unlock()
 
 	//
