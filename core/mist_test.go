@@ -62,7 +62,6 @@ func TestPublish(t *testing.T) {
 	verifyNoMessage(p2, t)
 }
 
-//
 // verifyMessage waits for a message to come to a proxy then tests to see if it's
 // the expected message. After 1 second it assumes no message is coming and fails.
 func verifyMessage(expected string, p *Proxy, t *testing.T) {
