@@ -112,8 +112,7 @@ var (
 
 func init() {
 
-	// persistent flags; these are the only 2 options that we want overridable from
-	// the CLI, all others need to use a config file
+	// persistent config flags
 	MistCmd.PersistentFlags().String("authenticator", "", "Setting this option enables authentication and uses the authenticator provided to store tokens")
 	viper.BindPFlag("authenticator", MistCmd.PersistentFlags().Lookup("authenticator"))
 
@@ -135,13 +134,14 @@ func init() {
 	MistCmd.PersistentFlags().String("token", "", "Auth token used when connecting to a Mist started with an authenticator")
 	viper.BindPFlag("token", MistCmd.PersistentFlags().Lookup("token"))
 
-	//
+	MistCmd.PersistentFlags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
 	MistCmd.PersistentFlags().StringSliceVar(&tags, "tags", tags, "Tags used when subscribing, publishing, or unsubscribing")
 
 	// local flags;
 	MistCmd.Flags().StringVar(&config, "config", config, "/path/to/config.yml")
+	viper.BindPFlag("config", MistCmd.Flags().Lookup("config"))
+
 	MistCmd.Flags().BoolVar(&daemon, "server", daemon, "Run mist as a server")
-	MistCmd.Flags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
 	MistCmd.Flags().BoolVar(&version, "version", version, "Display the current version of this CLI")
 
 	// commands

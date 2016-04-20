@@ -98,17 +98,19 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		// auth commands are allowed
 		if auth.DefaultAuth != nil && !authenticated {
 
-			// if the next input does not match the token then...
-			if msg.Data == authtoken {
-
-				// if the next input matches the token then add auth commands
-				for k, v := range auth.GenerateHandlers() {
-					handlers[k] = v
-				}
-
-				// set this connection to "authenticated" so it wont need to do
-				authenticated = true
+			// if the next input does not match the token then
+			if msg.Data != authtoken {
+				// break // allow connection w/o admin commands
+				return // disconnect client
 			}
+
+			// add auth commands ("admin" mode)
+			for k, v := range auth.GenerateHandlers() {
+				handlers[k] = v
+			}
+
+			// establish that the connection has already authenticated
+			authenticated = true
 		}
 
 		// look for the command

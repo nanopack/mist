@@ -78,15 +78,17 @@ func StartWS(uri string, errChan chan<- error) {
 
 			// if the next input matches the token then add auth commands
 			if xtoken == authtoken {
-
-				// successful auth; allow auth command handlers on this connection
-				for k, v := range auth.GenerateHandlers() {
-					handlers[k] = v
-				}
-
-				// establish that the socket has already authenticated
-				authenticated = true
+				// break // allow connection w/o admin commands
+				return // disconnect client
 			}
+
+			// add auth commands ("admin" mode)
+			for k, v := range auth.GenerateHandlers() {
+				handlers[k] = v
+			}
+
+			// establish that the socket has already authenticated
+			authenticated = true
 		}
 
 		// connection loop (blocking); continually read off the connection. Once something

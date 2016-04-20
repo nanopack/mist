@@ -8,6 +8,7 @@ import (
 
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
+	"github.com/spf13/viper"
 )
 
 //
@@ -41,12 +42,15 @@ func Register(name string, auth handleFunc) {
 func Start(uris []string, token string) error {
 
 	// BUG: https://github.com/spf13/viper/issues/112
-	// due to the above issue with cobra/viper (pflag) we have to parse this string
-	// slice manually and then split it into the slice of string schemes it should
-	// have been in the first place; one day this bug will get fixed and this will
-	// probably break... at that point this should be removed
-	r := strings.NewReplacer("[", "", "]", "")
-	uris = strings.Split(r.Replace(uris[0]), ",")
+	// due to the above issue with cobra/viper (pflag) when --listeners are provided
+	// we have to parse this string slice manually and then split it into the slice
+	// of string schemes it should have been in the first place; one day this bug
+	// will get fixed and this will probably break... at that point this should be
+	// removed
+	if viper.GetString("config") == "" {
+		r := strings.NewReplacer("[", "", "]", "")
+		uris = strings.Split(r.Replace(uris[0]), ",")
+	}
 
 	// check to see if a token is provided; an authenticator cannot work without
 	// a token and so it should error here informing that.

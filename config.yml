@@ -1,0 +1,6 @@
+authenticator: memory://
+listeners:
+  - tcp://127.0.0.1:1445
+  - ws://127.0.0.1:1446
+log-level: INFO
+token: IBsuZ1W34tpyXaGCRfVgMFDS9eNU5roTwYHhAJE27mbql6Q0cK
