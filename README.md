@@ -143,7 +143,89 @@ When connecting to an authenticated server, to enter "admin" mode, the very firs
 
 Failing to authenticate will still allow the connection to proceed, however no "admin" commands will be allowed on the connection.
 
-## Websockets
+## Clients:
+
+Out of the box mist provides a CLI, a TCP client, and the ability to connect via Websocket Clients
+
+#### CLI (incomplete):
+
+The CLI provides a built-in TCP client that can be used to connect with any running mist
+
+```
+Usage:
+   [flags]
+   [command]
+
+Available Commands:
+  ping        Ping a running mist server
+  subscribe   Subscribe tags
+  unsubscribe Unsubscribe tags
+  publish     Publish a message
+  list        List all subscriptions
+
+Flags:
+      --authenticator="": Setting this option enables authentication and uses the authenticator provided to store tokens
+      --config="": /path/to/config.yml
+  -h, --help[=false]: help for
+      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: A comma delimited list of servers to start
+      --log-file="/var/log/mist.log": If log-type=file, the /path/to/logfile; ignored otherwise
+      --log-level="INFO": Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)
+      --log-type="stdout": The type of logging (stdout, file)
+      --replicator="": not yet implemented
+      --server[=false]: Run mist as a server
+      --token="": Auth token used when connecting to a Mist started with an authenticator
+  -v, --version[=false]: Display the current version of this CLI
+
+Use " [command] --help" for more information about a command.
+```
+
+#### TCP Client
+
+Here is an example of a TCP client written in Golang that will connect with mist and handle messages:
+
+```golang
+package main
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/nanopack/mist/clients"
+)
+
+//
+func main() {
+	client, err := clients.New("127.0.0.1:1445")
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// example commands (not handling errors for brevity)
+	client.Ping()
+	client.Subscribe([]string{"hello"})
+	client.Publish([]string{"hello"}, "world")
+	client.List()
+	// client.Unsubscribe([]string{"hello"})
+
+	// do stuff with messages
+	for {
+		select {
+		case msg := <-client.Messages():
+			fmt.Printf("MSG: %#v\n", msg)
+		case <-time.After(time.Second * 1):
+			// do something if messages are taking too long
+		}
+	}
+
+	// do stuff with messages (alternate)
+	// for msg := range client.Messages() {
+	// 	fmt.Printf("MSG: %#v\n", msg)
+	// }
+}
+```
+
+#### Websocket Client
 
 Since mist just uses a JSON message protocol internally, sending messages via websocket is easy.
 
@@ -177,11 +259,8 @@ NOTE: If authentication is enabled you'll need to provide a token when connectin
   ws.send(JSON.stringify({"command": "list"}))
 ```
 
-## Running mist
+## Running mist:
 
-mist can be run as either a client or a server.
-
-#### As a server:
 To run mist as a server, using the following command will start mist as a daemon:
 
 `mist --server`
@@ -203,40 +282,6 @@ token: TOKEN
 Or you can just pass any configuration options as flags:
 
 `mist --server --log-level DEBUG`
-
-#### As a client (CLI):
-You can also use mist as a client to any running mist.
-
-```
-Usage:
-   [flags]
-   [command]
-
-Available Commands:
-  ping        Ping a running mist server
-  subscribe   Subscribe tags
-  unsubscribe Unsubscribe tags
-  publish     Publish a message
-  list        List all subscriptions
-
-Flags:
-      --authenticator="": Setting this option enables authentication and uses the authenticator provided to store tokens
-      --config="": /path/to/config.yml
-  -h, --help[=false]: help for
-      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: A comma delimited list of servers to start
-      --log-file="/var/log/mist.log": If log-type=file, the /path/to/logfile; ignored otherwise
-      --log-level="INFO": Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)
-      --log-type="stdout": The type of logging (stdout, file)
-      --replicator="": not yet implemented
-      --server[=false]: Run mist as a server
-      --token="": Auth token used when connecting to a Mist started with an authenticator
-  -v, --version[=false]: Display the current version of this CLI
-
-Use " [command] --help" for more information about a command.
-```
-
-## Clients
-
 
 ## Contributing
 

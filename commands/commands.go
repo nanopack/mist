@@ -17,9 +17,11 @@ import (
 var (
 
 	//
-	config  string //
-	daemon  bool   //
-	version bool   //
+	config  string             //
+	daemon  bool               //
+	host    = "127.0.0.1:1445" //
+	tags    []string           //
+	version bool               //
 
 	// MistCmd ...
 	MistCmd = &cobra.Command{
@@ -42,32 +44,6 @@ var (
 				// logger := lumber.NewFileLogger(viper.GetString("log-file"), logLvl, lumber.ROTATE, 5000, 1, 100)
 				// lumber.SetLogger(logger)
 			}
-
-			// if --config is passed, attempt to parse the config file
-			if config != "" {
-
-				// get the filepath
-				abs, err := filepath.Abs(config)
-				if err != nil {
-					lumber.Error("Error reading filepath: ", err.Error())
-				}
-
-				// get the config name
-				base := filepath.Base(abs)
-
-				// get the path
-				path := filepath.Dir(abs)
-
-				//
-				viper.SetConfigName(strings.Split(base, ".")[0])
-				viper.AddConfigPath(path)
-
-				// Find and read the config file; Handle errors reading the config file
-				if err := viper.ReadInConfig(); err != nil {
-					lumber.Fatal("Failed to read config file: ", err.Error())
-					os.Exit(1)
-				}
-			}
 		},
 
 		// either run mist as a server, or run it as a CLI depending on what flags
@@ -76,6 +52,32 @@ var (
 
 			// if --server is passed start the mist server
 			if daemon {
+
+				// if --config is passed, attempt to parse a config file
+				if config != "" {
+
+					// get the filepath
+					abs, err := filepath.Abs(config)
+					if err != nil {
+						lumber.Error("Error reading filepath: ", err.Error())
+					}
+
+					// get the config name
+					base := filepath.Base(abs)
+
+					// get the path
+					path := filepath.Dir(abs)
+
+					//
+					viper.SetConfigName(strings.Split(base, ".")[0])
+					viper.AddConfigPath(path)
+
+					// Find and read the config file; Handle errors reading the config file
+					if err := viper.ReadInConfig(); err != nil {
+						lumber.Fatal("Failed to read config file: ", err.Error())
+						os.Exit(1)
+					}
+				}
 
 				//
 				if err := auth.Start(viper.GetString("authenticator")); err != nil {
@@ -133,16 +135,20 @@ func init() {
 	MistCmd.PersistentFlags().String("token", "", "Auth token used when connecting to a Mist started with an authenticator")
 	viper.BindPFlag("token", MistCmd.PersistentFlags().Lookup("token"))
 
+	//
+	MistCmd.PersistentFlags().StringSliceVar(&tags, "tags", tags, "Tags used when subscribing, publishing, or unsubscribing")
+
 	// local flags;
-	MistCmd.Flags().StringVar(&config, "config", "", "/path/to/config.yml")
-	MistCmd.Flags().BoolVar(&daemon, "server", false, "Run mist as a server")
-	MistCmd.Flags().BoolVarP(&version, "version", "v", false, "Display the current version of this CLI")
+	MistCmd.Flags().StringVar(&config, "config", config, "/path/to/config.yml")
+	MistCmd.Flags().BoolVar(&daemon, "server", daemon, "Run mist as a server")
+	MistCmd.Flags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
+	MistCmd.Flags().BoolVar(&version, "version", version, "Display the current version of this CLI")
 
 	// commands
 	MistCmd.AddCommand(pingCmd)
 	MistCmd.AddCommand(subscribeCmd)
-	MistCmd.AddCommand(unsubscribeCmd)
 	MistCmd.AddCommand(publishCmd)
+	MistCmd.AddCommand(unsubscribeCmd)
 	MistCmd.AddCommand(listCmd)
 
 	// hidden/aliased commands
