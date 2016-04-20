@@ -20,9 +20,10 @@ Basic command are what provide the core functionality of mist. They allow you su
 
 | Command | Description | Example |
 | --- | --- | --- |
+| `auth` | authenticate with the server to enter "admin" mode | `{"command":"auth", "data":"TOKEN"}` |
 | `ping` | ping the server to test for an active connection | `{"command":"ping"}` |
 | `subscribe` | subscribe to messages for *all* `tags` in a group | `{"command":"subscribe", "tags":["hello"]}` |
-| `unsubscribe` | unsubscribe `tags` (order does not matter) | `{"command":"unsubscribe", "tags":["hello"]}` |
+| `unsubscribe` | unsubscribe from *exact* `tags` provided| `{"command":"unsubscribe", "tags":["hello"]}` |
 | `publish` | publish `data` to the list of `tags` | `{"command":"publish", "tags":["hello"], "data":"world!"}` |
 | `list` | list all active subscriptions for client | `{"command":"list"}` |
 
@@ -82,7 +83,7 @@ A few things to not about how mist handles data:
 
 ## Listeners
 
-Out of the box mist supports three different types of servers (`TCP`, `HTTP`, and `Websocket`). By default, when mist starts, it will start one of each.
+Out of the box mist supports three different types of servers (`TCP`, `HTTP`, and `Websocket`). **By default, when mist starts, it will start one of each.**
 
 ```
 TCP server listening at '127.0.0.1:1445'...
@@ -111,11 +112,17 @@ Also, if mist doesn't support a server you need it allows you to register custom
 
 ## Authenticators
 
-Mist also provides support for authentication. This means that during startup you can provide mist with a `token` that you want to be used as authentication. Once enabled, any client that attempts to connect to mist *must* provide that token or be disconnected. By default mist does not use authentication.
+Mist also provides support for authentication. This means that during startup you can provide mist with an `authenticator` and a `token`. Once enabled, any client that connects to the server has an opportunity (as the first command) to provide the authentication token to "unlock" admin commands for that connection.
 
-Like listeners, mist allows for the registration of custom authenticators.
+```
+./mist --server --authenticator memory:// --token TOKEN
+```
+
+Notice that when an authenticator is provided, *a token must also be provided otherwise the server will not start*.
 
 #### Available authenticators
+
+Like `listeners`, mist allows for the registration of custom `authenticators`.
 
 `(scheme:[//[user:pass@]host[:port]][/]path[?query][#fragment])`
 
@@ -125,11 +132,16 @@ Like listeners, mist allows for the registration of custom authenticators.
 | [scribble](https://github.com/nanobox-io/golang-scribble) | `scribble://?db=/tmp` | a tiny JSON database |
 | postgres | `postgres://postgres@127.0.0.1:5432?db=postgres` | n/a |
 
-##### Example
+#### Connecting to an authenticated server
+
+When connecting to an authenticated server, to enter "admin" mode, the very first communication across the wire **must** be the `auth` command.
 
 ```
-./mist --server --authenticator "memory://"
+>> nc 127.0.0.1 1445
+{"command":"auth", "data":"TOKEN"}
 ```
+
+Failing to authenticate will still allow the connection to proceed, however no "admin" commands will be allowed on the connection.
 
 ## Websockets
 
@@ -137,7 +149,7 @@ Since mist just uses a JSON message protocol internally, sending messages via we
 
 NOTE: If authentication is enabled you'll need to provide a token when connecting the websocket:
 
-* As a Header: `X-Auth-Token: token`
+* As a Header: `X-AUTH-TOKEN: token`
 * As a query param: `x-auth-token=token`
 
 ##### Example
@@ -222,6 +234,9 @@ Flags:
 
 Use " [command] --help" for more information about a command.
 ```
+
+## Clients
+
 
 ## Contributing
 

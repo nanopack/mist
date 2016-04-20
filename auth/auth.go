@@ -1,4 +1,4 @@
-// package auth provides a pluggable set of "Authenticators". These Authenticators
+// Package auth provides a pluggable set of "Authenticators". These Authenticators
 // represent a different database used to store authorized token/tag combinations
 // that, when enabled, will allow/deny access to mist methods for these authorized
 // token/tags combinations.
@@ -27,7 +27,7 @@ type (
 	//
 	handleFunc func(url *url.URL) (Authenticator, error)
 
-	// an authenticator represnets a database of authorized token/tag combinations.
+	// Authenticator represnets a database of authorized token/tag combinations.
 	// These combinations are used as a way to allow access to mist methods for a
 	// particular token/tag combination (when authentication is desired)
 	Authenticator interface {

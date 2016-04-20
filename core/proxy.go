@@ -1,8 +1,6 @@
 package mist
 
 import (
-	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,7 +8,7 @@ import (
 
 type (
 
-	//
+	// Proxy ...
 	Proxy struct {
 		sync.Mutex
 
@@ -22,12 +20,12 @@ type (
 	}
 )
 
-//
+// NewProxy ...
 func NewProxy() (p *Proxy) {
 
 	//
 	p = &Proxy{
-		subscriptions: newNode(),
+		subscriptions: newSub(),
 		check:         make(chan Message),
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),
@@ -84,81 +82,60 @@ func (p *Proxy) handleMessages() {
 	}
 }
 
-// Ping
-func (p *Proxy) Ping() error {
-	return nil
-}
+// Subscribe ...
+func (p *Proxy) Subscribe(tags []string) {
 
-// Subscribe
-func (p *Proxy) Subscribe(tags []string) error {
-
-	// is this an error?
+	//
 	if len(tags) == 0 {
-		return nil
+		// is this an error?
 	}
 
 	//
 	p.Lock()
 	p.subscriptions.Add(tags)
 	p.Unlock()
-
-	//
-	return nil
 }
 
-// Unsubscribe
-func (p *Proxy) Unsubscribe(tags []string) error {
+// Unsubscribe ...
+func (p *Proxy) Unsubscribe(tags []string) {
 
-	// is this an error?
+	//
 	if len(tags) == 0 {
-		return nil
+		// is this an error?
 	}
 
 	//
 	p.Lock()
 	p.subscriptions.Remove(tags)
 	p.Unlock()
-
-	//
-	return nil
 }
 
-// Publish
+// Publish ...
 func (p *Proxy) Publish(tags []string, data string) error {
 	return publish(p.id, tags, data)
 }
 
-// Sends a message with delay
-func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) error {
+// PublishAfter sends a message after [delay]
+func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
-			// log this error and continue?
+			// TODO: log this error and continue?
 		}
 	}()
-
-	return nil
 }
 
-// List
-func (p *Proxy) List() error {
-
-	// convert the list into something friendlier
+// List returns a list of all current subscriptions
+func (p *Proxy) List() (data [][]string) {
 	p.Lock()
-	var data []string
-	for _, subscription := range p.subscriptions.ToSlice() {
-		data = append(data, strings.Join(subscription, ","))
-	}
+	data = p.subscriptions.ToSlice()
 	p.Unlock()
 
 	//
-	p.Pipe <- Message{Command: "list", Tags: []string{}, Data: fmt.Sprintf(strings.Join(data, " "))}
-
-	//
-	return nil
+	return
 }
 
-//
+// Close ...
 func (p *Proxy) Close() {
 
 	// this closes the goroutine that is matching messages to subscriptions

@@ -121,7 +121,7 @@ func (a *scribble) GetTagsForToken(token string) ([]string, error) {
 
 	// convert tags from map to slice
 	var tags []string
-	for k, _ := range entry.Tags {
+	for k := range entry.Tags {
 		tags = append(tags, k)
 	}
 

@@ -20,11 +20,6 @@ func init() {
 // and then continually reads from the server handling any incoming connections
 func StartTCP(uri string, errChan chan<- error) {
 
-	//
-	if uri == "" {
-		uri = mist.DEFAULT_ADDR
-	}
-
 	// start a TCP listener
 	ln, err := net.Listen("tcp", uri)
 	if err != nil {
@@ -101,17 +96,18 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are allowed
-		if auth.DefaultAuth != nil {
+		if auth.DefaultAuth != nil && !authenticated {
 
 			// if the next input does not match the token then...
-			if msg.Data != authtoken {
-				// break // ...allow the connection but no auth commands
-				return // ...kill the connection
-			}
+			if msg.Data == authtoken {
 
-			// successful auth; allow auth command handlers on this connection
-			for k, v := range auth.GenerateHandlers() {
-				handlers[k] = v
+				// if the next input matches the token then add auth commands
+				for k, v := range auth.GenerateHandlers() {
+					handlers[k] = v
+				}
+
+				// set this connection to "authenticated" so it wont need to do
+				authenticated = true
 			}
 		}
 
@@ -120,7 +116,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// if the command isn't found, return an error and wait for the next command
 		if !found {
-			encoder.Encode(&mist.Message{Command: msg.Command, Error: "Unknown Command"})
+			encoder.Encode(&mist.Message{Command: msg.Command, Tags: msg.Tags, Data: msg.Data, Error: "Unknown Command"})
 			continue
 		}
 

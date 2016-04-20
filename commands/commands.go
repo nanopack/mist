@@ -1,4 +1,4 @@
-//
+// Package commands ...
 package commands
 
 import (
@@ -21,7 +21,7 @@ var (
 	daemon  bool   //
 	version bool   //
 
-	//
+	// MistCmd ...
 	MistCmd = &cobra.Command{
 		Use:   "",
 		Short: "",
@@ -110,29 +110,27 @@ var (
 
 func init() {
 
-	// set config defaults; these are overriden if a --config file is provided
-	// (see above)
-	viper.SetDefault("log-type", "stdout")
-	viper.SetDefault("log-file", "/var/log/mist.log")
-	viper.SetDefault("log-level", "INFO")
-	viper.SetDefault("listeners", []string{"tcp://127.0.0.1:1445", "http://127.0.0.1:8080", "ws://127.0.0.1:8888"})
-	viper.SetDefault("replicator", "")
-	viper.SetDefault("token", "")
-
 	// persistent flags; these are the only 2 options that we want overridable from
 	// the CLI, all others need to use a config file
-	MistCmd.PersistentFlags().String("authenticator", viper.GetString("authenticator"), "Setting this option enables authentication and uses the authenticator provided to store tokens")
-	MistCmd.PersistentFlags().StringSlice("listeners", viper.GetStringSlice("listeners"), "A comma delimited list of servers to start")
-	MistCmd.PersistentFlags().String("log-type", viper.GetString("log-type"), "The type of logging (stdout, file)")
-	MistCmd.PersistentFlags().String("log-file", viper.GetString("log-file"), "If log-type=file, the /path/to/logfile; ignored otherwise")
-	MistCmd.PersistentFlags().String("log-level", viper.GetString("log-level"), "Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)")
-	MistCmd.PersistentFlags().String("replicator", viper.GetString("replicator"), "not yet implemented")
-	MistCmd.PersistentFlags().String("token", viper.GetString("token"), "Auth token used when connecting to a Mist started with an authenticator")
-
+	MistCmd.PersistentFlags().String("authenticator", "", "Setting this option enables authentication and uses the authenticator provided to store tokens")
 	viper.BindPFlag("authenticator", MistCmd.PersistentFlags().Lookup("authenticator"))
+
+	MistCmd.PersistentFlags().StringSlice("listeners", []string{"tcp://127.0.0.1:1445", "http://127.0.0.1:8080", "ws://127.0.0.1:8888"}, "A comma delimited list of servers to start")
 	viper.BindPFlag("listeners", MistCmd.PersistentFlags().Lookup("listeners"))
+
+	MistCmd.PersistentFlags().String("log-type", "stdout", "The type of logging (stdout, file)")
+	viper.BindPFlag("log-type", MistCmd.PersistentFlags().Lookup("log-type"))
+
+	MistCmd.PersistentFlags().String("log-file", "/var/log/mist.log", "If log-type=file, the /path/to/logfile; ignored otherwise")
+	viper.BindPFlag("log-file", MistCmd.PersistentFlags().Lookup("log-file"))
+
+	MistCmd.PersistentFlags().String("log-level", "INFO", "Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)")
 	viper.BindPFlag("log-level", MistCmd.PersistentFlags().Lookup("log-level"))
+
+	MistCmd.PersistentFlags().String("replicator", "", "not yet implemented")
 	viper.BindPFlag("replicator", MistCmd.PersistentFlags().Lookup("replicator"))
+
+	MistCmd.PersistentFlags().String("token", "", "Auth token used when connecting to a Mist started with an authenticator")
 	viper.BindPFlag("token", MistCmd.PersistentFlags().Lookup("token"))
 
 	// local flags;

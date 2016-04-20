@@ -6,6 +6,8 @@ import (
 	"net/url"
 
 	"database/sql"
+
+	// this is how lib postgres is intended to work (blank import)
 	_ "github.com/lib/pq"
 )
 
@@ -94,7 +96,7 @@ func (a postgres) GetTagsForToken(token string) ([]string, error) {
 	defer rows.Close()
 
 	//
-	tags := make([]string, 0)
+	var tags []string
 
 	//
 	for rows.Next() {
