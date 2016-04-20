@@ -77,7 +77,7 @@ func StartWS(uri string, errChan chan<- error) {
 			}
 
 			// if the next input matches the token then add auth commands
-			if xtoken == authtoken {
+			if xtoken != authtoken {
 				// break // allow connection w/o admin commands
 				return // disconnect client
 			}
