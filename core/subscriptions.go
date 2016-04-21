@@ -5,12 +5,6 @@ import (
 	"sort"
 )
 
-// const (
-// 	create = iota
-// 	remove
-// 	nothing
-// )
-
 // interfaces
 type (
 
@@ -23,170 +17,10 @@ type (
 	}
 )
 
-// structs
-// type (
-//
-// 	// // Node ...
-// 	// Node struct {
-// 	// 	id       uint64
-// 	// 	key      string
-// 	// 	count    int
-// 	// 	children map[string]*Node
-// 	// 	parent   *Node
-// 	// 	leafs    map[uint64]*Node
-// 	// }
-//
-// )
-
-// //
-// func newNode() (child *Node) {
-// 	child = &Node{
-// 		id:       0,
-// 		count:    0,
-// 		children: map[string]*Node{},
-// 		leafs:    map[uint64]*Node{},
-// 	}
-//
-// 	//
-// 	return
-// }
-//
-// // Len ...
-// func (root *Node) Len() int {
-// 	return len(root.leafs)
-// }
-//
-// // Add ...
-// func (root *Node) Add(keys []string) {
-// 	if len(keys) == 0 {
-// 		return
-// 	}
-//
-// 	// sort tags
-// 	sort.Strings(keys)
-//
-// 	last, _ := root.traverse(keys, create)
-// 	last.count++
-// 	if last.count == 1 {
-// 		last.id = root.id
-// 		root.leafs[last.id] = last
-// 		root.id++
-// 	}
-// }
-//
-// // Remove ...
-// func (root *Node) Remove(keys []string) {
-// 	if len(keys) == 0 {
-// 		return
-// 	}
-//
-// 	// sort tags
-// 	sort.Strings(keys)
-//
-// 	found, _ := root.traverse(keys, remove)
-// 	if found != nil {
-// 		found.count--
-// 		if found.count == 0 {
-// 			delete(root.leafs, found.id)
-// 		}
-// 	}
-// }
-//
-// // Match ...
-// func (root *Node) Match(keys []string) bool {
-//
-// 	if len(keys) == 0 {
-// 		return false
-// 	}
-//
-// 	// sort tags
-// 	sort.Strings(keys)
-//
-// 	last, count := root.traverse(keys, nothing)
-// 	return last != nil && count != -1
-// }
-//
-// // ToSlice ...
-// func (root *Node) ToSlice() [][]string {
-// 	paths := make([][]string, len(root.leafs))
-// 	for idx, leaf := range root.leafs {
-// 		var path []string
-// 		for ; leaf != nil && leaf != root; leaf = leaf.parent {
-// 			path = append(path, leaf.key)
-// 		}
-// 		paths[idx] = path
-// 	}
-// 	return paths
-// }
-//
-// // Find ...
-// func (root *Node) Find(keys []string) *Node {
-//
-// 	if len(keys) == 0 {
-// 		return nil
-// 	}
-//
-// 	// sort tags
-// 	sort.Strings(keys)
-//
-// 	child, _ := root.traverse(keys, nothing)
-// 	return child
-// }
-//
-// // traverse ...
-// func (root *Node) traverse(keys []string, action int) (*Node, int) {
-// 	if len(keys) == 0 {
-// 		if root.count == 0 {
-// 			// this node is not a leaf, so return -1 so it doesn't get deleted
-// 			return root, -1
-// 		}
-// 		return root, root.count
-// 	}
-//
-// 	key := keys[0]
-// 	child, ok := root.children[key]
-//
-// 	switch action {
-// 	case remove:
-// 		if ok {
-// 			found, count := child.traverse(keys[1:], action)
-// 			if found != nil && count == 1 {
-// 				if child.count == 0 && len(child.children) == 0 {
-// 					delete(root.children, key)
-// 				}
-// 			}
-// 			return found, count
-// 		}
-//
-// 		return nil, 0
-// 	case create:
-// 		if !ok {
-// 			child = newNode()
-// 			child.parent = root
-// 			child.key = keys[0] // preserve the original key
-// 			root.children[key] = child
-// 		}
-//
-// 		return child.traverse(keys[1:], action)
-// 	default:
-// 		if ok {
-// 			found, count := child.traverse(keys[1:], action)
-// 			// if 0 or -1 indicate that the traversal didn't really work
-// 			if count != 0 {
-// 				return found, count
-// 			}
-// 		}
-//
-// 		// we didn't find a match with the key, try the rest of the keys
-// 		return root.traverse(keys[1:], action)
-// 	}
-// }
-
 type (
 
 	// Node ...
 	Node struct {
-		// toSlice  [][]string
 		branches map[string]*Node
 		leaves   map[string]struct{}
 	}
@@ -196,8 +30,6 @@ type (
 func newNode() (node *Node) {
 
 	node = &Node{
-		// id:       0,
-		// count:    0,
 		branches: map[string]*Node{},
 		leaves:   map[string]struct{}{},
 	}
@@ -280,28 +112,30 @@ func (node *Node) remove(keys []string) {
 		// continue key by key until we reach a leaf at which point its removed (above)
 		branch.remove(keys[1:])
 
+		// NOTE: this cleanup is a little inefficient and probably not needed unless
+		// mist starts using a ton of memory
+		//
 		// once we reach the end of the line, if there are no more leaves or branch
 		// on this branch, we can remove the branch
-		if len(branch.leaves) == 0 && len(branch.branches) == 0 {
-			delete(node.branches, keys[0])
-		}
+		// if len(branch.leaves) == 0 && len(branch.branches) == 0 {
+		// 	delete(node.branches, keys[0])
+		// }
 	}
 }
 
 // Match sorts the keys and then attempts to find a match
 func (node *Node) Match(keys []string) bool {
-
-	//
-	if len(keys) == 0 {
-		return false
-	}
-
 	sort.Strings(keys)
 	return node.match(keys)
 }
 
 // ​match ...
 func (node *Node) match(keys []string) bool {
+
+	//
+	if len(keys) == 0 {
+		return false
+	}
 
 	// iterate through each key looking for a leaf, if found it's a match
 	for _, key := range keys {
@@ -326,11 +160,8 @@ func (node *Node) match(keys []string) bool {
 // as a slice of slices
 func (node *Node) ToSlice() (list [][]string) {
 
-	fmt.Printf("TO SLICE! %#v\n", node)
-
 	// iterate through each leaf appending it as a slice to the list of keys
 	for leaf := range node.leaves {
-		fmt.Println("LEAF?", leaf)
 		list = append(list, []string{leaf})
 	}
 
@@ -338,16 +169,11 @@ func (node *Node) ToSlice() (list [][]string) {
 	// to the list
 	for branch, node := range node.branches {
 
-		fmt.Println("BRANCH?", branch)
-
 		// get the current nodes slice of branches and leaves
 		nodeSlice := node.ToSlice()
 
-		fmt.Println("SLICE?", nodeSlice)
-
 		// for each branch in the nodes list apppend the key to that key
 		for _, nodeKey := range nodeSlice {
-			fmt.Println("WHERE AM I?", nodeKey)
 			list = append(list, append(nodeKey, branch))
 		}
 	}
