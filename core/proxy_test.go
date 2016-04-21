@@ -122,7 +122,7 @@ func TestListSubscriptions(t *testing.T) {
 	sender.Subscribe([]string{"a", "b"})
 	list = flattenSliceToString(sender.List())
 	switch list {
-	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba":
+	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba", "abb,a":
 		// pass
 	default:
 		t.Errorf("Unexpected tags - Expecting '%v' received %v", "aba,b OR baa,b OR a,bab OR a,bba", list)
@@ -134,7 +134,7 @@ func TestListSubscriptions(t *testing.T) {
 	sender.Subscribe([]string{"b", "a"})
 	list = flattenSliceToString(sender.List())
 	switch list {
-	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba":
+	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba", "abb,a":
 		// pass
 	default:
 		t.Errorf("Unexpected tags - Expecting '%v' received %v", "aba,b OR baa,b OR a,bab OR a,bba", list)

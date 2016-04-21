@@ -25,7 +25,7 @@ func NewProxy() (p *Proxy) {
 
 	//
 	p = &Proxy{
-		subscriptions: newSub(),
+		subscriptions: newNode(),
 		check:         make(chan Message),
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),
