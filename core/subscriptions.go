@@ -1,9 +1,6 @@
 package mist
 
-import (
-	"fmt"
-	"sort"
-)
+import "sort"
 
 // interfaces
 type (
@@ -36,14 +33,6 @@ func newNode() (node *Node) {
 
 	//
 	return
-}
-
-// Show ...
-func (node *Node) Show(indent string) {
-	fmt.Printf("%s%#v\n", indent, node)
-	for _, branch := range node.branches {
-		branch.Show(fmt.Sprintf("  %s", indent))
-	}
 }
 
 // Add sorts the keys and then attempts to add them

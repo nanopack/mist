@@ -123,6 +123,9 @@ func TestAddRemoveComplex(t *testing.T) {
 		t.Fatalf("Duplicate nodes added")
 	}
 	node.Remove([]string{"a", "b", "c"})
+	if len(node.ToSlice()) != 0 {
+		t.Fatalf("Failed to remove nodes")
+	}
 
 	// remove duplicate keys; should only remove once
 	node.Add([]string{"a", "b", "c"})
@@ -249,5 +252,6 @@ func TestMatchComplex(t *testing.T) {
 	if node.Match([]string{"b", "c"}) {
 		t.Fatalf("Unexpected match!")
 	}
-	node.Remove([]string{"a", "b", "c"})
+	node.Remove([]string{"a", "b"})
+	node.Remove([]string{"c", "d"})
 }
