@@ -6,7 +6,7 @@ import (
 
 	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
-	// "github.com/spf13/viper"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 // ping
 func ping(ccmd *cobra.Command, args []string) {
 
-	client, err := clients.New(host)
+	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
 		fmt.Printf(err.Error())
 		os.Exit(1)

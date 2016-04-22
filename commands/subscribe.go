@@ -30,7 +30,7 @@ func subscribe(ccmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	client, err := clients.New(host)
+	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
 		fmt.Printf(err.Error())
 		os.Exit(1)

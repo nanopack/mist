@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 
 // TestTCPClientConnect tests to ensure a client can connect to a running server
 func TestTCPClientConnect(t *testing.T) {
-	client, err := New(testAddr)
+	client, err := New(testAddr, "")
 	if err != nil {
 		t.Fatalf("Client failed to connect - %v", err.Error())
 	}
@@ -47,7 +47,7 @@ func TestTCPClientConnect(t *testing.T) {
 func TestTCPClient(t *testing.T) {
 
 	//
-	client, err := New(testAddr)
+	client, err := New(testAddr, "")
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
 	}

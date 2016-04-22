@@ -6,6 +6,7 @@ import (
 
 	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -29,7 +30,7 @@ func unsubscribe(ccmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	client, err := clients.New(host)
+	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
 		fmt.Printf(err.Error())
 		os.Exit(1)
