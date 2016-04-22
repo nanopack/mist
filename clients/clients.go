@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
 )
 
@@ -14,19 +15,21 @@ type (
 
 	// TCP represents a TCP connection to the mist server
 	TCP struct {
-		host     string
 		conn     net.Conn          // the connection the mist server
 		encoder  *json.Encoder     //
+		host     string            //
 		messages chan mist.Message // the channel that mist server 'publishes' updates to
+		token    string            //
 	}
 )
 
 // New attempts to connect to a running mist server at the clients specified
 // host and port.
-func New(host string) (*TCP, error) {
+func New(host, authtoken string) (*TCP, error) {
 	client := &TCP{
 		host:     host,
 		messages: make(chan mist.Message),
+		token:    authtoken,
 	}
 
 	return client, client.connect()
@@ -69,6 +72,11 @@ func (c *TCP) connect() error {
 			c.messages <- msg
 		}
 	}()
+
+	// if the client needs to auth we'll manually send an auth message
+	if auth.DefaultAuth != nil {
+		return c.encoder.Encode(&mist.Message{Command: "auth", Data: c.token})
+	}
 
 	return nil
 }
