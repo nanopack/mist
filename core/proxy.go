@@ -12,11 +12,12 @@ type (
 	Proxy struct {
 		sync.Mutex
 
-		subscriptions subscriptions
+		Authenticated bool
+		Pipe          chan Message
 		check         chan Message
 		done          chan bool
 		id            uint32
-		Pipe          chan Message
+		subscriptions subscriptions
 	}
 )
 
@@ -25,11 +26,11 @@ func NewProxy() (p *Proxy) {
 
 	//
 	p = &Proxy{
-		subscriptions: newNode(),
+		Pipe:          make(chan Message),
 		check:         make(chan Message),
 		done:          make(chan bool),
 		id:            atomic.AddUint32(&uid, 1),
-		Pipe:          make(chan Message),
+		subscriptions: newNode(),
 	}
 
 	p.connect()

@@ -22,8 +22,7 @@ var (
 	handlers = map[string]mist.HandleFunc{}
 
 	//
-	authtoken     string  // used when determining if auth command handlers should be added
-	authenticated = false // used to determine if a connection has already authenticated
+	authtoken string // used when determining if auth command handlers should be added
 )
 
 //

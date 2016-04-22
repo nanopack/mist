@@ -96,7 +96,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are allowed
-		if auth.DefaultAuth != nil && !authenticated {
+		if auth.DefaultAuth != nil && !proxy.Authenticated {
 
 			// if the next input does not match the token then
 			if msg.Data != authtoken {
@@ -110,7 +110,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 			}
 
 			// establish that the connection has already authenticated
-			authenticated = true
+			proxy.Authenticated = true
 		}
 
 		// look for the command

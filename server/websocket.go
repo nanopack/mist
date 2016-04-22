@@ -65,7 +65,7 @@ func StartWS(uri string, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are added
-		if auth.DefaultAuth != nil && !authenticated {
+		if auth.DefaultAuth != nil && !proxy.Authenticated {
 
 			//
 			var xtoken string
@@ -88,7 +88,7 @@ func StartWS(uri string, errChan chan<- error) {
 			}
 
 			// establish that the socket has already authenticated
-			authenticated = true
+			proxy.Authenticated = true
 		}
 
 		// connection loop (blocking); continually read off the connection. Once something
