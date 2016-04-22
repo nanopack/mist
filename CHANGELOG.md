@@ -1,3 +1,17 @@
+## v1.1.0 (April 22, 2016)
+
+BUG FIXES:
+  - Authentication is now handled on a per connection basis, with each connection
+  required to send a token if the server is started with an authenticator.
+  - Subscriptions have been reworked to meet the original requirements of mist.
+  - Fixed an issue with how mist was parsing config files.
+
+IMPROVEMENTS:
+  - Clients now have a way to authenticate with an authenticated server.
+  - Response messages have been added when running commands against a server to
+  verify that the command worked/failed.
+  - Many tests have been added/updated.
+
 ## v1.0.2 (March 17, 2016)
 
 BUG FIXES:
