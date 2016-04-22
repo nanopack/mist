@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
 )
 
@@ -73,8 +72,8 @@ func (c *TCP) connect() error {
 		}
 	}()
 
-	// if the client needs to auth we'll manually send an auth message
-	if auth.DefaultAuth != nil {
+	// if the client was created with a token, authentication is needed
+	if c.token != "" {
 		return c.encoder.Encode(&mist.Message{Command: "auth", Data: c.token})
 	}
 
