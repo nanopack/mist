@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"io/ioutil"
 	"time"
 
 	"github.com/nanopack/mist/core"
@@ -57,14 +58,17 @@ func (c *TCP) connect() error {
 		decoder := json.NewDecoder(conn)
 
 		for decoder.More() {
-
 			//
 			msg := mist.Message{}
 
 			// decode an array value (Message)
 			if err := decoder.Decode(&msg); err != nil {
-				// TODO: log this error and continue?
-				continue
+				
+
+				// an error decoding should be sent to the user
+				reader := decoder.Buffered()
+				bytes, _ := ioutil.ReadAll(reader)
+				msg.Error = string(bytes)
 			}
 
 			//
