@@ -22,9 +22,9 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 // handleAuth only exists to avoid getting the message "Unknown command" when
 // authing with a authenticated server
 func handleAuth(proxy *mist.Proxy, msg mist.Message) error {
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "auth", Tags: []string{}, Data: "success"}
-	}()
+	// go func() {
+	// 	proxy.Pipe <- mist.Message{Command: "auth", Tags: []string{}, Data: "success"}
+	// }()
 	return nil
 }
 
@@ -39,27 +39,27 @@ func handlePing(proxy *mist.Proxy, msg mist.Message) error {
 // handleSubscribe
 func handleSubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Subscribe(msg.Tags)
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "subscribe", Tags: msg.Tags, Data: "success"}
-	}()
+	// go func() {
+	// 	proxy.Pipe <- mist.Message{Command: "subscribe", Tags: msg.Tags, Data: "success"}
+	// }()
 	return nil
 }
 
 // handleUnsubscribe
 func handleUnsubscribe(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Unsubscribe(msg.Tags)
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: msg.Tags, Data: "success"}
-	}()
+	// go func() {
+	// 	proxy.Pipe <- mist.Message{Command: "unsubscribe", Tags: msg.Tags, Data: "success"}
+	// }()
 	return nil
 }
 
 // handlePublish
 func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Publish(msg.Tags, msg.Data)
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "publish", Tags: msg.Tags, Data: "success"}
-	}()
+	// go func() {
+	// 	proxy.Pipe <- mist.Message{Command: "publish", Tags: msg.Tags, Data: "success"}
+	// }()
 	return nil
 }
 

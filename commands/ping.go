@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
@@ -13,27 +12,37 @@ var (
 
 	//
 	pingCmd = &cobra.Command{
-		Use:   "ping",
-		Short: "Ping a running mist server",
-		Long:  ``,
+		Use:           "ping",
+		Short:         "Ping a running mist server",
+		Long:          ``,
+		SilenceErrors: true,
+		SilenceUsage:  true,
 
-		Run: ping,
+		RunE: ping,
 	}
 )
 
+func init() {
+	pingCmd.Flags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
+}
+
 // ping
-func ping(ccmd *cobra.Command, args []string) {
+func ping(ccmd *cobra.Command, args []string) error {
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(1)
+		fmt.Printf("Failed to connect to '%v' - %v\n", host, err)
+		return err
 	}
 
-	//
-	client.Ping()
+	err = client.Ping()
+	if err != nil {
+		fmt.Printf("Failed to ping - %v\n", err)
+		return err
+	}
 
-	//
 	msg := <-client.Messages()
 	fmt.Println(msg.Data)
+
+	return nil
 }

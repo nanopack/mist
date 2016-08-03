@@ -6,22 +6,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jcelliott/lumber"
+	"github.com/spf13/viper"
+
 	"github.com/nanopack/mist/auth"
 	"github.com/nanopack/mist/core"
-	"github.com/spf13/viper"
 )
 
 //
 var (
-
-	//
 	ErrNotImplemented = fmt.Errorf("Error: Not Implemented\n")
 
 	// this is a map of the supported servers that can be started by mist
 	servers  = map[string]handleFunc{}
 	handlers = map[string]mist.HandleFunc{}
 
-	//
 	authtoken string // used when determining if auth command handlers should be added
 )
 
@@ -65,11 +64,11 @@ func Start(uris []string, token string) error {
 	errChan := make(chan error, len(uris))
 
 	// iterate over each of the provided listener uris attempting to start them
-	// individually; if one isn't supported it skipped
-	for _, uri := range uris {
+	// individually; if one isn't supported it gets skipped
+	for i := range uris {
 
 		// parse the uri string into a url object
-		url, err := url.Parse(uri)
+		url, err := url.Parse(uris[i])
 		if err != nil {
 			return err
 		}
@@ -78,11 +77,12 @@ func Start(uris []string, token string) error {
 		// continue
 		server, ok := servers[url.Scheme]
 		if !ok {
-			fmt.Printf("Unsupported scheme '%v'", url.Scheme)
+			lumber.Error("Unsupported scheme '%v'", url.Scheme)
 			continue
 		}
 
 		// attempt to start the server
+		lumber.Info("Starting '%v' server...", url.Scheme)
 		go server(url.Host, errChan)
 	}
 
@@ -91,6 +91,7 @@ func Start(uris []string, token string) error {
 	// assume successful starts.
 	select {
 	case err := <-errChan:
+		lumber.Error("Failed to start - %v", err)
 		return err
 	case <-time.After(time.Second * time.Duration(len(uris))):
 		// no errors
@@ -98,12 +99,10 @@ func Start(uris []string, token string) error {
 
 	// handle errors that happen after initial start; if any errors are received they
 	// are logged and the servers just try to keep running
-	go func() {
-		for err := range errChan {
-			fmt.Println("ERR!", err)
-			// TODO: log these errors and continue
-		}
-	}()
+	for err := range errChan {
+		// log these errors and continue
+		lumber.Error("Server error - %v", err)
+	}
 
 	return nil
 }

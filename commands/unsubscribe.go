@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
@@ -13,33 +12,43 @@ var (
 
 	//
 	unsubscribeCmd = &cobra.Command{
-		Use:   "unsubscribe",
-		Short: "Unsubscribe tags",
-		Long:  ``,
+		Use:           "unsubscribe",
+		Short:         "Unsubscribe tags",
+		Long:          ``,
+		SilenceErrors: true,
+		SilenceUsage:  true,
 
-		Run: unsubscribe,
+		RunE: unsubscribe,
 	}
 )
 
-// unsubscribe
-func unsubscribe(ccmd *cobra.Command, args []string) {
+func init() {
+	unsubscribeCmd.Flags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
+	unsubscribeCmd.Flags().StringSliceVar(&tags, "tags", tags, "Tags to unsubscribe from")
+}
+
+// unsubscribe. seems like a useless command, since it creates a new client, then unsubscribes itself
+func unsubscribe(ccmd *cobra.Command, args []string) error {
 
 	// missing tags
 	if tags == nil {
 		fmt.Println("Unable to unsubscribe - Missing tags")
-		os.Exit(1)
+		return fmt.Errorf("")
 	}
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(1)
+		fmt.Printf("Failed to connect to '%v' - %v\n", host, err)
+		return err
 	}
 
-	//
-	client.Unsubscribe(tags)
+	err = client.Unsubscribe(tags)
+	if err != nil {
+		fmt.Printf("Failed to unsubscribe - %v\n", err)
+		return err
+	}
 
-	//
-	msg := <-client.Messages()
-	fmt.Println(msg.Data)
+	fmt.Println("success")
+
+	return nil
 }

@@ -3,16 +3,15 @@ package clients
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"time"
+
+	"github.com/jcelliott/lumber"
 
 	"github.com/nanopack/mist/core"
 )
 
-//
 type (
-
 	// TCP represents a TCP connection to the mist server
 	TCP struct {
 		conn     net.Conn          // the connection the mist server
@@ -42,7 +41,7 @@ func (c *TCP) connect() error {
 	// attempt to connect to the server
 	conn, err := net.Dial("tcp", c.host)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to dail %v - %v", c.host, err)
 	}
 
 	// set the connection for the client
@@ -54,24 +53,22 @@ func (c *TCP) connect() error {
 	// connection loop (blocking); continually read off the connection. Once something
 	// is read, check to see if it's a message the client understands to be one of
 	// its commands. If so attempt to execute the command.
+	decoder := json.NewDecoder(conn)
 	go func() {
-		decoder := json.NewDecoder(conn)
 
-		for decoder.More() {
-			//
+		for {
 			msg := mist.Message{}
 
 			// decode an array value (Message)
 			if err := decoder.Decode(&msg); err != nil {
-
-				// an error decoding should be sent to the user
-				reader := decoder.Buffered()
-				bytes, _ := ioutil.ReadAll(reader)
-				msg.Error = string(bytes)
+				lumber.Error("[mist client] Failed to get message from mist - %s", err.Error())
+				conn.Close()
+				close(c.messages)
+				return
 			}
 
-			//
-			c.messages <- msg
+			c.messages <- msg // read from this using the .Messages() function
+			lumber.Trace("[mist client] Received message - %#v", msg)
 		}
 	}()
 
@@ -92,12 +89,10 @@ func (c *TCP) Ping() error {
 // on those tags, returning the tags and an error or nil
 func (c *TCP) Subscribe(tags []string) error {
 
-	//
 	if len(tags) == 0 {
 		return fmt.Errorf("Unable to subscribe - missing tags")
 	}
 
-	//
 	return c.encoder.Encode(&mist.Message{Command: "subscribe", Tags: tags})
 }
 
@@ -105,12 +100,10 @@ func (c *TCP) Subscribe(tags []string) error {
 // updates on those tags, returning an error or nil
 func (c *TCP) Unsubscribe(tags []string) error {
 
-	//
 	if len(tags) == 0 {
 		return fmt.Errorf("Unable to unsubscribe - missing tags")
 	}
 
-	//
 	return c.encoder.Encode(&mist.Message{Command: "unsubscribe", Tags: tags})
 }
 
@@ -118,17 +111,14 @@ func (c *TCP) Unsubscribe(tags []string) error {
 // clients
 func (c *TCP) Publish(tags []string, data string) error {
 
-	//
 	if len(tags) == 0 {
 		return fmt.Errorf("Unable to publish - missing tags")
 	}
 
-	//
 	if data == "" {
 		return fmt.Errorf("Unable to publish - missing data")
 	}
 
-	//
 	return c.encoder.Encode(&mist.Message{Command: "publish", Tags: tags, Data: data})
 }
 
@@ -149,11 +139,8 @@ func (c *TCP) List() error {
 
 // Close closes the client data channel and the connection to the server
 func (c *TCP) Close() {
-
-	// we need to do it in this order in case the goroutine is stuck waiting for
-	// more data from the socket
 	c.conn.Close()
-	close(c.messages)
+	// close(c.messages) // we don't close this in case there is a message waiting in the channel
 }
 
 // Messages ...

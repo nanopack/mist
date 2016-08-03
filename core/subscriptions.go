@@ -2,10 +2,7 @@ package mist
 
 import "sort"
 
-// interfaces
 type (
-
-	//
 	subscriptions interface {
 		Add([]string)
 		Remove([]string)
@@ -79,6 +76,7 @@ func (node *Node) Remove(keys []string) {
 		return
 	}
 
+	// todo: why sort?
 	sort.Strings(keys)
 	node.remove(keys)
 }

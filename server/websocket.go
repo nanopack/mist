@@ -20,12 +20,10 @@ func init() {
 
 // StartWS starts a mist server listening over a websocket
 func StartWS(uri string, errChan chan<- error) {
-	lumber.Info("WS server listening at '%s'...\n", uri)
-
 	router := pat.New()
 	router.Get("/subscribe/websocket", func(rw http.ResponseWriter, req *http.Request) {
 
-		//
+		// prepare to upgrade http to ws
 		upgrader := websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -34,15 +32,14 @@ func StartWS(uri string, errChan chan<- error) {
 			},
 		}
 
-		//
+		// upgrade to websocket conn
 		conn, err := upgrader.Upgrade(rw, req, nil)
 		if err != nil {
-			errChan <- fmt.Errorf("Failed to upgrade connection %v", err.Error())
+			errChan <- fmt.Errorf("Failed to upgrade connection - %v", err.Error())
 			return
 		}
 		defer conn.Close()
 
-		//
 		proxy := mist.NewProxy()
 		defer proxy.Close()
 
@@ -79,9 +76,11 @@ func StartWS(uri string, errChan chan<- error) {
 			// if the next input matches the token then add auth commands
 			if xtoken != authtoken {
 				// break // allow connection w/o admin commands
+				errChan <- fmt.Errorf("Token given doesn't match configured token")
 				return // disconnect client
 			}
 
+			// todo: still used?
 			// add auth commands ("admin" mode)
 			for k, v := range auth.GenerateHandlers() {
 				handlers[k] = v
@@ -102,7 +101,7 @@ func StartWS(uri string, errChan chan<- error) {
 			// want mist just looping forever tyring to write to something it will
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
-				errChan <- fmt.Errorf(err.Error())
+				errChan <- fmt.Errorf("Failed to readJson message from WS connection - %v", err)
 				break
 			}
 
@@ -111,24 +110,28 @@ func StartWS(uri string, errChan chan<- error) {
 
 			// if the command isn't found, return an error
 			if !found {
+				lumber.Trace("Command '%v' not found", msg.Command)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: "Unknown Command"}); err != nil {
-					errChan <- fmt.Errorf(err.Error())
+					errChan <- fmt.Errorf("WS Failed to respond to client with 'command not found' - %v", err)
 				}
 				continue
 			}
 
 			// attempt to run the command
+			lumber.Trace("WS Running '%v'...", msg.Command)
 			if err := handler(proxy, msg); err != nil {
+				lumber.Trace("WS Failed to run '%v' - %v", msg.Command, err)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
-					errChan <- fmt.Errorf(err.Error())
+					errChan <- fmt.Errorf("WS Failed to respond to client with error - %v", err)
 				}
 				continue
 			}
 		}
 	})
 
-	//
-	go http.ListenAndServe(uri, router)
+	lumber.Info("WS server listening at '%s'...\n", uri)
+	// go http.ListenAndServe(uri, router)
+	http.ListenAndServe(uri, router)
 }
 
 // StartWSS starts a mist server listening over a secure websocket

@@ -4,13 +4,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/jcelliott/lumber"
 )
 
 type (
-
 	// Proxy ...
 	Proxy struct {
-		sync.Mutex
+		sync.RWMutex
 
 		Authenticated bool
 		Pipe          chan Message
@@ -24,7 +25,7 @@ type (
 // NewProxy ...
 func NewProxy() (p *Proxy) {
 
-	//
+	// create new proxy
 	p = &Proxy{
 		Pipe:          make(chan Message),
 		check:         make(chan Message),
@@ -41,10 +42,11 @@ func NewProxy() (p *Proxy) {
 // connect
 func (p *Proxy) connect() {
 
+	lumber.Trace("Proxy connecting...")
 	// add the proxy to mists list of subscribers
-	p.Lock()
+	// p.Lock() // locked in subscribe() function
 	subscribe(p)
-	p.Unlock()
+	// p.Unlock()
 
 	// this gofunc handles matching messages to subscriptions for the proxy
 	go p.handleMessages()
@@ -67,9 +69,9 @@ func (p *Proxy) handleMessages() {
 		// across the channel
 		case msg := <-p.check:
 
-			p.Lock()
+			p.RLock()
 			match := p.subscriptions.Match(msg.Tags)
-			p.Unlock()
+			p.RUnlock()
 
 			// if there is a subscription for the tags publish the message
 			if match {
@@ -85,13 +87,13 @@ func (p *Proxy) handleMessages() {
 
 // Subscribe ...
 func (p *Proxy) Subscribe(tags []string) {
+	lumber.Trace("Proxy subscribing to '%v'...", tags)
 
-	//
-	if len(tags) == 0 {
-		// is this an error?
-	}
+	// if len(tags) == 0 {
+	// 	// is this an error?
+	// }
 
-	//
+	// add tags to subscription
 	p.Lock()
 	p.subscriptions.Add(tags)
 	p.Unlock()
@@ -99,13 +101,13 @@ func (p *Proxy) Subscribe(tags []string) {
 
 // Unsubscribe ...
 func (p *Proxy) Unsubscribe(tags []string) {
+	lumber.Trace("Proxy unsubscribing from '%v'...", tags)
 
-	//
-	if len(tags) == 0 {
-		// is this an error?
-	}
+	// if len(tags) == 0 {
+	// 	// is this an error?
+	// }
 
-	//
+	// remove tags from subscription
 	p.Lock()
 	p.subscriptions.Remove(tags)
 	p.Unlock()
@@ -113,6 +115,8 @@ func (p *Proxy) Unsubscribe(tags []string) {
 
 // Publish ...
 func (p *Proxy) Publish(tags []string, data string) error {
+	lumber.Trace("Proxy publishing to %v...", tags)
+
 	return publish(p.id, tags, data)
 }
 
@@ -121,23 +125,25 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 	go func() {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
-			// TODO: log this error and continue?
+			// log this error and continue
+			lumber.Error("Proxy failed to PublishAfter - %v", err)
 		}
 	}()
 }
 
 // List returns a list of all current subscriptions
 func (p *Proxy) List() (data [][]string) {
-	p.Lock()
+	lumber.Trace("Proxy listing subscriptions...")
+	p.RLock()
 	data = p.subscriptions.ToSlice()
-	p.Unlock()
+	p.RUnlock()
 
-	//
 	return
 }
 
 // Close ...
 func (p *Proxy) Close() {
+	lumber.Trace("Proxy closing...")
 
 	// this closes the goroutine that is matching messages to subscriptions
 	close(p.done)

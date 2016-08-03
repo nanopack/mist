@@ -23,7 +23,7 @@ func init() {
 // StartHTTP starts a mist server listening over HTTP
 func StartHTTP(uri string, errChan chan<- error) {
 	if err := newHTTP(uri); err != nil {
-		errChan <- fmt.Errorf("Unable to start mist http listener %v", err)
+		errChan <- fmt.Errorf("Unable to start mist http listener - %v", err)
 	}
 }
 

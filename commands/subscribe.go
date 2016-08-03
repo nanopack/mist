@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
@@ -13,32 +12,40 @@ var (
 
 	//
 	subscribeCmd = &cobra.Command{
-		Use:   "subscribe",
-		Short: "Subscribe tags",
-		Long:  ``,
+		Use:           "subscribe",
+		Short:         "Subscribe tags",
+		Long:          ``,
+		SilenceErrors: true,
+		SilenceUsage:  true,
 
-		Run: subscribe,
+		RunE: subscribe,
 	}
 )
 
+func init() {
+	subscribeCmd.Flags().StringVar(&host, "host", host, "The IP of a running mist server to connect to")
+	subscribeCmd.Flags().StringSliceVar(&tags, "tags", tags, "Tags to subscribe to")
+}
+
 // subscribe
-func subscribe(ccmd *cobra.Command, args []string) {
+func subscribe(ccmd *cobra.Command, args []string) error {
 
 	// missing tags
 	if tags == nil {
 		fmt.Println("Unable to subscribe - Missing tags")
-		os.Exit(1)
+		return fmt.Errorf("")
 	}
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(1)
+		fmt.Printf("Failed to connect to '%v' - %v\n", host, err)
+		return err
 	}
 
 	//
 	if err := client.Subscribe(tags); err != nil {
 		fmt.Printf("Unable to subscribe - %v\n", err.Error())
+		return fmt.Errorf("")
 	}
 
 	// listen for messages on tags
@@ -54,4 +61,6 @@ func subscribe(ccmd *cobra.Command, args []string) {
 			}
 		}
 	}
+
+	return nil
 }

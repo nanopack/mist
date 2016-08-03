@@ -1,4 +1,4 @@
-[![mist logo](http://nano-assets.gopagoda.io/readme-headers/mist.png)](http://nanobox.io/open-source#mist)
+[![mist logo](http://nano-assets.gopagoda.io/readme-headers/mist.png)](http://nanobox.io/open-source#mist)  
 [![Build Status](https://travis-ci.org/nanopack/mist.svg)](https://travis-ci.org/nanopack/mist)
 
 Mist is a simple pub/sub based on the idea that messages are tagged. To subscribe, a client simply constructs a list of tags that it is interested in, and all messages that are tagged with *all* of those tags are sent to that client.
@@ -153,8 +153,8 @@ The CLI provides a built-in TCP client that can be used to connect with any runn
 
 ```
 Usage:
-   [flags]
-   [command]
+  mist [flags]
+  mist [command]
 
 Available Commands:
   ping        Ping a running mist server
@@ -164,21 +164,15 @@ Available Commands:
   list        List all subscriptions
 
 Flags:
-      --authenticator="": Setting this option enables authentication and uses the authenticator provided to store tokens
-      --config="": /path/to/config.yml
-  -h, --help[=false]: help for
-      --host="127.0.0.1:1445": The IP of a running mist server to connect to
-      --listeners=[tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888]: A comma delimited list of servers to start
-      --log-file="/var/log/mist.log": If log-type=file, the /path/to/logfile; ignored otherwise
-      --log-level="INFO": Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL)
-      --log-type="stdout": The type of logging (stdout, file)
-      --replicator="": not yet implemented
-      --server[=false]: Run mist as a server
-      --tags=[]: Tags used when subscribing, publishing, or unsubscribing
-      --token="": Auth token used when connecting to a Mist started with an authenticator
-      --version[=false]: Display the current version of this CLI
+      --authenticator string   Setting enables authentication, storing tokens in the authenticator provided
+      --config string          Path to config file
+      --listeners value        A comma delimited list of servers to start (default [tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888])
+      --log-level string       Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
+      --server                 Run mist as a server
+      --token string           Auth token for connections
+  -v, --version                Display the current version of this CLI
 
-Use " [command] --help" for more information about a command.
+Use "mist [command] --help" for more information about a command.
 ```
 
 #### TCP Client
@@ -269,7 +263,7 @@ To run mist as a server, using the following command will start mist as a daemon
 
 If you need to override any default config options you can pass the path to a config file:
 
-`mist --server --config /path/to/config`
+`mist --config /path/to/config`
 
 ##### example config
 
@@ -279,6 +273,7 @@ listeners:
   - tcp://127.0.0.1:1445
 log-level: INFO
 token: TOKEN
+server: true
 ```
 
 Or you can just pass any configuration options as flags:
