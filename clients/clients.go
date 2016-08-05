@@ -59,14 +59,14 @@ func (c *TCP) connect() error {
 		}
 	}
 
-	// ensure we are authorized (unauthorized clients get disconnected)
+	// ensure we are authorized/still connected (unauthorized clients get disconnected)
 	c.Ping()
 	decoder := json.NewDecoder(conn)
 	msg := mist.Message{}
 	if err := decoder.Decode(&msg); err != nil {
 		conn.Close()
 		close(c.messages)
-		return fmt.Errorf("Ping failed, possibly bad token")
+		return fmt.Errorf("Ping failed, possibly bad token, or can't read from mist")
 	}
 
 	// connection loop (blocking); continually read off the connection. Once something
