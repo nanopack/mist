@@ -1,4 +1,4 @@
-package auth
+package auth_test
 
 import (
 	"net/url"
@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	_ "github.com/lib/pq"
+
+	mistAuth "github.com/nanopack/mist/auth"
 )
 
 var (
@@ -20,12 +22,12 @@ var (
 func TestStart(t *testing.T) {
 
 	//
-	if err := Start("memory://"); err != nil {
+	if err := mistAuth.Start("memory://"); err != nil {
 		t.Fatalf("Unexpected error!")
 	}
 
 	// DefaultAuth is set inside of an auth start and should not be nil once started
-	if DefaultAuth == nil {
+	if mistAuth.DefaultAuth == nil {
 		t.Fatalf("Unexpected nil DefaultAuth!")
 	}
 }
@@ -40,7 +42,7 @@ func TestMemory(t *testing.T) {
 	}
 
 	// create a new memory authenticator
-	mem, err := NewMemory(url)
+	mem, err := mistAuth.NewMemory(url)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -64,7 +66,7 @@ func TestScribble(t *testing.T) {
 	}
 
 	//
-	scribble, err := NewScribble(url)
+	scribble, err := mistAuth.NewScribble(url)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -98,7 +100,7 @@ func TestScribble(t *testing.T) {
 // }
 
 // testAuth tests to ensure all authenticator methods are working as intended
-func testAuth(auth Authenticator, t *testing.T) {
+func testAuth(auth mistAuth.Authenticator, t *testing.T) {
 
 	// no token should exist yet
 	tags, err := auth.GetTagsForToken(testToken)

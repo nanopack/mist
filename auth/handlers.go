@@ -27,11 +27,6 @@ func handleRegister(proxy *mist.Proxy, msg mist.Message) error {
 	}
 
 	//
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "register", Tags: msg.Tags, Data: "success"}
-	}()
-
-	//
 	return nil
 }
 
@@ -42,11 +37,6 @@ func handleUnregister(proxy *mist.Proxy, msg mist.Message) error {
 	if err := DefaultAuth.RemoveToken(msg.Data); err != nil {
 		return err
 	}
-
-	//
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "unregister", Tags: msg.Tags, Data: "success"}
-	}()
 
 	//
 	return nil
@@ -61,11 +51,6 @@ func handleSet(proxy *mist.Proxy, msg mist.Message) error {
 	}
 
 	//
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "set", Tags: msg.Tags, Data: "success"}
-	}()
-
-	//
 	return nil
 }
 
@@ -76,11 +61,6 @@ func handleUnset(proxy *mist.Proxy, msg mist.Message) error {
 	if err := DefaultAuth.RemoveTags(msg.Data, msg.Tags); err != nil {
 		return err
 	}
-
-	//
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "unset", Tags: msg.Tags, Data: "success"}
-	}()
 
 	//
 	return nil
@@ -95,11 +75,7 @@ func handleTags(proxy *mist.Proxy, msg mist.Message) error {
 		return err
 	}
 
-	//
-	go func() {
-		proxy.Pipe <- mist.Message{Command: "tags", Tags: tags}
-	}()
+	proxy.Pipe <- mist.Message{Command: "tags", Tags: tags}
 
-	//
 	return nil
 }

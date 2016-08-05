@@ -7,3 +7,6 @@ addons:
 
 services:
   - postgresql
+
+install: go get -t -v .
+script: go test -v ./... -cover
