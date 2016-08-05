@@ -3,6 +3,7 @@ package mist
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,13 +30,54 @@ type (
 	HandleFunc func(*Proxy, Message) error
 )
 
-// Publish publishes to ALL subscribers
+// Subscribers is listall related
+func Subscribers() string {
+	subs := make(map[string]bool) // no duplicates
+
+	// get tags all clients subscribed to
+	for i := range subscribers {
+		s := subscribers[i].subscriptions.ToSlice()
+		for j := range s {
+			for k := range s[j] {
+				subs[s[j][k]] = true
+			}
+		}
+	}
+
+	// slice it
+	subSlice := []string{}
+	for k, _ := range subs {
+		subSlice = append(subSlice, k)
+	}
+
+	return strings.Join(subSlice, " ")
+}
+
+// Who is who related
+func Who() (int, int) {
+	// subs := make(map[string]bool) // no duplicates
+	subs := []string{}
+
+	// get tags all clients subscribed to
+	for i := range subscribers {
+		subs = append(subs, fmt.Sprint(subscribers[i].id))
+	}
+
+	return len(subs), int(uid)
+}
+
+// todo: delete these 2. limiting what is a subscriber makes this not needed
+// if they subscribe to a thing on a reused connection, they wanted to get updates.. hopefully
+//
+// Publish publishes to ALL subscribers. Usefull in client applications
+// who reuse the publish connection for subscribing (publishes to self)
 func Publish(tags []string, data string) error {
 	lumber.Trace("Publishing...")
 	return publish(0, tags, data)
 }
 
-// PublishAfter publishes to ALL subscribers
+// PublishAfter publishes to ALL subscribers. Usefull in client applications
+// who reuse the publish connection for subscribing
 func PublishAfter(tags []string, data string, delay time.Duration) error {
 	go func() {
 		<-time.After(delay)
@@ -55,7 +97,7 @@ func publish(pid uint32, tags []string, data string) error {
 		return fmt.Errorf("Failed to publish. Missing tags")
 	}
 
-	// todo: so if there are no subscribers, the message goes nowhere?
+	// if there are no subscribers, the message goes nowhere
 	//
 	// this could be more optimized, but it might not be an issue unless thousands
 	// of clients are using mist.

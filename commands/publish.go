@@ -3,9 +3,10 @@ package commands
 import (
 	"fmt"
 
-	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/nanopack/mist/clients"
 )
 
 var (
@@ -23,9 +24,7 @@ var (
 		RunE: publish,
 	}
 
-	//
 	publishCmd = &cobra.Command{
-
 		Use:           "publish",
 		Short:         "Publish a message",
 		Long:          ``,

@@ -3,6 +3,7 @@ package clients
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
@@ -41,7 +42,7 @@ func (c *TCP) connect() error {
 	// attempt to connect to the server
 	conn, err := net.Dial("tcp", c.host)
 	if err != nil {
-		return fmt.Errorf("Failed to dail %v - %v", c.host, err)
+		return fmt.Errorf("Failed to dial '%v' - %v", c.host, err)
 	}
 
 	// set the connection for the client
@@ -50,10 +51,27 @@ func (c *TCP) connect() error {
 	// create a new json encoder for the clients connection
 	c.encoder = json.NewEncoder(c.conn)
 
+	// if the client was created with a token, authentication is needed
+	if c.token != "" {
+		err = c.encoder.Encode(&mist.Message{Command: "auth", Data: c.token})
+		if err != nil {
+			return fmt.Errorf("Failed to send auth - %v", err)
+		}
+	}
+
+	// ensure we are authorized (unauthorized clients get disconnected)
+	c.Ping()
+	decoder := json.NewDecoder(conn)
+	msg := mist.Message{}
+	if err := decoder.Decode(&msg); err != nil {
+		conn.Close()
+		close(c.messages)
+		return fmt.Errorf("Ping failed, possibly bad token")
+	}
+
 	// connection loop (blocking); continually read off the connection. Once something
 	// is read, check to see if it's a message the client understands to be one of
 	// its commands. If so attempt to execute the command.
-	decoder := json.NewDecoder(conn)
 	go func() {
 
 		for {
@@ -61,21 +79,22 @@ func (c *TCP) connect() error {
 
 			// decode an array value (Message)
 			if err := decoder.Decode(&msg); err != nil {
-				lumber.Error("[mist client] Failed to get message from mist - %s", err.Error())
+				switch err {
+				case io.EOF:
+					lumber.Debug("[mist client] Mist terminated connection")
+				case io.ErrUnexpectedEOF:
+					lumber.Debug("[mist client] Mist terminated connection unexpedtedly")
+				default:
+					lumber.Error("[mist client] Failed to get message from mist - %s", err.Error())
+				}
 				conn.Close()
 				close(c.messages)
 				return
 			}
-
 			c.messages <- msg // read from this using the .Messages() function
 			lumber.Trace("[mist client] Received message - %#v", msg)
 		}
 	}()
-
-	// if the client was created with a token, authentication is needed
-	if c.token != "" {
-		return c.encoder.Encode(&mist.Message{Command: "auth", Data: c.token})
-	}
 
 	return nil
 }
@@ -135,6 +154,18 @@ func (c *TCP) PublishAfter(tags []string, data string, delay time.Duration) erro
 // List requests a list from the server of the tags this client is subscribed to
 func (c *TCP) List() error {
 	return c.encoder.Encode(&mist.Message{Command: "list"})
+}
+
+// listall related
+// List requests a list from the server of the tags this client is subscribed to
+func (c *TCP) ListAll() error {
+	return c.encoder.Encode(&mist.Message{Command: "listall"})
+}
+
+// who related
+// Who requests connection/subscriber stats from the server
+func (c *TCP) Who() error {
+	return c.encoder.Encode(&mist.Message{Command: "who"})
 }
 
 // Close closes the client data channel and the connection to the server

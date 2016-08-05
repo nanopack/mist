@@ -101,8 +101,9 @@ func StartWS(uri string, errChan chan<- error) {
 			// want mist just looping forever tyring to write to something it will
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
+				// todo: better logging here too
 				errChan <- fmt.Errorf("Failed to readJson message from WS connection - %v", err)
-				break
+				break // todo: continue?
 			}
 
 			// look for the command
@@ -120,7 +121,7 @@ func StartWS(uri string, errChan chan<- error) {
 			// attempt to run the command
 			lumber.Trace("WS Running '%v'...", msg.Command)
 			if err := handler(proxy, msg); err != nil {
-				lumber.Trace("WS Failed to run '%v' - %v", msg.Command, err)
+				lumber.Debug("WS Failed to run '%v' - %v", msg.Command, err)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
 					errChan <- fmt.Errorf("WS Failed to respond to client with error - %v", err)
 				}

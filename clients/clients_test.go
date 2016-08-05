@@ -79,6 +79,7 @@ func TestTCPClient(t *testing.T) {
 	client, err := clients.New(testAddr, "")
 	if err != nil {
 		t.Fatalf("failed to connect - %v", err.Error())
+		t.FailNow()
 	}
 	defer client.Close()
 

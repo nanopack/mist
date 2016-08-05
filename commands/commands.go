@@ -108,8 +108,8 @@ func init() {
 	MistCmd.Flags().String("authenticator", "", "Setting enables authentication, storing tokens in the authenticator provided")
 	viper.BindPFlag("authenticator", MistCmd.Flags().Lookup("authenticator"))
 
-	MistCmd.Flags().StringSlice("listeners", []string{"tcp://127.0.0.1:1445", "http://127.0.0.1:8080", "ws://127.0.0.1:8888"}, "A comma delimited list of servers to start")
-	viper.BindPFlag("listeners", MistCmd.Flags().Lookup("listeners"))
+	MistCmd.Flags().StringSlice("listeners", []string{"tcp://127.0.0.1:1445", "ws://127.0.0.1:8888"}, "A comma delimited list of servers to start")
+	viper.BindPFlag("listeners", MistCmd.Flags().Lookup("listeners")) // no reason to have "http://127.0.0.1:8080" too, it only has /ping
 
 	MistCmd.Flags().StringVar(&config, "config", config, "Path to config file")
 	viper.BindPFlag("config", MistCmd.Flags().Lookup("config")) // seems this is only bound to access in server/server.go(BUG)
@@ -123,10 +123,10 @@ func init() {
 	MistCmd.AddCommand(pingCmd)
 	MistCmd.AddCommand(subscribeCmd)
 	MistCmd.AddCommand(publishCmd)
-	MistCmd.AddCommand(unsubscribeCmd)
-	MistCmd.AddCommand(listCmd)
 
 	// hidden/aliased commands
+	MistCmd.AddCommand(listCmd)
+	MistCmd.AddCommand(whoCmd)
 	MistCmd.AddCommand(messageCmd)
 	MistCmd.AddCommand(sendCmd)
 }

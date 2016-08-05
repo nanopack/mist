@@ -76,7 +76,6 @@ func (node *Node) Remove(keys []string) {
 		return
 	}
 
-	// todo: why sort?
 	sort.Strings(keys)
 	node.remove(keys)
 }

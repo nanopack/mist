@@ -42,11 +42,7 @@ func NewProxy() (p *Proxy) {
 // connect
 func (p *Proxy) connect() {
 
-	lumber.Trace("Proxy connecting...")
-	// add the proxy to mists list of subscribers
-	// p.Lock() // locked in subscribe() function
-	subscribe(p)
-	// p.Unlock()
+	lumber.Debug("Client connecting...")
 
 	// this gofunc handles matching messages to subscriptions for the proxy
 	go p.handleMessages()
@@ -56,8 +52,9 @@ func (p *Proxy) connect() {
 func (p *Proxy) handleMessages() {
 
 	defer func() {
+		lumber.Trace("Got p.done, closing check and pipe")
 		close(p.check)
-		close(p.Pipe)
+		close(p.Pipe) // don't close pipe (response/pong messages need it), but leaving it unclosed leaves ram bloat on server even after client disconnects
 	}()
 
 	//
@@ -68,13 +65,14 @@ func (p *Proxy) handleMessages() {
 		// sending anything to it; not doing this will cause everything to come
 		// across the channel
 		case msg := <-p.check:
-
+			lumber.Trace("Got p.check")
 			p.RLock()
 			match := p.subscriptions.Match(msg.Tags)
 			p.RUnlock()
 
 			// if there is a subscription for the tags publish the message
 			if match {
+				lumber.Trace("Sending msg on pipe")
 				p.Pipe <- msg
 			}
 
@@ -89,9 +87,13 @@ func (p *Proxy) handleMessages() {
 func (p *Proxy) Subscribe(tags []string) {
 	lumber.Trace("Proxy subscribing to '%v'...", tags)
 
-	// if len(tags) == 0 {
-	// 	// is this an error?
-	// }
+	if len(tags) == 0 {
+		return
+	}
+
+	// add proxy to subscribers list here so not all clients are 'subscribers'
+	// since gets added to a map, there are no duplicates
+	subscribe(p)
 
 	// add tags to subscription
 	p.Lock()
@@ -103,9 +105,9 @@ func (p *Proxy) Subscribe(tags []string) {
 func (p *Proxy) Unsubscribe(tags []string) {
 	lumber.Trace("Proxy unsubscribing from '%v'...", tags)
 
-	// if len(tags) == 0 {
-	// 	// is this an error?
-	// }
+	if len(tags) == 0 {
+		return
+	}
 
 	// remove tags from subscription
 	p.Lock()
@@ -145,9 +147,11 @@ func (p *Proxy) List() (data [][]string) {
 func (p *Proxy) Close() {
 	lumber.Trace("Proxy closing...")
 
+	if len(p.subscriptions.ToSlice()) != 0 {
+		// remove the local p from mist's list of subscribers
+		unsubscribe(p.id)
+	}
+
 	// this closes the goroutine that is matching messages to subscriptions
 	close(p.done)
-
-	// remove the local p from mists list of subscribers
-	unsubscribe(p.id)
 }

@@ -3,14 +3,13 @@ package commands
 import (
 	"fmt"
 
-	"github.com/nanopack/mist/clients"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/nanopack/mist/clients"
 )
 
 var (
-
-	//
 	subscribeCmd = &cobra.Command{
 		Use:           "subscribe",
 		Short:         "Subscribe tags",
@@ -57,7 +56,7 @@ func subscribe(ccmd *cobra.Command, args []string) error {
 			if viper.GetString("log-level") == "DEBUG" {
 				fmt.Printf("Message: %#v\n", msg)
 			} else {
-				fmt.Printf(msg.Data)
+				fmt.Println(msg.Data)
 			}
 		}
 	}

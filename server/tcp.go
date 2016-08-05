@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/jcelliott/lumber"
@@ -64,11 +65,11 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	encoder := json.NewEncoder(conn)
 	decoder := json.NewDecoder(conn)
 
-	// todo: why?
-	// publish mist messages to connected tcp clients (non-blocking)
+	// publish mist messages (pong, etc.. and messages if subscriber attatched)
+	// to connected tcp client (non-blocking)
 	go func() {
 		for msg := range proxy.Pipe {
-
+			lumber.Info("Got message - %#v", msg)
 			// if the message fails to encode its probably a syntax issue and needs to
 			// break the loop here because it will never be able to encode it; this will
 			// disconnect the client.
@@ -83,15 +84,20 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	// is read, check to see if it's a message the client understands to be one of
 	// its commands. If so attempt to execute the command.
 	for {
-		// for decoder.More() {
-
 		msg := mist.Message{}
 
 		// if the message fails to decode its probably a syntax issue and needs to
 		// break the loop here because it will never be able to decode it; this will
 		// disconnect the client.
 		if err := decoder.Decode(&msg); err != nil {
-			errChan <- fmt.Errorf("Failed to decode message from TCP connection - %v", err)
+			switch err {
+			case io.EOF:
+				lumber.Debug("Client disconnected")
+			case io.ErrUnexpectedEOF:
+				lumber.Debug("Client disconnected unexpedtedly")
+			default:
+				errChan <- fmt.Errorf("Failed to decode message from TCP connection - %v", err)
+			}
 			return
 		}
 
@@ -101,7 +107,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 			// if the next input does not match the token then
 			if msg.Data != authtoken {
-				errChan <- fmt.Errorf("Data doesn't match configured auth token")
+				lumber.Debug("Client data doesn't match configured auth token")
 				// break // allow connection w/o admin commands
 				return // disconnect client
 			}
@@ -130,7 +136,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		// for the next command
 		lumber.Trace("TCP Running '%v'...", msg.Command)
 		if err := handler(proxy, msg); err != nil {
-			lumber.Trace("TCP Failed to run '%v' - %v", msg.Command, err)
+			lumber.Debug("TCP Failed to run '%v' - %v", msg.Command, err)
 			encoder.Encode(&mist.Message{Command: msg.Command, Error: err.Error()})
 			continue
 		}

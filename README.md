@@ -160,13 +160,11 @@ Available Commands:
   ping        Ping a running mist server
   subscribe   Subscribe tags
   publish     Publish a message
-  unsubscribe Unsubscribe tags
-  list        List all subscriptions
 
 Flags:
       --authenticator string   Setting enables authentication, storing tokens in the authenticator provided
       --config string          Path to config file
-      --listeners value        A comma delimited list of servers to start (default [tcp://127.0.0.1:1445,http://127.0.0.1:8080,ws://127.0.0.1:8888])
+      --listeners value        A comma delimited list of servers to start (default [tcp://127.0.0.1:1445,ws://127.0.0.1:8888])
       --log-level string       Output level of logs (TRACE, DEBUG, INFO, WARN, ERROR, FATAL) (default "INFO")
       --server                 Run mist as a server
       --token string           Auth token for connections
