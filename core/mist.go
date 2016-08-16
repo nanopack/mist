@@ -21,8 +21,8 @@ type (
 	// published through mist
 	Message struct {
 		Command string   `json:"command"`
-		Tags    []string `json:"tags"`
-		Data    string   `json:"data,omitemtpy"`
+		Tags    []string `json:"tags,omitempty"`
+		Data    string   `json:"data,omitempty"`
 		Error   string   `json:"error,omitempty"`
 	}
 

@@ -228,6 +228,9 @@ NOTE: If authentication is enabled you'll need to provide a token when connectin
 * As a Header: `X-AUTH-TOKEN: token`
 * As a query param: `x-auth-token=token`
 
+NOTE: If using WSS you'll need to accept the generated cert via the browser `https://localhost:8082/subscribe/websocket`
+prior to chrome console letting you run the following javascript.
+
 ##### Example
 
 ``` javascript
