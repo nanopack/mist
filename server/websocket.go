@@ -189,12 +189,14 @@ func StartWSS(uri string, errChan chan<- error) {
 				xtoken = req.Header.Get("X-AUTH-TOKEN")
 			case req.FormValue("x-auth-token") != "":
 				xtoken = req.FormValue("x-auth-token")
+			case req.FormValue("X-AUTH-TOKEN") != "":
+				xtoken = req.FormValue("X-AUTH-TOKEN")
 			}
 
 			// if the next input matches the token then add auth commands
 			if xtoken != authtoken {
 				// break // allow connection w/o admin commands
-				errChan <- fmt.Errorf("Token given doesn't match configured token")
+				errChan <- fmt.Errorf("Token given doesn't match configured token - %v", xtoken)
 				return // disconnect client
 			}
 
