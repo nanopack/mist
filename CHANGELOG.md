@@ -1,3 +1,20 @@
+## v1.1.2 (August 18, 2016)
+
+IMPROVEMENTS:
+  - Layer in WSS
+
+## v1.1.1 (August 5, 2016)
+
+BUG FIXES:
+  - Resolve stray goroutine memory leak
+  - Ensure error is returned if auth is unsuccessful
+
+IMPROVEMENTS:
+  - All connections are not subscribers
+  - Allow server as a config file option
+  - Add versioning
+  - Enhance logging
+
 ## v1.1.0 (April 22, 2016)
 
 BUG FIXES:
