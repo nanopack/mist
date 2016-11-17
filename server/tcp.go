@@ -69,7 +69,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	// to connected tcp client (non-blocking)
 	go func() {
 		for msg := range proxy.Pipe {
-			lumber.Info("Got message - %#v", msg)
+			lumber.Trace("Got message - %#v", msg)
 			// if the message fails to encode its probably a syntax issue and needs to
 			// break the loop here because it will never be able to encode it; this will
 			// disconnect the client.
