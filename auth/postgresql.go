@@ -30,7 +30,7 @@ func NewPostgres(url *url.URL) (Authenticator, error) {
 	// pass, _ := url.User.Password()
 
 	//
-	pg := postgres(fmt.Sprintf("user=%v database=%v sslmode=disable host=%v port=%v", user, db, host, port))
+	pg := postgres(fmt.Sprintf("user=%s database=%s sslmode=disable host=%s port=%s", user, db, host, port))
 
 	// create the tables needed to support mist authentication
 	if _, err = pg.exec(`

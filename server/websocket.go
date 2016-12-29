@@ -36,7 +36,7 @@ func StartWS(uri string, errChan chan<- error) {
 		// upgrade to websocket conn
 		conn, err := upgrader.Upgrade(rw, req, nil)
 		if err != nil {
-			errChan <- fmt.Errorf("Failed to upgrade connection - %v", err.Error())
+			errChan <- fmt.Errorf("Failed to upgrade connection - %s", err)
 			return
 		}
 		defer conn.Close()
@@ -55,7 +55,10 @@ func StartWS(uri string, errChan chan<- error) {
 				// want mist just looping forever tyring to write to something it will
 				// never be able to.
 				if err := conn.WriteJSON(msg); err != nil {
-					errChan <- fmt.Errorf(err.Error())
+					if err.Error() != "websocket: close sent" {
+						errChan <- fmt.Errorf("Failed to WriteJSON message to WS connection - %s", err)
+					}
+
 					break
 				}
 			}
@@ -103,7 +106,10 @@ func StartWS(uri string, errChan chan<- error) {
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
 				// todo: better logging here too
-				errChan <- fmt.Errorf("Failed to readJson message from WS connection - %v", err)
+				if err.Error() != "websocket: close 1001" && err.Error() != "websocket: close 1006 unexpected EOF" { // don't log if client disconnects
+					errChan <- fmt.Errorf("Failed to ReadJson message from WS connection - %s", err)
+				}
+
 				break // todo: continue?
 			}
 
@@ -114,7 +120,7 @@ func StartWS(uri string, errChan chan<- error) {
 			if !found {
 				lumber.Trace("Command '%v' not found", msg.Command)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: "Unknown Command"}); err != nil {
-					errChan <- fmt.Errorf("WS Failed to respond to client with 'command not found' - %v", err)
+					errChan <- fmt.Errorf("WS Failed to respond to client with 'command not found' - %s", err)
 				}
 				continue
 			}
@@ -124,7 +130,7 @@ func StartWS(uri string, errChan chan<- error) {
 			if err := handler(proxy, msg); err != nil {
 				lumber.Debug("WS Failed to run '%v' - %v", msg.Command, err)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
-					errChan <- fmt.Errorf("WS Failed to respond to client with error - %v", err)
+					errChan <- fmt.Errorf("WS Failed to respond to client with error - %s", err)
 				}
 				continue
 			}
@@ -153,7 +159,7 @@ func StartWSS(uri string, errChan chan<- error) {
 		// upgrade to websocket conn
 		conn, err := upgrader.Upgrade(rw, req, nil)
 		if err != nil {
-			errChan <- fmt.Errorf("Failed to upgrade connection - %v", err.Error())
+			errChan <- fmt.Errorf("Failed to upgrade connection - %s", err)
 			return
 		}
 		defer conn.Close()
@@ -172,7 +178,10 @@ func StartWSS(uri string, errChan chan<- error) {
 				// want mist just looping forever tyring to write to something it will
 				// never be able to.
 				if err := conn.WriteJSON(msg); err != nil {
-					errChan <- fmt.Errorf(err.Error())
+					if err.Error() != "websocket: close sent" {
+						errChan <- fmt.Errorf("Failed to WriteJSON message to WSS connection - %s", err)
+					}
+
 					break
 				}
 			}
@@ -221,8 +230,10 @@ func StartWSS(uri string, errChan chan<- error) {
 			// want mist just looping forever tyring to write to something it will
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
-				// todo: better logging here too
-				errChan <- fmt.Errorf("Failed to readJson message from WSS connection - %v", err)
+				if err.Error() != "websocket: close 1001" && err.Error() != "websocket: close 1006 unexpected EOF" { // don't log if client disconnects
+					errChan <- fmt.Errorf("Failed to ReadJson message from WSS connection - %s", err)
+				}
+
 				break // todo: continue?
 			}
 
@@ -233,7 +244,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			if !found {
 				lumber.Trace("Command '%v' not found", msg.Command)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: "Unknown Command"}); err != nil {
-					errChan <- fmt.Errorf("WSS Failed to respond to client with 'command not found' - %v", err)
+					errChan <- fmt.Errorf("WSS Failed to respond to client with 'command not found' - %s", err)
 				}
 				continue
 			}
@@ -243,7 +254,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			if err := handler(proxy, msg); err != nil {
 				lumber.Debug("WSS Failed to run '%v' - %v", msg.Command, err)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
-					errChan <- fmt.Errorf("WSS Failed to respond to client with error - %v", err)
+					errChan <- fmt.Errorf("WSS Failed to respond to client with error - %s", err)
 				}
 				continue
 			}

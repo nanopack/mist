@@ -18,7 +18,7 @@ func TestWSStart(t *testing.T) {
 
 	go func() {
 		if err := server.Start([]string{"ws://127.0.0.1:8888"}, ""); err != nil {
-			t.Fatalf("Unexpected error - %v", err.Error())
+			t.Fatalf("Unexpected error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)
@@ -33,7 +33,7 @@ func TestWSSStart(t *testing.T) {
 
 	go func() {
 		if err := server.Start([]string{"wss://127.0.0.1:8988"}, ""); err != nil {
-			t.Fatalf("Unexpected error - %v", err.Error())
+			t.Fatalf("Unexpected error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)

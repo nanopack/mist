@@ -63,7 +63,7 @@ func Start(uri string) error {
 	// check to see if the scheme is supported; if not, indicate as such and continue
 	auth, ok := authenticators[url.Scheme]
 	if !ok {
-		return fmt.Errorf("Unsupported scheme '%v'", url.Scheme)
+		return fmt.Errorf("Unsupported scheme '%s'", url.Scheme)
 	}
 
 	// set DefaultAuth by attempting to start the desired authenticator

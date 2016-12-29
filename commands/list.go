@@ -35,22 +35,22 @@ func list(ccmd *cobra.Command, args []string) error {
 	// create new mist client
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf("Failed to connect to '%v' - %v\n", host, err)
+		fmt.Printf("Failed to connect to '%s' - %s\n", host, err)
 		return err
 	}
 
 	// listall related
 	err = client.ListAll()
 	if err != nil {
-		fmt.Printf("Failed to list - %v\n", err)
+		fmt.Printf("Failed to list - %s\n", err)
 		return err
 	}
 
 	msg := <-client.Messages()
 	if msg.Data == "" {
-		fmt.Printf("No subscribers connected to mist at '%v'\n", host)
+		fmt.Printf("No subscribers connected to mist at '%s'\n", host)
 	} else {
-		fmt.Printf("Subscribers are subscribing on the following tags: %v\n", msg.Data)
+		fmt.Printf("Subscribers are subscribing on the following tags: %s\n", msg.Data)
 	}
 
 	return nil

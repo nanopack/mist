@@ -153,37 +153,37 @@ func TestList(t *testing.T) {
 	node.Add([]string{"a"})
 	list := node.ToSlice()
 	if len(list) != 1 {
-		t.Fatalf("Wrong number of keys - Expecting 1 got %v", len(list))
+		t.Fatalf("Wrong number of keys - Expecting 1 got %d", len(list))
 	}
 	if len(list[0]) != 1 {
-		t.Fatalf("Wrong number of keys - Expecing 2 got %v", len(list[0]))
+		t.Fatalf("Wrong number of keys - Expecing 2 got %d", len(list[0]))
 	}
 	if strings.Join(list[0], ",") != "a" {
-		t.Fatalf("Wrong tags - Expecing 'a' got %v", list[0])
+		t.Fatalf("Wrong tags - Expecing 'a' got %s", list[0])
 	}
 
 	node.Add([]string{"a", "b"})
 	list = node.ToSlice()
 	if len(list) != 2 {
-		t.Fatalf("Wrong number of keys - Expecting 2 got %v", len(list))
+		t.Fatalf("Wrong number of keys - Expecting 2 got %d", len(list))
 	}
 	if len(list[1]) != 2 {
-		t.Fatalf("Wrong number of keys - Expecing 2 got %v", len(list[1]))
+		t.Fatalf("Wrong number of keys - Expecing 2 got %d", len(list[1]))
 	}
 	if strings.Join(list[1], ",") != "a,b" {
-		t.Fatalf("Wrong tags - Expecing 'a,b' got %v", list[1])
+		t.Fatalf("Wrong tags - Expecing 'a,b' got %s", list[1])
 	}
 
 	node.Add([]string{"a", "b", "c"})
 	list = node.ToSlice()
 	if len(list) != 3 {
-		t.Fatalf("wrong length of list. Expecting 3 got %v", len(list))
+		t.Fatalf("wrong length of list. Expecting 3 got %d", len(list))
 	}
 	if len(list[2]) != 3 {
-		t.Fatalf("Wrong number of keys - Expecing 3 got %v", len(list[2]))
+		t.Fatalf("Wrong number of keys - Expecing 3 got %d", len(list[2]))
 	}
 	if strings.Join(list[2], ",") != "a,b,c" {
-		t.Fatalf("Wrong tags - Expecing 'a,b,c' got %v", list[1])
+		t.Fatalf("Wrong tags - Expecing 'a,b,c' got %s", list[1])
 	}
 }
 

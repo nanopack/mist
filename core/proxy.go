@@ -128,7 +128,7 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
 			// log this error and continue
-			lumber.Error("Proxy failed to PublishAfter - %v", err)
+			lumber.Error("Proxy failed to PublishAfter - %s", err)
 		}
 	}()
 }

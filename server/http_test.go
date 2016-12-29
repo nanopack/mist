@@ -17,7 +17,7 @@ func TestHTTPStart(t *testing.T) {
 	auth.DefaultAuth = nil
 	go func() {
 		if err := server.Start([]string{"http://127.0.0.1:8080"}, ""); err != nil {
-			t.Fatalf("Unexpected error - %v", err.Error())
+			t.Fatalf("Unexpected error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)

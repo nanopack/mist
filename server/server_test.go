@@ -15,13 +15,13 @@ func TestAuthStart(t *testing.T) {
 
 	// start an authenticator
 	if err := auth.Start("memory://"); err != nil {
-		t.Fatalf("Unexpected error - %v", err.Error())
+		t.Fatalf("Unexpected error - %s", err)
 	}
 
 	// test for error if an auth is provided w/o a token
 	go func() {
 		if err := server.Start([]string{"tcp://127.0.0.1:1446"}, ""); err == nil {
-			t.Fatalf("Expecting error - %v", err.Error())
+			t.Fatalf("Expecting error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)
@@ -29,7 +29,7 @@ func TestAuthStart(t *testing.T) {
 	// test for successful start if token is provided
 	go func() {
 		if err := server.Start([]string{"tcp://127.0.0.1:1446"}, "TOKEN"); err != nil {
-			t.Fatalf("Unexpected error - %v", err.Error())
+			t.Fatalf("Unexpected error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)

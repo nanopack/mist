@@ -91,7 +91,7 @@ func Start(uris []string, token string) error {
 	// assume successful starts.
 	select {
 	case err := <-errChan:
-		lumber.Error("Failed to start - %v", err)
+		lumber.Error("Failed to start - %s", err)
 		return err
 	case <-time.After(time.Second * time.Duration(len(uris))):
 		// no errors
@@ -101,7 +101,7 @@ func Start(uris []string, token string) error {
 	// are logged and the servers just try to keep running
 	for err := range errChan {
 		// log these errors and continue
-		lumber.Error("Server error - %v", err)
+		lumber.Error("Server error - %s", err)
 	}
 
 	return nil

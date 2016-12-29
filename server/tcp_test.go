@@ -18,7 +18,7 @@ func TestTCPStart(t *testing.T) {
 
 	go func() {
 		if err := server.Start([]string{"tcp://127.0.0.1:1445"}, ""); err != nil {
-			t.Fatalf("Unexpected error - %v", err.Error())
+			t.Fatalf("Unexpected error - %s", err)
 		}
 	}()
 	<-time.After(time.Second)

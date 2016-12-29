@@ -82,7 +82,7 @@ func handleListAll(proxy *mist.Proxy, msg mist.Message) error {
 // handleWho - who related
 func handleWho(proxy *mist.Proxy, msg mist.Message) error {
 	who, max := mist.Who()
-	subscribers := fmt.Sprintf("Lifetime  connections: %v\nSubscribers connected: %v", max, who)
+	subscribers := fmt.Sprintf("Lifetime  connections: %d\nSubscribers connected: %d", max, who)
 	proxy.Pipe <- mist.Message{Command: "who", Tags: msg.Tags, Data: subscribers}
 	return nil
 }
