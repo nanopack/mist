@@ -1,3 +1,8 @@
+## v1.1.3 (Jan 3, 2017)
+
+IMPROVEMENTS:
+  - Logging
+
 ## v1.1.2 (August 18, 2016)
 
 IMPROVEMENTS:
