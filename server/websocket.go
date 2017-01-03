@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/pat"
 	"github.com/gorilla/websocket"
@@ -106,7 +107,7 @@ func StartWS(uri string, errChan chan<- error) {
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
 				// todo: better logging here too
-				if err.Error() != "websocket: close 1001" && err.Error() != "websocket: close 1006 unexpected EOF" { // don't log if client disconnects
+				if !strings.Contains(err.Error(), "websocket: close 1001") && !strings.Contains(err.Error(), "websocket: close 1006 unexpected EOF") { // don't log if client disconnects
 					errChan <- fmt.Errorf("Failed to ReadJson message from WS connection - %s", err)
 				}
 
@@ -205,7 +206,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			// if the next input matches the token then add auth commands
 			if xtoken != authtoken {
 				// break // allow connection w/o admin commands
-				errChan <- fmt.Errorf("Token given doesn't match configured token - %v", xtoken)
+				errChan <- fmt.Errorf("Token given doesn't match configured token - %s", xtoken)
 				return // disconnect client
 			}
 
@@ -230,7 +231,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			// want mist just looping forever tyring to write to something it will
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
-				if err.Error() != "websocket: close 1001" && err.Error() != "websocket: close 1006 unexpected EOF" { // don't log if client disconnects
+				if !strings.Contains(err.Error(), "websocket: close 1001") && !strings.Contains(err.Error(), "websocket: close 1006 unexpected EOF") { // don't log if client disconnects
 					errChan <- fmt.Errorf("Failed to ReadJson message from WSS connection - %s", err)
 				}
 
@@ -252,7 +253,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			// attempt to run the command
 			lumber.Trace("WSS Running '%v'...", msg.Command)
 			if err := handler(proxy, msg); err != nil {
-				lumber.Debug("WSS Failed to run '%v' - %v", msg.Command, err)
+				lumber.Debug("WSS Failed to run '%v' - %s", msg.Command, err)
 				if err := conn.WriteJSON(&mist.Message{Command: msg.Command, Error: err.Error()}); err != nil {
 					errChan <- fmt.Errorf("WSS Failed to respond to client with error - %s", err)
 				}

@@ -77,12 +77,12 @@ func Start(uris []string, token string) error {
 		// continue
 		server, ok := servers[url.Scheme]
 		if !ok {
-			lumber.Error("Unsupported scheme '%v'", url.Scheme)
+			lumber.Error("Unsupported scheme '%s'", url.Scheme)
 			continue
 		}
 
 		// attempt to start the server
-		lumber.Info("Starting '%v' server...", url.Scheme)
+		lumber.Info("Starting '%s' server...", url.Scheme)
 		go server(url.Host, errChan)
 	}
 

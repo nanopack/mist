@@ -32,13 +32,13 @@ func ping(ccmd *cobra.Command, args []string) error {
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf("Failed to connect to '%v' - %v\n", host, err)
+		fmt.Printf("Failed to connect to '%s' - %s\n", host, err)
 		return err
 	}
 
 	err = client.Ping()
 	if err != nil {
-		fmt.Printf("Failed to ping - %v\n", err)
+		fmt.Printf("Failed to ping - %s\n", err)
 		return err
 	}
 
