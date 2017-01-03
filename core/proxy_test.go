@@ -102,7 +102,7 @@ func TestListSubscriptions(t *testing.T) {
 	sender.Subscribe([]string{"a"})
 	list = flattenSliceToString(sender.List())
 	if list != "a" {
-		t.Errorf("Unexpected tags - Expecting '%v' received %v", "a", list)
+		t.Errorf("Unexpected tags - Expecting '%s' received %s", "a", list)
 	}
 
 	// sender subscribes to another tag and then lists it's tags verifying multiple
@@ -113,7 +113,7 @@ func TestListSubscriptions(t *testing.T) {
 	case "ab", "ba":
 		// pass
 	default:
-		t.Errorf("Unexpected tags - Expecting '%v' received %v", "ab OR ba", list)
+		t.Errorf("Unexpected tags - Expecting '%s' received %s", "ab OR ba", list)
 	}
 
 	// sender subscribes to the multiple tags and then lists it's tags verifying a
@@ -125,7 +125,7 @@ func TestListSubscriptions(t *testing.T) {
 	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba", "abb,a":
 		// pass
 	default:
-		t.Errorf("Unexpected tags - Expecting '%v' received %v", "aba,b OR baa,b OR a,bab OR a,bba", list)
+		t.Errorf("Unexpected tags - Expecting '%s' received %s", "aba,b OR baa,b OR a,bab OR a,bba", list)
 	}
 
 	// sender subscribes to the same multiple tags (unordered) and then lists it's
@@ -137,7 +137,7 @@ func TestListSubscriptions(t *testing.T) {
 	case "aba,b", "baa,b", "a,bab", "a,bba", "aa,bb", "ba,ba", "abb,a":
 		// pass
 	default:
-		t.Errorf("Unexpected tags - Expecting '%v' received %v", "aba,b OR baa,b OR a,bab OR a,bba", list)
+		t.Errorf("Unexpected tags - Expecting '%s' received %s", "aba,b OR baa,b OR a,bab OR a,bba", list)
 	}
 }
 

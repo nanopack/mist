@@ -77,12 +77,12 @@ func Start(uris []string, token string) error {
 		// continue
 		server, ok := servers[url.Scheme]
 		if !ok {
-			lumber.Error("Unsupported scheme '%v'", url.Scheme)
+			lumber.Error("Unsupported scheme '%s'", url.Scheme)
 			continue
 		}
 
 		// attempt to start the server
-		lumber.Info("Starting '%v' server...", url.Scheme)
+		lumber.Info("Starting '%s' server...", url.Scheme)
 		go server(url.Host, errChan)
 	}
 
@@ -91,7 +91,7 @@ func Start(uris []string, token string) error {
 	// assume successful starts.
 	select {
 	case err := <-errChan:
-		lumber.Error("Failed to start - %v", err)
+		lumber.Error("Failed to start - %s", err)
 		return err
 	case <-time.After(time.Second * time.Duration(len(uris))):
 		// no errors
@@ -101,7 +101,7 @@ func Start(uris []string, token string) error {
 	// are logged and the servers just try to keep running
 	for err := range errChan {
 		// log these errors and continue
-		lumber.Error("Server error - %v", err)
+		lumber.Error("Server error - %s", err)
 	}
 
 	return nil

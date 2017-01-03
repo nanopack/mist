@@ -68,7 +68,7 @@ func verifyMessage(expected string, p *Proxy, t *testing.T) {
 	select {
 	case msg := <-p.Pipe:
 		if msg.Data != expected {
-			t.Fatalf("Incorrect data: Expected '%v' received '%v'\n", msg, msg.Data)
+			t.Fatalf("Incorrect data: Expected '%s' received '%s'\n", expected, msg.Data)
 		}
 		break
 	case <-time.After(time.Second * 1):

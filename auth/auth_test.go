@@ -143,7 +143,7 @@ func testAuth(auth mistAuth.Authenticator, t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	if len(tags) != 4 {
-		t.Fatalf("Wrong number of tags. Expecting 4 received %v", len(tags))
+		t.Fatalf("Wrong number of tags. Expecting 4 received %d", len(tags))
 	}
 
 	// remove tags
