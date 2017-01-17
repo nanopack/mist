@@ -66,7 +66,7 @@ func (c *TCP) connect() error {
 	if err := decoder.Decode(&msg); err != nil {
 		conn.Close()
 		close(c.messages)
-		return fmt.Errorf("Ping failed, possibly bad token, or can't read from mist")
+		return fmt.Errorf("Ping failed, possibly bad token, or can't read from mist - %s", err)
 	}
 
 	// connection loop (blocking); continually read off the connection. Once something
