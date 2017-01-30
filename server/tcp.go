@@ -24,7 +24,7 @@ func StartTCP(uri string, errChan chan<- error) {
 	// start a TCP listener
 	ln, err := net.Listen("tcp", uri)
 	if err != nil {
-		errChan <- fmt.Errorf("Failed to start tcp listener - %s", err)
+		errChan <- fmt.Errorf("Failed to start tcp listener - %s", err.Error())
 		return
 	}
 
@@ -37,7 +37,7 @@ func StartTCP(uri string, errChan chan<- error) {
 			// accept connections
 			conn, err := ln.Accept()
 			if err != nil {
-				errChan <- fmt.Errorf("Failed to accept TCP connection %s", err)
+				errChan <- fmt.Errorf("Failed to accept TCP connection %s", err.Error())
 				return
 			}
 
@@ -74,7 +74,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 			// break the loop here because it will never be able to encode it; this will
 			// disconnect the client.
 			if err := encoder.Encode(msg); err != nil {
-				errChan <- fmt.Errorf("Failed to pubilsh proxy.Pipe contents to TCP clients - %s", err)
+				errChan <- fmt.Errorf("Failed to pubilsh proxy.Pipe contents to TCP clients - %s", err.Error())
 				break
 			}
 		}
@@ -96,7 +96,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 			case io.ErrUnexpectedEOF:
 				lumber.Debug("Client disconnected unexpedtedly")
 			default:
-				errChan <- fmt.Errorf("Failed to decode message from TCP connection - %s", err)
+				errChan <- fmt.Errorf("Failed to decode message from TCP connection - %s", err.Error())
 			}
 			return
 		}
@@ -136,7 +136,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 		// for the next command
 		lumber.Trace("TCP Running '%s'...", msg.Command)
 		if err := handler(proxy, msg); err != nil {
-			lumber.Debug("TCP Failed to run '%s' - %s", msg.Command, err)
+			lumber.Debug("TCP Failed to run '%s' - %s", msg.Command, err.Error())
 			encoder.Encode(&mist.Message{Command: msg.Command, Error: err.Error()})
 			continue
 		}

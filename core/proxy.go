@@ -85,7 +85,7 @@ func (p *Proxy) handleMessages() {
 
 // Subscribe ...
 func (p *Proxy) Subscribe(tags []string) {
-	lumber.Trace("Proxy subscribing to '%v'...", tags)
+	lumber.Trace("Proxy subscribing to '%s'...", tags)
 
 	if len(tags) == 0 {
 		return
@@ -103,7 +103,7 @@ func (p *Proxy) Subscribe(tags []string) {
 
 // Unsubscribe ...
 func (p *Proxy) Unsubscribe(tags []string) {
-	lumber.Trace("Proxy unsubscribing from '%v'...", tags)
+	lumber.Trace("Proxy unsubscribing from '%s'...", tags)
 
 	if len(tags) == 0 {
 		return
@@ -117,7 +117,7 @@ func (p *Proxy) Unsubscribe(tags []string) {
 
 // Publish ...
 func (p *Proxy) Publish(tags []string, data string) error {
-	lumber.Trace("Proxy publishing to %v...", tags)
+	lumber.Trace("Proxy publishing to %s...", tags)
 
 	return publish(p.id, tags, data)
 }
@@ -128,7 +128,7 @@ func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
 		<-time.After(delay)
 		if err := publish(p.id, tags, data); err != nil {
 			// log this error and continue
-			lumber.Error("Proxy failed to PublishAfter - %s", err)
+			lumber.Error("Proxy failed to PublishAfter - %s", err.Error())
 		}
 	}()
 }

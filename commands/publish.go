@@ -82,13 +82,13 @@ func publish(ccmd *cobra.Command, args []string) error {
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf("Failed to connect to '%s' - %s\n", host, err)
+		fmt.Printf("Failed to connect to '%s' - %s\n", host, err.Error())
 		return err
 	}
 
 	err = client.Publish(tags, data)
 	if err != nil {
-		fmt.Printf("Failed to publish message - %s\n", err)
+		fmt.Printf("Failed to publish message - %s\n", err.Error())
 		return err
 	}
 

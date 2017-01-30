@@ -59,7 +59,7 @@ func readConfig(ccmd *cobra.Command, args []string) error {
 
 		err := viper.ReadInConfig()
 		if err != nil {
-			return fmt.Errorf("Failed to read config file - %s", err)
+			return fmt.Errorf("Failed to read config file - %s", err.Error())
 		}
 	}
 
@@ -82,11 +82,11 @@ func start(ccmd *cobra.Command, args []string) error {
 	lumber.Level(lumber.LvlInt(viper.GetString("log-level")))
 
 	if err := auth.Start(viper.GetString("authenticator")); err != nil {
-		return fmt.Errorf("Failed to start authenticator - %s", err)
+		return fmt.Errorf("Failed to start authenticator - %s", err.Error())
 	}
 
 	if err := server.Start(viper.GetStringSlice("listeners"), viper.GetString("token")); err != nil {
-		return fmt.Errorf("One or more servers failed to start - %s", err)
+		return fmt.Errorf("One or more servers failed to start - %s", err.Error())
 	}
 
 	return nil
