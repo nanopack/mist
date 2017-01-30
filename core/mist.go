@@ -83,7 +83,7 @@ func PublishAfter(tags []string, data string, delay time.Duration) error {
 		<-time.After(delay)
 		if err := Publish(tags, data); err != nil {
 			// log this error and continue?
-			lumber.Error("Failed to PublishAfter - %s", err)
+			lumber.Error("Failed to PublishAfter - %s", err.Error())
 		}
 	}()
 

@@ -42,7 +42,7 @@ func (c *TCP) connect() error {
 	// attempt to connect to the server
 	conn, err := net.Dial("tcp", c.host)
 	if err != nil {
-		return fmt.Errorf("Failed to dial '%s' - %s", c.host, err)
+		return fmt.Errorf("Failed to dial '%s' - %s", c.host, err.Error())
 	}
 
 	// set the connection for the client
@@ -55,7 +55,7 @@ func (c *TCP) connect() error {
 	if c.token != "" {
 		err = c.encoder.Encode(&mist.Message{Command: "auth", Data: c.token})
 		if err != nil {
-			return fmt.Errorf("Failed to send auth - %s", err)
+			return fmt.Errorf("Failed to send auth - %s", err.Error())
 		}
 	}
 
@@ -66,7 +66,7 @@ func (c *TCP) connect() error {
 	if err := decoder.Decode(&msg); err != nil {
 		conn.Close()
 		close(c.messages)
-		return fmt.Errorf("Ping failed, possibly bad token, or can't read from mist")
+		return fmt.Errorf("Ping failed, possibly bad token, or can't read from mist - %s", err.Error())
 	}
 
 	// connection loop (blocking); continually read off the connection. Once something
@@ -85,7 +85,7 @@ func (c *TCP) connect() error {
 				case io.ErrUnexpectedEOF:
 					lumber.Debug("[mist client] Mist terminated connection unexpedtedly")
 				default:
-					lumber.Error("[mist client] Failed to get message from mist - %s", err)
+					lumber.Error("[mist client] Failed to get message from mist - %s", err.Error())
 				}
 				conn.Close()
 				close(c.messages)

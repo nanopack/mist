@@ -35,14 +35,14 @@ func who(ccmd *cobra.Command, args []string) error {
 	// create new mist client
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf("Failed to connect to '%s' - %s\n", host, err)
+		fmt.Printf("Failed to connect to '%s' - %s\n", host, err.Error())
 		return err
 	}
 
 	// who related
 	err = client.Who()
 	if err != nil {
-		fmt.Printf("Failed to who - %s\n", err)
+		fmt.Printf("Failed to who - %s\n", err.Error())
 		return err
 	}
 

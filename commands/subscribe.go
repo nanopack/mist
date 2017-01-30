@@ -37,18 +37,18 @@ func subscribe(ccmd *cobra.Command, args []string) error {
 
 	client, err := clients.New(host, viper.GetString("token"))
 	if err != nil {
-		fmt.Printf("Failed to connect to '%s' - %s\n", host, err)
+		fmt.Printf("Failed to connect to '%s' - %s\n", host, err.Error())
 		return err
 	}
 
 	//
 	if err := client.Subscribe(tags); err != nil {
-		fmt.Printf("Unable to subscribe - %s\n", err)
+		fmt.Printf("Unable to subscribe - %s\n", err.Error())
 		return fmt.Errorf("")
 	}
 
 	// listen for messages on tags
-	fmt.Printf("Listening on tags '%v'\n", tags)
+	fmt.Printf("Listening on tags '%s'\n", tags)
 	for msg := range client.Messages() {
 
 		// skip handler messages

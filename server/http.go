@@ -23,7 +23,7 @@ func init() {
 // StartHTTP starts a mist server listening over HTTP
 func StartHTTP(uri string, errChan chan<- error) {
 	if err := newHTTP(uri); err != nil {
-		errChan <- fmt.Errorf("Unable to start mist http listener - %s", err)
+		errChan <- fmt.Errorf("Unable to start mist http listener - %s", err.Error())
 	}
 }
 
@@ -58,13 +58,6 @@ func routes() *pat.Router {
 // debug output
 func handleRequest(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(rw http.ResponseWriter, req *http.Request) {
-
 		fn(rw, req)
-
-		// must be after fn if ever going to get rw.status (logging still more meaningful)
-		// config.Log.Trace(`%v - [%v] %v %v %v(%s) - "User-Agent: %s", "X-Nanobox-Token: %s"`,
-		// 	req.RemoteAddr, req.Proto, req.Method, req.RequestURI,
-		// 	rw.Header().Get("status"), req.Header.Get("Content-Length"),
-		// 	req.Header.Get("User-Agent"), req.Header.Get("X-Nanobox-Token"))
 	}
 }

@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 func TestTCPClientConnect(t *testing.T) {
 	client, err := clients.New(testAddr, "")
 	if err != nil {
-		t.Fatalf("Client failed to connect - %s", err)
+		t.Fatalf("Client failed to connect - %s", err.Error())
 		t.FailNow()
 	}
 	defer client.Close()
@@ -54,7 +54,7 @@ func TestBadTCPClientConnect(t *testing.T) {
 	}
 	client, err = clients.New(testAddr, "hil")
 	if err != nil {
-		t.Fatalf("Client failed to connect - %s", err)
+		t.Fatalf("Client failed to connect - %s", err.Error())
 		t.FailNow()
 	}
 	defer client.Close()
@@ -78,7 +78,7 @@ func TestTCPClient(t *testing.T) {
 	//
 	client, err := clients.New(testAddr, "")
 	if err != nil {
-		t.Fatalf("failed to connect - %s", err)
+		t.Fatalf("failed to connect - %s", err.Error())
 		t.FailNow()
 	}
 	defer client.Close()
@@ -90,12 +90,12 @@ func TestTCPClient(t *testing.T) {
 
 	// test ability to subscribe
 	if err := client.Subscribe([]string{"a"}); err != nil {
-		t.Fatalf("client subscriptions failed %s", err)
+		t.Fatalf("client subscriptions failed %s", err.Error())
 	}
 
 	// test ability to list (subscriptions)
 	if err := client.List(); err != nil {
-		t.Fatalf("listing subscriptions failed %s", err)
+		t.Fatalf("listing subscriptions failed %s", err.Error())
 	}
 	if msg := <-client.Messages(); msg.Data == "\"a\"" {
 		t.Fatalf("Failed to 'list' - '%s' '%#v'", msg.Error, msg.Data)
@@ -103,32 +103,32 @@ func TestTCPClient(t *testing.T) {
 
 	// test publish
 	if err := client.Publish([]string{"a"}, "testpublish"); err != nil {
-		t.Fatalf("publishing failed %s", err)
+		t.Fatalf("publishing failed %s", err.Error())
 	}
 	if err := client.Publish([]string{}, "nopublish"); err == nil {
-		t.Fatalf("publishing no tags succeeded %s", err)
+		t.Fatalf("publishing no tags succeeded %s", err.Error())
 	}
 	if err := client.Publish([]string{"a"}, ""); err == nil {
-		t.Fatalf("publishing no data succeeded %s", err)
+		t.Fatalf("publishing no data succeeded %s", err.Error())
 	}
 
 	// test PublishAfter
 	if err := client.PublishAfter([]string{"a"}, "testpublish", time.Second); err != nil {
-		t.Fatalf("publishing failed %s", err)
+		t.Fatalf("publishing failed %s", err.Error())
 	}
 	time.Sleep(time.Millisecond * 1500)
 
 	// test ability to unsubscribe
 	if err := client.Unsubscribe([]string{"a"}); err != nil {
-		t.Fatalf("client unsubscriptions failed %s", err)
+		t.Fatalf("client unsubscriptions failed %s", err.Error())
 	}
 	if err := client.Unsubscribe([]string{}); err == nil {
-		t.Fatalf("client unsubscriptions no tags succeeded %s", err)
+		t.Fatalf("client unsubscriptions no tags succeeded %s", err.Error())
 	}
 
 	// test ability to list (no subscriptions)
 	if err := client.List(); err != nil {
-		t.Fatalf("listing subscriptions failed %s", err)
+		t.Fatalf("listing subscriptions failed %s", err.Error())
 	}
 	if msg := <-client.Messages(); msg.Data != "" {
 		t.Fatalf("Failed to 'list' - %s", msg.Error)
