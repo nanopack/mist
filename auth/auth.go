@@ -7,24 +7,22 @@ package auth
 import (
 	"fmt"
 	"net/url"
+	"sync"
 )
 
-//
 var (
-	DefaultAuth Authenticator // this is the current authenticator for the package; this is set during an authenticator start
+	defaultAuth  Authenticator // defaultAuth is the current authenticator for the package; this is set during an authenticator start
+	isConfigured bool          // isConfigured is used to avoid race conditions when setting or checking if defaultAuth is nil
 
-	//
 	ErrTokenNotFound = fmt.Errorf("Token not found\n")
 	ErrTokenExist    = fmt.Errorf("Token already exists\n")
 
 	// the list of available authenticators
 	authenticators = map[string]handleFunc{}
+	authTex        sync.RWMutex
 )
 
-//
 type (
-
-	//
 	handleFunc func(url *url.URL) (Authenticator, error)
 
 	// Authenticator represnets a database of authorized token/tag combinations.
@@ -41,7 +39,14 @@ type (
 
 // Register registers a new mist authenticator
 func Register(name string, auth handleFunc) {
+	authTex.Lock()
 	authenticators[name] = auth
+	authTex.Unlock()
+}
+
+// IsConfigured returns whether or not an authenticator is configured and is authenticating.
+func IsConfigured() bool {
+	return isConfigured
 }
 
 // Start attempts to start a mist authenticator from the list of available
@@ -51,6 +56,7 @@ func Start(uri string) error {
 
 	// no authenticator is wanted
 	if uri == "" {
+		isConfigured = false
 		return nil
 	}
 
@@ -61,17 +67,19 @@ func Start(uri string) error {
 	}
 
 	// check to see if the scheme is supported; if not, indicate as such and continue
+	authTex.Lock()
 	auth, ok := authenticators[url.Scheme]
+	authTex.Unlock()
 	if !ok {
 		return fmt.Errorf("Unsupported scheme '%s'", url.Scheme)
 	}
 
-	// set DefaultAuth by attempting to start the desired authenticator
-	DefaultAuth, err = auth(url)
+	// set defaultAuth by attempting to start the desired authenticator
+	defaultAuth, err = auth(url)
 	if err != nil {
 		return err
 	}
+	isConfigured = true
 
-	//
 	return nil
 }

@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.6
+  - "1.10"
 
 addons:
   postgresql: "9.3"
@@ -8,5 +8,20 @@ addons:
 services:
   - postgresql
 
-install: go get -t -v .
-script: go test -v ./... -cover
+before_script:
+  - scripts/travis_consul.sh
+  - sudo -H pip install awscli
+
+install:
+  - go get github.com/kardianos/govendor
+  - govendor sync
+
+script:
+  - govendor test +local -cover -v
+
+after_success:
+  - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
+  - 'if [ "$BRANCH" == "master" ]; then
+    ./scripts/build.sh;
+    ./scripts/upload.sh;
+    fi'

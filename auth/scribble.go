@@ -8,7 +8,6 @@ import (
 )
 
 type (
-
 	// scribble is an authenticator that is a driver to interfaces with the "scribble"
 	// database
 	scribble struct {
@@ -56,7 +55,6 @@ func (a *scribble) AddToken(token string) error {
 		return ErrTokenExist
 	}
 
-	//
 	entry.Value = token
 
 	// add new token
@@ -88,7 +86,6 @@ func (a *scribble) AddTags(token string, tags []string) error {
 		entry.Tags[tag] = struct{}{}
 	}
 
-	//
 	return a.driver.Write("tokens", token, entry)
 }
 

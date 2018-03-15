@@ -23,13 +23,11 @@ func init() {
 // NewPostgres creates a new "postgres" Authenticator
 func NewPostgres(url *url.URL) (Authenticator, error) {
 
-	//
 	host, port, err := net.SplitHostPort(url.Host)
 	db := url.Query().Get("db")
 	user := url.User.Username()
 	// pass, _ := url.User.Password()
 
-	//
 	pg := postgres(fmt.Sprintf("user=%s database=%s sslmode=disable host=%s port=%s", user, db, host, port))
 
 	// create the tables needed to support mist authentication
@@ -88,17 +86,14 @@ func (a postgres) RemoveTags(token string, tags []string) error {
 // GetTagsForToken
 func (a postgres) GetTagsForToken(token string) ([]string, error) {
 
-	//
 	rows, err := a.query("SELECT tag FROM tags INNER JOIN tokens ON (tags.token_id = tokens.token_id) WHERE token = $1", token)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	//
 	var tags []string
 
-	//
 	for rows.Next() {
 		var tag string
 		if err := rows.Scan(&tag); err != nil {
@@ -117,7 +112,6 @@ func (a postgres) GetTagsForToken(token string) ([]string, error) {
 	}
 }
 
-//
 func (a postgres) connect() (*sql.DB, error) {
 	return sql.Open("postgres", string(a))
 }

@@ -21,21 +21,19 @@ var (
 // TestStart tests the auth start process
 func TestStart(t *testing.T) {
 
-	//
 	if err := mistAuth.Start("memory://"); err != nil {
 		t.Fatalf("Unexpected error!")
 	}
 
-	// DefaultAuth is set inside of an auth start and should not be nil once started
-	if mistAuth.DefaultAuth == nil {
-		t.Fatalf("Unexpected nil DefaultAuth!")
+	// Verify using an authenticator ("memory://" in this case)
+	if !mistAuth.IsConfigured() {
+		t.Fatalf("Authentication unexpectedly not configured!")
 	}
 }
 
 // TestMemory tests the memory authenticator
 func TestMemory(t *testing.T) {
 
-	//
 	url, err := url.Parse("memory://")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -47,7 +45,6 @@ func TestMemory(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	//
 	testAuth(mem, t)
 }
 
@@ -59,43 +56,36 @@ func TestScribble(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	//
 	url, err := url.Parse("scribble://?db=/tmp/scribble")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	//
 	scribble, err := mistAuth.NewScribble(url)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	//
 	testAuth(scribble, t)
 }
 
 // TestPostgres tests the postgres authenticator (requires running postgres server)
 // func TestPostgres(t *testing.T) {
 //
-// 	//
 // 	url, err := url.Parse("postgres://postgres@127.0.0.1:5432?db=postgres")
 // 	if err != nil {
 // 		t.Fatalf(err.Error())
 // 	}
 //
-// 	//
 // 	pg, err := NewPostgres(url)
 // 	if err != nil {
 // 		t.Fatalf(err.Error())
 // 	}
 //
-// 	//
 // 	if _, err := pg.(postgresql).exec("TRUNCATE tokens, tags"); err != nil {
 // 		t.Fatalf(err.Error())
 // 	}
 //
-// 	//
 // 	testAuth(pg, t)
 // }
 
