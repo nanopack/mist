@@ -15,11 +15,12 @@ import (
 type (
 	// TCP represents a TCP connection to the mist server
 	TCP struct {
-		conn     net.Conn          // the connection the mist server
-		encoder  *json.Encoder     //
-		host     string            //
-		messages chan mist.Message // the channel that mist server 'publishes' updates to
-		token    string            //
+		// conn     net.Conn          // the connection to the mist server
+		conn     io.ReadWriteCloser // the connection to the mist server
+		encoder  *json.Encoder      //
+		host     string             //
+		messages chan mist.Message  // the channel that mist server 'publishes' updates to
+		token    string             //
 	}
 )
 
