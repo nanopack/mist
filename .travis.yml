@@ -12,6 +12,7 @@ before_script:
   - sudo -H pip install awscli
 
 install:
+  - go get github.com/mitchellh/gox
   - go get github.com/kardianos/govendor
   - govendor sync
 
