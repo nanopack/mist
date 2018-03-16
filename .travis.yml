@@ -9,7 +9,6 @@ services:
   - postgresql
 
 before_script:
-  - scripts/travis_consul.sh
   - sudo -H pip install awscli
 
 install:
