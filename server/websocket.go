@@ -46,7 +46,7 @@ func StartWS(uri string, errChan chan<- error) {
 		defer proxy.Close()
 
 		// add basic WS handlers for this socket
-		handlers = GenerateHandlers()
+		handlers := GenerateHandlers()
 
 		// read and publish mist messages to connected clients (non-blocking)
 		go func() {
@@ -67,9 +67,8 @@ func StartWS(uri string, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are added
-		if auth.DefaultAuth != nil && !proxy.Authenticated {
+		if auth.IsConfigured() && !proxy.Authenticated {
 
-			//
 			var xtoken string
 			switch {
 			case req.Header.Get("X-AUTH-TOKEN") != "":
@@ -169,7 +168,7 @@ func StartWSS(uri string, errChan chan<- error) {
 		defer proxy.Close()
 
 		// add basic WS handlers for this socket
-		handlers = GenerateHandlers()
+		handlers := GenerateHandlers()
 
 		// read and publish mist messages to connected clients (non-blocking)
 		go func() {
@@ -190,9 +189,7 @@ func StartWSS(uri string, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are added
-		if auth.DefaultAuth != nil && !proxy.Authenticated {
-
-			//
+		if auth.IsConfigured() && !proxy.Authenticated {
 			var xtoken string
 			switch {
 			case req.Header.Get("X-AUTH-TOKEN") != "":

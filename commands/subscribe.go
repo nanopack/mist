@@ -41,7 +41,6 @@ func subscribe(ccmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	//
 	if err := client.Subscribe(tags); err != nil {
 		fmt.Printf("Unable to subscribe - %s\n", err.Error())
 		return fmt.Errorf("")

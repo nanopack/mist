@@ -16,61 +16,51 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 // handleRegister
 func handleRegister(proxy *mist.Proxy, msg mist.Message) error {
 
-	//
-	if err := DefaultAuth.AddToken(msg.Data); err != nil {
+	if err := defaultAuth.AddToken(msg.Data); err != nil {
 		return err
 	}
 
-	//
-	if err := DefaultAuth.AddTags(msg.Data, msg.Tags); err != nil {
+	if err := defaultAuth.AddTags(msg.Data, msg.Tags); err != nil {
 		return err
 	}
 
-	//
 	return nil
 }
 
 // handleUnregister
 func handleUnregister(proxy *mist.Proxy, msg mist.Message) error {
 
-	//
-	if err := DefaultAuth.RemoveToken(msg.Data); err != nil {
+	if err := defaultAuth.RemoveToken(msg.Data); err != nil {
 		return err
 	}
 
-	//
 	return nil
 }
 
 // handleSet
 func handleSet(proxy *mist.Proxy, msg mist.Message) error {
 
-	//
-	if err := DefaultAuth.AddTags(msg.Data, msg.Tags); err != nil {
+	if err := defaultAuth.AddTags(msg.Data, msg.Tags); err != nil {
 		return err
 	}
 
-	//
 	return nil
 }
 
 // handleUnset
 func handleUnset(proxy *mist.Proxy, msg mist.Message) error {
 
-	//
-	if err := DefaultAuth.RemoveTags(msg.Data, msg.Tags); err != nil {
+	if err := defaultAuth.RemoveTags(msg.Data, msg.Tags); err != nil {
 		return err
 	}
 
-	//
 	return nil
 }
 
 // handleTags
 func handleTags(proxy *mist.Proxy, msg mist.Message) error {
 
-	//
-	tags, err := DefaultAuth.GetTagsForToken(msg.Data)
+	tags, err := defaultAuth.GetTagsForToken(msg.Data)
 	if err != nil {
 		return err
 	}

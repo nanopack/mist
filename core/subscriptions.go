@@ -20,7 +20,6 @@ type (
 	}
 )
 
-//
 func newNode() (node *Node) {
 
 	node = &Node{
@@ -28,14 +27,11 @@ func newNode() (node *Node) {
 		leaves:   map[string]struct{}{},
 	}
 
-	//
 	return
 }
 
 // Add sorts the keys and then attempts to add them
 func (node *Node) Add(keys []string) {
-
-	//
 	if len(keys) == 0 {
 		return
 	}
@@ -71,7 +67,6 @@ func (node *Node) add(keys []string) {
 // Remove sorts the keys and then attempts to remove them
 func (node *Node) Remove(keys []string) {
 
-	//
 	if len(keys) == 0 {
 		return
 	}
@@ -82,7 +77,6 @@ func (node *Node) Remove(keys []string) {
 
 // remove ...
 func (node *Node) remove(keys []string) {
-
 	// if there is only one key remaining we are at the end of the chain and need
 	// to remove just the leaf
 	if len(keys) == 1 {
@@ -117,8 +111,6 @@ func (node *Node) Match(keys []string) bool {
 
 // ​match ...
 func (node *Node) match(keys []string) bool {
-
-	//
 	if len(keys) == 0 {
 		return false
 	}
@@ -145,7 +137,6 @@ func (node *Node) match(keys []string) bool {
 // ToSlice recurses down an entire node returning a list of all branches and leaves
 // as a slice of slices
 func (node *Node) ToSlice() (list [][]string) {
-
 	// iterate through each leaf appending it as a slice to the list of keys
 	for leaf := range node.leaves {
 		list = append(list, []string{leaf})

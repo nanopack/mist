@@ -23,7 +23,6 @@ func TestMain(m *testing.M) {
 
 	server.StartTCP(testAddr, nil)
 
-	//
 	os.Exit(m.Run())
 }
 
@@ -36,7 +35,6 @@ func TestTCPClientConnect(t *testing.T) {
 	}
 	defer client.Close()
 
-	//
 	if err := client.Ping(); err != nil {
 		t.Fatalf("ping failed")
 	}
@@ -59,7 +57,6 @@ func TestBadTCPClientConnect(t *testing.T) {
 	}
 	defer client.Close()
 
-	//
 	if err := client.Ping(); err != nil {
 		t.Fatalf("ping failed")
 	}
@@ -74,8 +71,6 @@ func TestBadTCPClientConnect(t *testing.T) {
 // are already tested in other tests (proxy_test and subscriptions_test in the
 // core package)
 func TestTCPClient(t *testing.T) {
-
-	//
 	client, err := clients.New(testAddr, "")
 	if err != nil {
 		t.Fatalf("failed to connect - %s", err.Error())

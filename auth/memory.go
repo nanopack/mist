@@ -30,7 +30,6 @@ func (a memory) AddToken(token string) error {
 	// create a new token
 	a[token] = mapset.NewSet()
 
-	//
 	return nil
 }
 
@@ -54,7 +53,6 @@ func (a memory) AddTags(token string, tags []string) error {
 		entry.Add(tag)
 	}
 
-	//
 	return nil
 }
 
@@ -72,7 +70,6 @@ func (a memory) RemoveTags(token string, tags []string) error {
 		entry.Remove(tag)
 	}
 
-	//
 	return nil
 }
 
@@ -91,7 +88,6 @@ func (a memory) GetTagsForToken(token string) ([]string, error) {
 		tags = append(tags, tag.(string))
 	}
 
-	//
 	return tags, nil
 }
 
@@ -104,6 +100,5 @@ func (a memory) findMemoryToken(token string) (mapset.Set, error) {
 		return nil, ErrTokenNotFound
 	}
 
-	//
 	return entry, nil
 }

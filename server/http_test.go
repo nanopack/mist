@@ -14,7 +14,8 @@ func TestHTTPStart(t *testing.T) {
 	fmt.Println("Starting HTTP test...")
 
 	// ensure authentication is disabled
-	auth.DefaultAuth = nil
+	auth.Start("")
+
 	go func() {
 		if err := server.Start([]string{"http://127.0.0.1:8080"}, ""); err != nil {
 			t.Fatalf("Unexpected error - %s", err.Error())

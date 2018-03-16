@@ -60,7 +60,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 	defer proxy.Close()
 
 	// add basic TCP command handlers for this connection
-	handlers = GenerateHandlers()
+	handlers := GenerateHandlers()
 
 	encoder := json.NewEncoder(conn)
 	decoder := json.NewDecoder(conn)
@@ -103,7 +103,7 @@ func handleConnection(conn net.Conn, errChan chan<- error) {
 
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are allowed
-		if auth.DefaultAuth != nil && !proxy.Authenticated {
+		if auth.IsConfigured() && !proxy.Authenticated {
 
 			// if the next input does not match the token then
 			if msg.Data != authtoken {

@@ -14,17 +14,13 @@ var (
 
 // BenchmarkPublish
 func BenchmarkPublish(b *testing.B) {
-
-	//
 	p := NewProxy()
 	defer p.Close()
 
-	//
 	p.Subscribe([]string{"a"})
 
 	b.ResetTimer()
 
-	//
 	for i := 0; i < b.N; i++ {
 		p.Publish([]string{"a"}, testMsg)
 	}
@@ -33,21 +29,18 @@ func BenchmarkPublish(b *testing.B) {
 // TestPublish tests that the publish Publish method publishes to all subscribers
 func TestPublish(t *testing.T) {
 
-	//
 	p1 := NewProxy()
 	defer p1.Close()
 
 	p2 := NewProxy()
 	defer p2.Close()
 
-	//
 	p1.Subscribe([]string{"a"})
 	p2.Subscribe([]string{"a"})
 
 	// have mist publish the message
 	Publish([]string{"a"}, testMsg)
 
-	//
 	verifyMessage(testMsg, p1, t)
 	verifyMessage(testMsg, p2, t)
 

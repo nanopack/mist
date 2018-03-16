@@ -14,7 +14,7 @@ func TestWSStart(t *testing.T) {
 	fmt.Println("Starting WS test...")
 
 	// ensure authentication is disabled
-	auth.DefaultAuth = nil
+	auth.Start("")
 
 	go func() {
 		if err := server.Start([]string{"ws://127.0.0.1:8888"}, ""); err != nil {
@@ -29,7 +29,7 @@ func TestWSSStart(t *testing.T) {
 	fmt.Println("Starting WSS test...")
 
 	// ensure authentication is disabled
-	auth.DefaultAuth = nil
+	auth.Start("")
 
 	go func() {
 		if err := server.Start([]string{"wss://127.0.0.1:8988"}, ""); err != nil {

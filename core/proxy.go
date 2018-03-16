@@ -48,7 +48,6 @@ func (p *Proxy) connect() {
 	go p.handleMessages()
 }
 
-//
 func (p *Proxy) handleMessages() {
 
 	defer func() {
@@ -57,7 +56,6 @@ func (p *Proxy) handleMessages() {
 		close(p.Pipe) // don't close pipe (response/pong messages need it), but leaving it unclosed leaves ram bloat on server even after client disconnects
 	}()
 
-	//
 	for {
 		select {
 
@@ -76,7 +74,6 @@ func (p *Proxy) handleMessages() {
 				p.Pipe <- msg
 			}
 
-		//
 		case <-p.done:
 			return
 		}

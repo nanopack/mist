@@ -9,7 +9,6 @@ import (
 )
 
 var (
-
 	// Router ...
 	Router = pat.New()
 )
@@ -32,7 +31,6 @@ func StartHTTPS(uri string, errChan chan<- error) {
 	errChan <- ErrNotImplemented
 }
 
-//
 func newHTTP(address string) error {
 	lumber.Info("HTTP server listening at '%s'...\n", address)
 
@@ -42,8 +40,6 @@ func newHTTP(address string) error {
 
 // routes registers all api routes with the router
 func routes() *pat.Router {
-
-	//
 	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte("pong\n"))
 	})

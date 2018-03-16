@@ -109,7 +109,7 @@ func init() {
 	viper.BindPFlag("listeners", MistCmd.Flags().Lookup("listeners")) // no reason to have "http://127.0.0.1:8080" too, it only has /ping
 
 	MistCmd.Flags().StringVar(&config, "config", config, "Path to config file")
-	viper.BindPFlag("config", MistCmd.Flags().Lookup("config")) // seems this is only bound to access in server/server.go(BUG)
+	viper.BindPFlag("config", MistCmd.Flags().Lookup("config"))
 
 	MistCmd.Flags().Bool("server", false, "Run mist as a server")
 	viper.BindPFlag("server", MistCmd.Flags().Lookup("server"))

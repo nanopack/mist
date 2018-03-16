@@ -10,8 +10,6 @@ import (
 )
 
 var (
-
-	//
 	whoCmd = &cobra.Command{
 		Hidden:        true,
 		Use:           "who",
