@@ -10,8 +10,6 @@ import (
 )
 
 var (
-
-	//
 	listCmd = &cobra.Command{
 		Hidden:        true,
 		Use:           "listall",

@@ -10,8 +10,6 @@ import (
 )
 
 var (
-
-	//
 	pingCmd = &cobra.Command{
 		Use:           "ping",
 		Short:         "Ping a running mist server",

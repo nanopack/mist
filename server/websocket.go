@@ -69,7 +69,6 @@ func StartWS(uri string, errChan chan<- error) {
 		// auth commands are added
 		if auth.IsConfigured() && !proxy.Authenticated {
 
-			//
 			var xtoken string
 			switch {
 			case req.Header.Get("X-AUTH-TOKEN") != "":
@@ -191,8 +190,6 @@ func StartWSS(uri string, errChan chan<- error) {
 		// if an authenticator was passed, check for a token on connect to see if
 		// auth commands are added
 		if auth.IsConfigured() && !proxy.Authenticated {
-
-			//
 			var xtoken string
 			switch {
 			case req.Header.Get("X-AUTH-TOKEN") != "":

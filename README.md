@@ -188,7 +188,6 @@ import (
 	"github.com/nanopack/mist/clients"
 )
 
-//
 func main() {
 	client, err := clients.New("127.0.0.1:1445")
 	if err != nil {

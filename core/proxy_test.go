@@ -5,7 +5,6 @@ import "testing"
 // TestSameSubscriber tests to ensure that mist will not send message to the
 // same proxy who publishes them
 func TestSameSubscriber(t *testing.T) {
-
 	// create a new proxy
 	sender := NewProxy()
 	defer sender.Close()
@@ -25,12 +24,9 @@ func TestSameSubscriber(t *testing.T) {
 // TestDifferentSubscriber tests to ensure that mist will send messages
 // to another subscribed proxy, and then not send when unsubscribed.
 func TestDifferentSubscriber(t *testing.T) {
-
-	//
 	sender := NewProxy()
 	defer sender.Close()
 
-	//
 	receiver := NewProxy()
 	defer receiver.Close()
 
@@ -50,20 +46,15 @@ func TestDifferentSubscriber(t *testing.T) {
 // TestManySubscribers tests to ensure that mist will send messages to many
 // subscribers of the same tags, and then not send once unsubscribed
 func TestManySubscribers(t *testing.T) {
-
-	//
 	sender := NewProxy()
 	defer sender.Close()
 
-	//
 	r1 := NewProxy()
 	defer r1.Close()
 
-	//
 	r2 := NewProxy()
 	defer r2.Close()
 
-	//
 	r3 := NewProxy()
 	defer r3.Close()
 
@@ -92,7 +83,6 @@ func TestManySubscribers(t *testing.T) {
 // subscriptions
 func TestListSubscriptions(t *testing.T) {
 
-	//
 	sender := NewProxy()
 	defer sender.Close()
 
@@ -145,12 +135,9 @@ func TestListSubscriptions(t *testing.T) {
 // tags. It tests that multiple tags are received only as subscribed, and that
 // multiple tags aren't receieved once unsubscribed.
 func TestTags(t *testing.T) {
-
-	//
 	sender := NewProxy()
 	defer sender.Close()
 
-	//
 	receiver := NewProxy()
 	defer receiver.Close()
 

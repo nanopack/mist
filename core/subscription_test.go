@@ -79,7 +79,6 @@ func TestEmptySubscription(t *testing.T) {
 func TestAddRemoveSimple(t *testing.T) {
 	node := newNode()
 
-	//
 	node.Add([]string{"a"})
 	if len(node.ToSlice()) != 1 {
 		t.Fatalf("Failed to add node")
@@ -197,13 +196,11 @@ func TestMatchSimple(t *testing.T) {
 		t.Fatalf("Expected match!")
 	}
 
-	//
 	node.Add([]string{"a", "b"})
 	if !node.Match([]string{"a", "b"}) {
 		t.Fatalf("Expected match!")
 	}
 
-	//
 	node.Add([]string{"a", "b", "c"})
 	if !node.Match([]string{"a", "b", "c"}) {
 		t.Fatalf("Expected match!")

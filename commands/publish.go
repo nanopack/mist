@@ -48,7 +48,7 @@ var (
 	}
 )
 
-var data string //
+var data string
 
 // init
 func init() {
