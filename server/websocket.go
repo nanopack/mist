@@ -228,7 +228,7 @@ func StartWSS(uri string, errChan chan<- error) {
 			// want mist just looping forever tyring to write to something it will
 			// never be able to.
 			if err := conn.ReadJSON(&msg); err != nil {
-				if !strings.Contains(err.Error(), "websocket: close 1001") && !strings.Contains(err.Error(), "websocket: close 1006 unexpected EOF") { // don't log if client disconnects
+				if !strings.Contains(err.Error(), "websocket: close 1001") && !strings.Contains(err.Error(), "websocket: close 1006") { // don't log if client disconnects
 					errChan <- fmt.Errorf("Failed to ReadJson message from WSS connection - %s", err.Error())
 				}
 
