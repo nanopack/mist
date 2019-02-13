@@ -19,7 +19,7 @@ func NewMemory(url *url.URL) (Authenticator, error) {
 	return memory{}, nil
 }
 
-// Add Token
+// AddToken adds Token
 func (a memory) AddToken(token string) error {
 
 	// look for an existing token
