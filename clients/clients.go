@@ -83,7 +83,7 @@ func (c *TCP) connect() error {
 				case io.EOF:
 					lumber.Debug("[mist client] Mist terminated connection")
 				case io.ErrUnexpectedEOF:
-					lumber.Debug("[mist client] Mist terminated connection unexpedtedly")
+					lumber.Debug("[mist client] Mist terminated connection unexpectedly")
 				default:
 					lumber.Error("[mist client] Failed to get message from mist - %s", err.Error())
 				}
