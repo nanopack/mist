@@ -3,7 +3,6 @@ package clients_test
 import (
 	"os"
 	"testing"
-	"time"
 
 	"github.com/jcelliott/lumber"
 
@@ -106,12 +105,6 @@ func TestTCPClient(t *testing.T) {
 	if err := client.Publish([]string{"a"}, ""); err == nil {
 		t.Fatalf("publishing no data succeeded %s", err.Error())
 	}
-
-	// test PublishAfter
-	if err := client.PublishAfter([]string{"a"}, "testpublish", time.Second); err != nil {
-		t.Fatalf("publishing failed %s", err.Error())
-	}
-	time.Sleep(time.Millisecond * 1500)
 
 	// test ability to unsubscribe
 	if err := client.Unsubscribe([]string{"a"}); err != nil {
