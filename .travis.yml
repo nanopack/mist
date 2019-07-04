@@ -2,6 +2,9 @@ language: go
 go:
   - "1.12"
 
+env:
+  - GO111MODULE=on
+
 addons:
   postgresql: "9.3"
 
@@ -11,8 +14,7 @@ services:
 before_script:
   - sudo -H pip install awscli
 
-install:
-  - go mod download
+install: true
 
 script:
   - go test -v ./...
