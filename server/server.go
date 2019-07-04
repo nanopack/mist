@@ -12,7 +12,8 @@ import (
 )
 
 var (
-	ErrNotImplemented = fmt.Errorf("Error: Not Implemented\n")
+	// ErrNotImplemented not implemented error
+	ErrNotImplemented = fmt.Errorf("error: not implemented")
 
 	// this is a map of the supported servers that can be started by mist
 	servers    = map[string]handleFunc{}
@@ -39,7 +40,7 @@ func Start(uris []string, token string) error {
 	// check to see if a token is provided; an authenticator cannot work without
 	// a token and so it should error here informing that.
 	if auth.IsConfigured() && token == "" {
-		return fmt.Errorf("An authenticator has been specified but no token provided!\n")
+		return fmt.Errorf("an authenticator has been specified but no token provided")
 	}
 
 	// set the authtoken

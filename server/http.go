@@ -1,22 +1,31 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/pat"
+	mist "github.com/nanopack/mist/core"
+
+	"github.com/gorilla/mux"
 	"github.com/jcelliott/lumber"
 )
 
 var (
 	// Router ...
-	Router = pat.New()
+	Router = mux.NewRouter()
 )
+
+// Message the message we need to receive from http client
+type Message struct {
+	Tags []string `json:"tags,omitempty"`
+	Data string   `json:"data,omitempty"`
+}
 
 // init adds http/https as available mist server types
 func init() {
 	Register("http", StartHTTP)
-	Register("https", StartHTTPS)
 }
 
 // StartHTTP starts a mist server listening over HTTP
@@ -24,11 +33,6 @@ func StartHTTP(uri string, errChan chan<- error) {
 	if err := newHTTP(uri); err != nil {
 		errChan <- fmt.Errorf("Unable to start mist http listener - %s", err.Error())
 	}
-}
-
-// StartHTTPS starts a mist server listening over HTTPS
-func StartHTTPS(uri string, errChan chan<- error) {
-	errChan <- ErrNotImplemented
 }
 
 func newHTTP(address string) error {
@@ -39,15 +43,26 @@ func newHTTP(address string) error {
 }
 
 // routes registers all api routes with the router
-func routes() *pat.Router {
-	Router.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
+func routes() *mux.Router {
+	Router.HandleFunc("/ping", func(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte("pong\n"))
-	})
-	// Router.Get("/list", handleRequest(list))
-	// Router.Get("/subscribe", handleRequest(subscribe))
-	// Router.Get("/unsubscribe", handleRequest(unsubscribe))
+	}).Methods("GET")
+	Router.HandleFunc("/publish", handleRequest(publish)).Methods("POST")
 
 	return Router
+}
+
+func publish(rw http.ResponseWriter, req *http.Request) {
+	body, readErr := ioutil.ReadAll(req.Body)
+	if readErr != nil {
+		lumber.Error("read body failed '%s'...\n", readErr)
+	}
+	message := Message{}
+	jsonErr := json.Unmarshal(body, &message)
+	if jsonErr != nil {
+		lumber.Error("publish message error '%s'...\n", jsonErr)
+	}
+	mist.Publish(message.Tags, message.Data)
 }
 
 // handleRequest is a wrapper for the actual route handler, simply to provide some
