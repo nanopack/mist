@@ -236,7 +236,7 @@ prior to chrome console letting you run the following javascript.
 ``` javascript
 
   // connect the websocket
-  var ws = new WebSocket("ws://localhost:8080/subscribe/websocket?x-auth-token=token")
+  var ws = new WebSocket("ws://localhost:8080/ws?x-auth-token=token")
 
   // handle responses from the server
   ws.onmessage = function(me){
