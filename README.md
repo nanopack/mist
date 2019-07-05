@@ -62,13 +62,16 @@ Each Message has a set of `tags` and `data`. Tags can take any form you like, as
 
 ### Subscribing / Publishing
 
-Think of `tags` as a way to filter out messages you don't want to receive; the more tags that are added to a subscription the more direct a message has to be:
+Think of `tags` as a way to filter out messages you don't want to receive, which means it will only receive messages
+contain all of the subscriped tags; if a client has multiple subscribe message, it will receive the message if any of
+the subscription satisfy the requirement. the more tags that are added to a subscription the more direct a message has to be:
 
 | Subscribed tags | Messages received from tags |
 | --- | --- |
 | `["onefish"]` | `["onefish"]`, `["onefish","twofish"]`, `["onefish","twofish","redfish"]` |
 | `["onefish", "twofish"]` | `["onefish","twofish"]`, `["onefish","twofish","redfish"]` |
 | `["onefish", "twofish", "redfish"]` | `["onefish","twofish","redfish"]` |
+| `["twofish"]` | `["onefile", "twofish"]` |
 
 Message that are published to clients as the result of a subscription are delivered in this format:
 

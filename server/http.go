@@ -55,11 +55,15 @@ func routes() *mux.Router {
 func publish(rw http.ResponseWriter, req *http.Request) {
 	body, readErr := ioutil.ReadAll(req.Body)
 	if readErr != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte(readErr.Error()))
 		lumber.Error("read body failed '%s'...\n", readErr)
 	}
 	message := Message{}
 	jsonErr := json.Unmarshal(body, &message)
 	if jsonErr != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte(jsonErr.Error()))
 		lumber.Error("publish message error '%s'...\n", jsonErr)
 	}
 	mist.Publish(message.Tags, message.Data)
