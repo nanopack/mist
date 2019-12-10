@@ -46,7 +46,7 @@ All communications within mist are sent and received as JSON encoded/decoded mes
 Message struct {
   Command string   `json:"command"`
   Tags    []string `json:"tags"`
-  Data    string   `json:"data,omitemtpy"`
+  Data    string   `json:"data,omitempty"`
   Error   string   `json:"error,omitempty"`
 }
 ```
