@@ -3,7 +3,6 @@ package mist
 import (
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/jcelliott/lumber"
 )
@@ -117,17 +116,6 @@ func (p *Proxy) Publish(tags []string, data string) error {
 	lumber.Trace("Proxy publishing to %s...", tags)
 
 	return publish(p.id, tags, data)
-}
-
-// PublishAfter sends a message after [delay]
-func (p *Proxy) PublishAfter(tags []string, data string, delay time.Duration) {
-	go func() {
-		<-time.After(delay)
-		if err := publish(p.id, tags, data); err != nil {
-			// log this error and continue
-			lumber.Error("Proxy failed to PublishAfter - %s", err.Error())
-		}
-	}()
 }
 
 // List returns a list of all current subscriptions

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/nanopack/mist/core"
+	mist "github.com/nanopack/mist/core"
 )
 
 // GenerateHandlers ...
@@ -15,10 +15,9 @@ func GenerateHandlers() map[string]mist.HandleFunc {
 		"subscribe":   handleSubscribe,
 		"unsubscribe": handleUnsubscribe,
 		"publish":     handlePublish,
-		// "publishAfter":     handlePublishAfter,
-		"list":    handleList,
-		"listall": handleListAll, // listall related
-		"who":     handleWho,     // who related
+		"list":        handleList,
+		"listall":     handleListAll, // listall related
+		"who":         handleWho,     // who related
 	}
 }
 
@@ -52,15 +51,6 @@ func handlePublish(proxy *mist.Proxy, msg mist.Message) error {
 	proxy.Publish(msg.Tags, msg.Data)
 	return nil
 }
-
-// handlePublishAfter - how do we get the [delay] here?
-// func handlePublishAfter(proxy *mist.Proxy, msg mist.Message) error {
-// 	proxy.PublishAfter(msg.Tags, msg.Data, ???)
-// 	go func() {
-// 		proxy.Pipe <- mist.Message{Command: "publish after", Tags: msg.Tags, Data: "success"}
-// 	}()
-// 	return nil
-// }
 
 // handleList
 func handleList(proxy *mist.Proxy, msg mist.Message) error {

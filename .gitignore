@@ -29,3 +29,4 @@ TODO
 build
 mist
 vendor/*/
+.vscode

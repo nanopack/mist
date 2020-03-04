@@ -5,13 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/pat"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/jcelliott/lumber"
-	"github.com/nanobox-io/golang-nanoauth"
+	nanoauth "github.com/nanobox-io/golang-nanoauth"
 
 	"github.com/nanopack/mist/auth"
-	"github.com/nanopack/mist/core"
+	mist "github.com/nanopack/mist/core"
 )
 
 // init adds ws/wss as available mist server types
@@ -22,8 +22,8 @@ func init() {
 
 // StartWS starts a mist server listening over a websocket
 func StartWS(uri string, errChan chan<- error) {
-	router := pat.New()
-	router.Get("/subscribe/websocket", func(rw http.ResponseWriter, req *http.Request) {
+	router := mux.NewRouter()
+	router.HandleFunc("/ws", func(rw http.ResponseWriter, req *http.Request) {
 
 		// prepare to upgrade http to ws
 		upgrader := websocket.Upgrader{
@@ -137,7 +137,7 @@ func StartWS(uri string, errChan chan<- error) {
 				continue
 			}
 		}
-	})
+	}).Methods("GET")
 
 	lumber.Info("WS server listening at '%s'...\n", uri)
 	// go http.ListenAndServe(uri, router)
@@ -146,8 +146,8 @@ func StartWS(uri string, errChan chan<- error) {
 
 // StartWSS starts a mist server listening over a secure websocket
 func StartWSS(uri string, errChan chan<- error) {
-	router := pat.New()
-	router.Get("/subscribe/websocket", func(rw http.ResponseWriter, req *http.Request) {
+	router := mux.NewRouter()
+	router.HandleFunc("/ws", func(rw http.ResponseWriter, req *http.Request) {
 
 		// prepare to upgrade http to wss
 		upgrader := websocket.Upgrader{
@@ -261,7 +261,7 @@ func StartWSS(uri string, errChan chan<- error) {
 				continue
 			}
 		}
-	})
+	}).Methods("GET")
 
 	lumber.Info("WSS server listening at '%s'...\n", uri)
 	nanoauth.ListenAndServeTLS(uri, "", router)

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"time"
 
 	"github.com/jcelliott/lumber"
 
-	"github.com/nanopack/mist/core"
+	mist "github.com/nanopack/mist/core"
 )
 
 type (
@@ -141,28 +140,18 @@ func (c *TCP) Publish(tags []string, data string) error {
 	return c.encoder.Encode(&mist.Message{Command: "publish", Tags: tags, Data: data})
 }
 
-// PublishAfter sends a message to the mist server to be published to all subscribed
-// clients after a specified delay
-func (c *TCP) PublishAfter(tags []string, data string, delay time.Duration) error {
-	go func() {
-		<-time.After(delay)
-		c.Publish(tags, data)
-	}()
-	return nil
-}
-
 // List requests a list from the server of the tags this client is subscribed to
 func (c *TCP) List() error {
 	return c.encoder.Encode(&mist.Message{Command: "list"})
 }
 
-// listall related
+// ListAll related
 // List requests a list from the server of the tags this client is subscribed to
 func (c *TCP) ListAll() error {
 	return c.encoder.Encode(&mist.Message{Command: "listall"})
 }
 
-// who related
+// Who related
 // Who requests connection/subscriber stats from the server
 func (c *TCP) Who() error {
 	return c.encoder.Encode(&mist.Message{Command: "who"})
