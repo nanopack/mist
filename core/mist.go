@@ -69,14 +69,14 @@ func Who() (int, int) {
 // todo: delete these 2. limiting what is a subscriber makes this not needed
 // if they subscribe to a thing on a reused connection, they wanted to get updates.. hopefully
 //
-// Publish publishes to ALL subscribers. Usefull in client applications
+// Publish publishes to ALL subscribers. Useful in client applications
 // who reuse the publish connection for subscribing (publishes to self)
 func Publish(tags []string, data string) error {
 	lumber.Trace("Publishing...")
 	return publish(0, tags, data)
 }
 
-// PublishAfter publishes to ALL subscribers. Usefull in client applications
+// PublishAfter publishes to ALL subscribers. Useful in client applications
 // who reuse the publish connection for subscribing
 func PublishAfter(tags []string, data string, delay time.Duration) error {
 	go func() {
