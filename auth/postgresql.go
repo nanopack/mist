@@ -116,7 +116,7 @@ func (a postgres) connect() (*sql.DB, error) {
 	return sql.Open("postgres", string(a))
 }
 
-// this could really be optimized a lot. instead of opening a new conenction for
+// this could really be optimized a lot. instead of opening a new connection for
 // each query, it should reuse connections
 func (a postgres) query(query string, args ...interface{}) (*sql.Rows, error) {
 	client, err := a.connect()
